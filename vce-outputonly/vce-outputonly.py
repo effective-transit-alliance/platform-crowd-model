@@ -6,24 +6,16 @@
 #w is total width of upstairs VCEs in feet.
 #egress is instantaneous rate of platform egress
 #t1 simulation length in seconds
-import openpyxl
-
-from openpyxl import Workbook
-
-wb=Workbook()
-
-filepath='platform_egress.xlsx'
-
-sheet=wb.active
-
-width=25
-length=1400
-c = .9*width*length
-k0 = 1600 #if *2 is here, its a train on both tracks of the platform
-u = 48 #if *2 is here, its a train on both tracks of the platform
+width=15
+length=800
+c = .75*width*length
+k0 = 1200 #if *2 is here, its a train on both tracks of the platform
+u = 32 #if *2 is here, its a train on both tracks of the platform
 t1 = 200
-w = 625/12
+w = 450/12
 egress = 0 #do not touch this
+delay = 30 #assumed delay between first passenger detraining and reaching stairwell
+print('A train arrives with ' + str(k0) + ' passengers at a ' + str(length) + ' ft long by ' + str(width) + ' ft wide platform with ' + str(int(w*10)/10) + ' ft. of VCE width.')
 
 def trainloadfn(k,u,t):
     return max(0,k-u*t)
@@ -50,19 +42,6 @@ for i in range (1,t1):
     numonplatform = platloadfn(k0,u,i, numonplatform)
     instcrowding = crowdfn(k0,u,i, c,numonplatform)
     instnumontrain = trainloadfn(k0,u,i)
-    sheet.cell(row = i + 3, column = 1).value=i
-    sheet.cell(row=i + 3, column=2).value = instnumontrain
-    sheet.cell(row = i+3, column = 3).value = numonplatform
-    sheet.cell(row = i + 3, column = 4).value = instcrowding
-    sheet.cell(row = i + 3, column = 5).value = egress
 
-
-    print('At time ' + str(i) + ', platform has ' + str(numonplatform) + ' passengers, and train has ' + str(instnumontrain) + ' passengers. Each passenger has ' + str(instcrowding)  + ' sf of space. Egress rate is ' + str(egress) + ' pax/sec.')
-print('LOS F egress rate is ' + str(w*19/60)+ ' pax/min. Emergency egress time is roughly '+ str(k0/(w*19/60))+ ' seconds.')
-
-sheet.cell(row = 2, column = 1).value = 'Time after arrival (s)'
-sheet.cell(row = 2, column = 2).value = 'Passengers on train'
-sheet.cell(row = 2, column = 3).value = 'Passengers on platform'
-sheet.cell(row = 2, column = 4).value = 'Space per passenger (sqft)'
-sheet.cell(row = 2, column = 5).value = 'egress rate (passengers/sec)'
-wb.save(filepath)
+    print('At time ' + str(i) + ', platform has ' + str(int(numonplatform)) + ' pax, and train has ' + str(int(instnumontrain)) + ' pax. Each passenger has ' + str(int(instcrowding))  + ' sf space. Egress rate is ' + str(int(egress*10)/10) + ' pax/sec.')
+print('LOS F egress rate is ' + str(w*19/60) + ' pax/min. Emergency egress time is roughly '+ str(k0/(w*19/60))+ ' seconds.')
