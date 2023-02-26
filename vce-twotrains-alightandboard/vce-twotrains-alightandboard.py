@@ -41,18 +41,20 @@ print(www)
 # if t2 >= simtime, only consider one train.
 
 
-def deboardratefn(
-    k, t, t0, u
-):  # of people on train 1 without ingress. t0 is the train arrival time. train(x)doors*rate (1 pax/door/s) goes in u.
+def deboardratefn(k, t, t0, u):
+    """
+    Of people on train 1 without ingress. t0 is the train arrival time. train(x)doors*rate (1 pax/door/s) goes in u.
+    """
     if t >= t0 and k > 0:
         return u
     else:
         return 0
 
 
-def plat_clearance_fn(
-    k, a, w, t, t1
-):  # t is i, t1 is the train 1 arrival time, t2 is the train 2 arrival time.
+def plat_clearance_fn(k, a, w, t, t1):
+    """
+    t is i, t1 is the train 1 arrival time, t2 is the train 2 arrival time.
+    """
     if k > 0:
         if t - t1 < 30:
             return max(
@@ -67,9 +69,10 @@ def plat_clearance_fn(
         return 0
 
 
-def plat_ingress_fn(
-    r, w
-):  # function of platform clearance rate (r), which is itself a function of the platform crowd.
+def plat_ingress_fn(r, w):
+    """
+    function of platform clearance rate (r), which is itself a function of the platform crowd.
+    """
     if r > 17 * w / 60:
         return 0
     elif 5 * w / 60 < r < 17 * w / 60:
@@ -78,9 +81,10 @@ def plat_ingress_fn(
         return 11 * w / 60
 
 
-def boardratefn(
-    r_deboard, r_platingress, t, t0, u
-):  # this r is the deboard rate. Gives the rate at which passengers board each train
+def boardratefn(r_deboard, r_platingress, t, t0, u):
+    """
+    this r is the deboard rate. Gives the rate at which passengers board each train
+    """
     if t > t0 and r_deboard == 0:
         return min(
             r_platingress / 2, u / 8
