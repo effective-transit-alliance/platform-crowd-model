@@ -29,7 +29,9 @@ ww = (
     / 12
     * np.array(
         [
+            # Widths
             [60, 60, 36, 36, 40, 54, 40, 64, 54, 54, 54, 54, 54],
+            # Weights
             [0.6, 0.6, 0.6, 0.6, 1.0, 1.0, 1.0, 1.0, 1.0, 1.4, 1.4, 1.4, 1.4],
         ]
     )
@@ -43,7 +45,11 @@ print(www)
 
 def deboardratefn(k, t, t0, u):
     """
-    Of people on train 1 without ingress. t0 is the train arrival time. train(x)doors*rate (1 pax/door/s) goes in u.
+    :param k: number of people on given train without ingress
+    :param t: time pass counter (s)
+    :param t0: train arrival time
+    :param u: train(x)doors*rate (1 pax/door/s)
+    :return: egress rate from train to platform across all doors (pax/s)
     """
     if t >= t0 and k > 0:
         return u
@@ -53,7 +59,12 @@ def deboardratefn(k, t, t0, u):
 
 def plat_clearance_fn(k, a, w, t, t1):
     """
-    t is i, t1 is the train 1 arrival time, t2 is the train 2 arrival time.
+    :param k: number of people on the platform
+    :param a: usable platform area
+    :param w: total width of vertical circulation elements
+    :param t: time pass counter (s),
+    :param t1: first train arrival time
+    :return: egress rate off platform to station accross all stairs (pax/s)
     """
     if k > 0:
         if t - t1 < 30:
@@ -71,7 +82,9 @@ def plat_clearance_fn(k, a, w, t, t1):
 
 def plat_ingress_fn(r, w):
     """
-    function of platform clearance rate (r), which is itself a function of the platform crowd.
+    :param r: platform egress rate, itself a function of the platform crowd
+    :param w: total width of vertical circulation elements
+    :return: platform ingress rate across stairs (pax/s)
     """
     if r > 17 * w / 60:
         return 0
@@ -83,7 +96,11 @@ def plat_ingress_fn(r, w):
 
 def boardratefn(r_deboard, r_platingress, t, t0, u):
     """
-    this r is the deboard rate. Gives the rate at which passengers board each train
+    :param r_deboard: train deboard rate
+    :param r_platingress: platform ingress rate
+    :param t: time in seconds, pass counter
+    :param t0: train arrival time
+    :return: train ingress rate across all doors (pax/s)
     """
     if t > t0 and r_deboard == 0:
         return min(
@@ -94,6 +111,11 @@ def boardratefn(r_deboard, r_platingress, t, t0, u):
 
 
 def space_per_pax_fn(k, a):
+    """
+    :param k: people on platform (pax)
+    :param a: usable platform area (ft^2)
+    :return: space per passenger (ft^2/pax)
+    """
     if k > 0:
         return a / k
     else:
