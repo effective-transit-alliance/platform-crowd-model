@@ -5,38 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d7e3512b-62b1-4a51-a0c8-0f05aaa48edb" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../platclearance/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../platclearance/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../platclearance/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../platclearance/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../platclearance/.idea/platclearance.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../platclearance/penn_station_platforms_20221109.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../platclearance/plat_c.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../platclearance/platclearance.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce-twoway/.idea/.name" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce-twoway/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce-twoway/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce-twoway/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce-twoway/.idea/vce-outputonly.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce-twoway/.idea/vcs.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce-twoway/.idea/workspace.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce-twoway/platform_F_twoway.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce-twoway/vce-twoway.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/.idea/.name" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/.idea/traincalculator3.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/.idea/vcs.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/penn_station_platforms_20221109.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/platform_A_egress.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/platform_B_egress.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/platform_C_egress.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/platform_D_egress.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/platform_E_egress.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/platform_F_egress.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vce/vce.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/platform_F_twotrains_twoway.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/platform_F_twotrains_twoway.xlsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vce-twotrains-alightandboard.py" beforeDir="false" afterPath="$PROJECT_DIR$/vce-twotrains-alightandboard.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -54,8 +25,8 @@
       <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
     </file-type-list>
   </component>
-  <component name="HighlightingSettingsPerFile">
-    <setting file="file://$USER_HOME$/AppData/Local/Programs/Python/Python38/Lib/zipfile.py" root0="FORCE_HIGHLIGHTING" />
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="2HVCGerAANHhtEcriP38NmPHgJ7" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
@@ -67,7 +38,7 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+    <property name="settings.editor.selected.configurable" value="vcs.Git" />
   </component>
   <component name="ReaderModeSettings">
     <option name="enabled" value="false" />
@@ -107,9 +78,9 @@
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
-      <option name="SDK_HOME" value="C:\Users\Robert Donald Hale\PycharmProjects\pythonProject\venv\Scripts\python.exe" />
+      <option name="SDK_HOME" value="" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="false" />
+      <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/vce-twotrains-alightandboard.py" />
@@ -153,6 +124,5 @@
         </entry>
       </map>
     </option>
-    <option name="oldMeFiltersMigrated" value="true" />
   </component>
 </project>

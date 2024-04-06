@@ -5,7 +5,7 @@
 import openpyxl
 import numpy as np
 
-filepath = "platform_F_twotrains_twoway.xlsx"
+filepath = "platform_F_twotrains_twoway_new.xlsx"
 wb = openpyxl.load_workbook(filepath)
 
 sheet = wb.active
@@ -14,15 +14,16 @@ wb.close()
 
 simtime = 600  # how many seconds we want to simulate
 width = 15
-length = 1100
+length = 1200
 cf = 0.75  # area correction factor
 eff_area = width * length * cf
-train1arrivingpax = 1200  # train 1 load
-train2arrivingpax = 1200  # train 2 load
+train1arrivingpax = 1600  # train 1 load
+train2arrivingpax = 1600  # train 2 load
 train1doors = 48  # single-door equivalents
 train2doors = 48  # single-door equivalents
 arrtime1 = 0  # time of first train arrival
-arrtime2 = 120  # time of second train arrival
+arrtime2 = 0  # time of second train arrival
+queue_length = 20 #feet of queue in front of each stair that pushes max upstairs flow
 w = 550 / 12
 ww = (
     1
@@ -37,11 +38,11 @@ ww = (
     )
 )
 www = ww[0, :]
-print(www)
+print("www = ", www)
 
 # basic flow: train egress > platform crowd > VCE egress rate > back to platform crowd
 # if t2 >= simtime, only consider one train.
-
+# keep high VCE egress rate if queues at stairs are long
 
 def deboardratefn(k, t, t0, u):
     """
@@ -57,28 +58,32 @@ def deboardratefn(k, t, t0, u):
         return 0
 
 
-def plat_clearance_fn(k, a, w, t, t1):
+def plat_clearance_fn(k, a, w, karr, qmax):
     """
     :param k: number of people on the platform
     :param a: usable platform area
     :param w: total width of vertical circulation elements
-    :param t: time pass counter (s),
-    :param t1: first train arrival time
-    :return: egress rate off platform to station accross all stairs (pax/s)
+    :param: karr: number of people waiting to get onto a stairwell
+    :param: qmax: number of people that can fit around stair thresholds
+    :return: platform egress rate on stairs
     """
-    if k > 0:
-        if t - t1 < 30:
-            return max(
-                min(((111 * (a / k) - 162) / ((a / k) ** 2)) * w / 60, 19 * w / 60), 0
+
+    if karr <= qmax:
+        return max(0, min(
+            (111 * a / (max(1, k)) - 162)/((a / (max(1, k)))**2),
+                19 * w / 60
+                )
             )  # P = (111M - 162)/(M^2) is the upstairs flow eq per ft wide.
-        else:
-            return max(
-                min(((111 * (a / k) - 162) / ((a / k) ** 2)) * w / 60, 19 * w / 60),
-                5 * w / 60,
-            )  # Zero clearance rate until train 1 arrives, then hold at a minimum until everyone is upstairs
+
+    elif karr > qmax:
+        return max(
+            7 * w / 60, min(
+                (111 * a / (max(1, k)) - 162) / ((a / (max(1, k))) ** 2),
+                19 * w / 60
+                )
+            )   # Waiting volume over threshold maintains miminum 7 pax/ft/min, which is LOS B/C boundary.
     else:
         return 0
-
 
 def plat_ingress_fn(r, w):
     """
@@ -124,6 +129,7 @@ def space_per_pax_fn(k, a):
 
 # initialize counters
 numonplatform = 0
+waitingonplatform = 0
 train1pax = train1arrivingpax
 train2pax = train2arrivingpax
 train1_remaining_arrivals = train2arrivingpax
@@ -137,7 +143,7 @@ for i in range(0, simtime):
     train2_remaining_arrivals -= train2offrate
     numonplatform += train1offrate
     numonplatform += train2offrate
-    plat_egress_rate = plat_clearance_fn(numonplatform, eff_area, w, i, arrtime1)
+    plat_egress_rate = plat_clearance_fn(numonplatform, eff_area, w, waitingonplatform, sum(www)*queue_length)
     numonplatform -= plat_egress_rate
     plat_ingress_rate = plat_ingress_fn(plat_egress_rate, w)
     numonplatform += plat_ingress_rate
@@ -165,6 +171,10 @@ for i in range(0, simtime):
     instcrowding = space_per_pax_fn(numonplatform, eff_area)
     if numonplatform < 0:
         numonplatform = 0
+
+    waitingonplatform = waitingonplatform + train1offrate + train2offrate - plat_egress_rate
+    if waitingonplatform < 0:
+        waitingonplatform = 0
     print(
         "time " + str(i),
         "train 1 load " + str(train1pax),
@@ -224,26 +234,30 @@ for i in range(0, simtime):
     else:
         sheet.cell(row=i + 4, column=12).value = "F"
 
-sheet.cell(row=2, column=1).value = "Platform width (ft)"
-sheet.cell(row=2, column=2).value = width
-sheet.cell(row=2, column=3).value = "Platform length (ft)"
-sheet.cell(row=2, column=4).value = length
-sheet.cell(row=2, column=5).value = "Total VCE width (ft)"
-sheet.cell(row=2, column=6).value = w
-sheet.cell(row=2, column=7).value = "Effective Area Multiplier"
-sheet.cell(row=2, column=8).value = cf
-sheet.cell(row=2, column=9).value = "Usable Platform Area (sqft)"
-sheet.cell(row=2, column=10).value = eff_area
-sheet.cell(row=2, column=11).value = "Train 1 Arriving Passengers"
-sheet.cell(row=2, column=12).value = train1arrivingpax
-sheet.cell(row=2, column=13).value = "Train 1 Arrival Time"
-sheet.cell(row=2, column=14).value = arrtime1
-sheet.cell(row=2, column=15).value = "Train 2 Arriving Passengers"
-sheet.cell(row=2, column=16).value = train2arrivingpax
-sheet.cell(row=2, column=17).value = "Train 2 Arrival Time"
-sheet.cell(row=2, column=18).value = arrtime2
-sheet.cell(row=2, column=19).value = "Simulation Length (s)"
-sheet.cell(row=2, column=20).value = simtime
+sheet.cell(row=1, column=1).value = "Platform width (ft)"
+sheet.cell(row=2, column=1).value = width
+sheet.cell(row=1, column=2).value = "Platform length (ft)"
+sheet.cell(row=2, column=2).value = length
+sheet.cell(row=1, column=3).value = "Total VCE width (ft)"
+sheet.cell(row=2, column=3).value = w
+sheet.cell(row=1, column=4).value = "Effective Area Multiplier"
+sheet.cell(row=2, column=4).value = cf
+sheet.cell(row=1, column=5).value = "Usable Platform Area (sqft)"
+sheet.cell(row=2, column=5).value = eff_area
+sheet.cell(row=1, column=6).value = "Train 1 Arriving Passengers"
+sheet.cell(row=2, column=6).value = train1arrivingpax
+sheet.cell(row=1, column=7).value = "Train 1 Arrival Time"
+sheet.cell(row=2, column=7).value = arrtime1
+sheet.cell(row=1, column=8).value = "Train 2 Arriving Passengers"
+sheet.cell(row=2, column=8).value = train2arrivingpax
+sheet.cell(row=1, column=9).value = "Train 2 Arrival Time"
+sheet.cell(row=2, column=9).value = arrtime2
+sheet.cell(row=1, column=10).value = "Simulation Length (s)"
+sheet.cell(row=2, column=10).value = simtime
+sheet.cell(row=1, column=11).value = "LOS F Egress Rate (pax/s)"
+sheet.cell(row=2, column=11).value = w * 19 / 60
+sheet.cell(row=1, column=12).value = "Emergency Egress Time (s)"
+sheet.cell(row=2, column=12).value = (train1arrivingpax + train2arrivingpax) / (w * 19 / 60)
 
 sheet.cell(row=3, column=1).value = "Time after arrival (s)"
 sheet.cell(row=3, column=2).value = "Passengers on Train 1"
@@ -252,7 +266,7 @@ sheet.cell(row=3, column=4).value = "Train 1 Board Rate (pax/s)"
 sheet.cell(row=3, column=5).value = "Train 2 Board Rate (pax/s)"
 sheet.cell(row=3, column=6).value = "Platform Ingress Rate (pax/s)"
 sheet.cell(row=3, column=9).value = "Passengers on Platform"
-sheet.cell(row=3, column=10).value = "Average Space on Platform per Passenger (sqft)"
+sheet.cell(row=3, column=10).value = "Platform Space per Passanger (sqft)"
 sheet.cell(row=3, column=7).value = "Platform Egress Rate (pax/s)"
 sheet.cell(row=3, column=8).value = "Net Platform Flow Rate"
 sheet.cell(row=3, column=11).value = "Platform Crowding LOS"
@@ -261,7 +275,7 @@ sheet.cell(row=3, column=12).value = "Egress LOS"
 print(
     "LOS F egress rate is "
     + str(w * 19 / 60)
-    + " pax/min. Emergency egress time is roughly "
+    + " pax/second. Emergency egress time is roughly "
     + str((train1arrivingpax + train2arrivingpax) / (w * 19 / 60))
     + " seconds."
 )
