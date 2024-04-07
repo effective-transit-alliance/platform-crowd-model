@@ -175,7 +175,48 @@ wb = openpyxl.Workbook()
 
 sheet = wb.active
 
-FIRST_DATA_ROW = 5
+sheet.cell(row=1, column=1).value = "Time after arrival (s)"
+sheet.cell(row=1, column=2).value = "Passengers on Train 1"
+sheet.cell(row=1, column=3).value = "Passengers on Train 2"
+sheet.cell(row=1, column=4).value = "Train 1 Board Rate (pax/s)"
+sheet.cell(row=1, column=5).value = "Train 2 Board Rate (pax/s)"
+sheet.cell(row=1, column=6).value = "Platform Ingress Rate (pax/s)"
+sheet.cell(row=1, column=9).value = "Passengers on Platform"
+sheet.cell(row=1, column=10).value = "Platform Space per Passanger (sqft)"
+sheet.cell(row=1, column=7).value = "Platform Egress Rate (pax/s)"
+sheet.cell(row=1, column=8).value = "Net Platform Flow Rate"
+sheet.cell(row=1, column=11).value = "Platform Crowding LOS"
+sheet.cell(row=1, column=12).value = "Egress LOS"
+
+sheet.cell(column=21, row=1).value = "Platform width (ft)"
+sheet.cell(column=22, row=1).value = width
+sheet.cell(column=21, row=2).value = "Platform length (ft)"
+sheet.cell(column=22, row=2).value = length
+sheet.cell(column=21, row=3).value = "Total VCE width (ft)"
+sheet.cell(column=22, row=3).value = w
+sheet.cell(column=21, row=4).value = "Effective Area Multiplier"
+sheet.cell(column=22, row=4).value = cf
+sheet.cell(column=21, row=5).value = "Usable Platform Area (sqft)"
+sheet.cell(column=22, row=5).value = eff_area
+sheet.cell(column=21, row=6).value = "Train 1 Arriving Passengers"
+sheet.cell(column=22, row=6).value = train1arrivingpax
+sheet.cell(column=21, row=7).value = "Train 1 Arrival Time"
+sheet.cell(column=22, row=7).value = arrtime1
+sheet.cell(column=21, row=8).value = "Train 2 Arriving Passengers"
+sheet.cell(column=22, row=8).value = train2arrivingpax
+sheet.cell(column=21, row=9).value = "Train 2 Arrival Time"
+sheet.cell(column=22, row=9).value = arrtime2
+sheet.cell(column=21, row=10).value = "Simulation Length (s)"
+sheet.cell(column=22, row=10).value = simulation_time
+sheet.cell(column=21, row=11).value = "LOS F Egress Rate (pax/s)"
+sheet.cell(column=22, row=11).value = w * 19 / 60
+sheet.cell(column=21, row=12).value = "Emergency Egress Time (s)"
+sheet.cell(column=22, row=12).value = (
+    train1arrivingpax + train2arrivingpax
+) / (w * 19 / 60)
+
+
+FIRST_DATA_ROW = 2
 
 for i in range(0, simulation_time):
     train1offrate = deboardratefn(
@@ -285,47 +326,6 @@ for i in range(0, simulation_time):
         sheet.cell(row=row, column=12).value = "E"
     else:
         sheet.cell(row=row, column=12).value = "F"
-
-sheet.cell(row=1, column=1).value = "Platform width (ft)"
-sheet.cell(row=2, column=1).value = width
-sheet.cell(row=1, column=2).value = "Platform length (ft)"
-sheet.cell(row=2, column=2).value = length
-sheet.cell(row=1, column=3).value = "Total VCE width (ft)"
-sheet.cell(row=2, column=3).value = w
-sheet.cell(row=1, column=4).value = "Effective Area Multiplier"
-sheet.cell(row=2, column=4).value = cf
-sheet.cell(row=1, column=5).value = "Usable Platform Area (sqft)"
-sheet.cell(row=2, column=5).value = eff_area
-sheet.cell(row=1, column=6).value = "Train 1 Arriving Passengers"
-sheet.cell(row=2, column=6).value = train1arrivingpax
-sheet.cell(row=1, column=7).value = "Train 1 Arrival Time"
-sheet.cell(row=2, column=7).value = arrtime1
-sheet.cell(row=1, column=8).value = "Train 2 Arriving Passengers"
-sheet.cell(row=2, column=8).value = train2arrivingpax
-sheet.cell(row=1, column=9).value = "Train 2 Arrival Time"
-sheet.cell(row=2, column=9).value = arrtime2
-sheet.cell(row=1, column=10).value = "Simulation Length (s)"
-sheet.cell(row=2, column=10).value = simulation_time
-sheet.cell(row=1, column=11).value = "LOS F Egress Rate (pax/s)"
-sheet.cell(row=2, column=11).value = w * 19 / 60
-sheet.cell(row=1, column=12).value = "Emergency Egress Time (s)"
-sheet.cell(row=2, column=12).value = (
-    train1arrivingpax + train2arrivingpax
-) / (w * 19 / 60)
-
-sheet.cell(row=3, column=1).value = "Time after arrival (s)"
-sheet.cell(row=3, column=2).value = "Passengers on Train 1"
-sheet.cell(row=3, column=3).value = "Passengers on Train 2"
-sheet.cell(row=3, column=4).value = "Train 1 Board Rate (pax/s)"
-sheet.cell(row=3, column=5).value = "Train 2 Board Rate (pax/s)"
-sheet.cell(row=3, column=6).value = "Platform Ingress Rate (pax/s)"
-sheet.cell(row=3, column=9).value = "Passengers on Platform"
-sheet.cell(row=3, column=10).value = "Platform Space per Passanger (sqft)"
-sheet.cell(row=3, column=7).value = "Platform Egress Rate (pax/s)"
-sheet.cell(row=3, column=8).value = "Net Platform Flow Rate"
-sheet.cell(row=3, column=11).value = "Platform Crowding LOS"
-sheet.cell(row=3, column=12).value = "Egress LOS"
-
 
 def make_chart(title, min_col):
     chart = openpyxl.chart.ScatterChart()
