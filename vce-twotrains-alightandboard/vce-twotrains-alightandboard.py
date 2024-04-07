@@ -6,66 +6,6 @@ model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 import openpyxl
 import numpy as np
 
-filepath = "platform_F_twotrains_twoway_new.xlsx"
-wb = openpyxl.load_workbook(filepath)
-
-sheet = wb.active
-wb.save(filepath)
-wb.close()
-
-# how many seconds we want to simulate
-simulation_time = 600
-
-width = 15
-
-length = 1200
-
-# area correction factor
-cf = 0.75
-
-eff_area = width * length * cf
-
-# train 1 load
-train1arrivingpax = 1600
-
-# train 2 load
-train2arrivingpax = 1600
-
-# single-door equivalents
-train1doors = 48
-
-# single-door equivalents
-train2doors = 48
-
-# time of first train arrival
-arrtime1 = 0
-
-# time of second train arrival
-arrtime2 = 0
-
-# feet of queue in front of each stair that pushes max upstairs flow
-queue_length = 20
-
-# total width of upstairs VCEs in feet.
-w = 550 / 12
-
-ww = (
-    1
-    / 12
-    * np.array(
-        [
-            # Widths
-            [60, 60, 36, 36, 40, 54, 40, 64, 54, 54, 54, 54, 54],
-            # Weights
-            [0.6, 0.6, 0.6, 0.6, 1.0, 1.0, 1.0, 1.0, 1.0, 1.4, 1.4, 1.4, 1.4],
-        ]
-    )
-)
-
-www = ww[0, :]
-
-print("www = ", www)
-
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
 
@@ -166,6 +106,65 @@ def space_per_pax_fn(k, a):
     else:
         return a
 
+filepath = "platform_F_twotrains_twoway_new.xlsx"
+wb = openpyxl.load_workbook(filepath)
+
+sheet = wb.active
+wb.save(filepath)
+wb.close()
+
+# how many seconds we want to simulate
+simulation_time = 600
+
+width = 15
+
+length = 1200
+
+# area correction factor
+cf = 0.75
+
+eff_area = width * length * cf
+
+# train 1 load
+train1arrivingpax = 1600
+
+# train 2 load
+train2arrivingpax = 1600
+
+# single-door equivalents
+train1doors = 48
+
+# single-door equivalents
+train2doors = 48
+
+# time of first train arrival
+arrtime1 = 0
+
+# time of second train arrival
+arrtime2 = 0
+
+# feet of queue in front of each stair that pushes max upstairs flow
+queue_length = 20
+
+# total width of upstairs VCEs in feet.
+w = 550 / 12
+
+ww = (
+    1
+    / 12
+    * np.array(
+        [
+            # Widths
+            [60, 60, 36, 36, 40, 54, 40, 64, 54, 54, 54, 54, 54],
+            # Weights
+            [0.6, 0.6, 0.6, 0.6, 1.0, 1.0, 1.0, 1.0, 1.0, 1.4, 1.4, 1.4, 1.4],
+        ]
+    )
+)
+
+www = ww[0, :]
+
+print("www = ", www)
 
 # initialize counters
 numonplatform = 0
