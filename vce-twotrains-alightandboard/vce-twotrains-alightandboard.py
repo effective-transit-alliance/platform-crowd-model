@@ -180,46 +180,7 @@ class Params:
     ww: any
 
 
-def main():
-    params = Params(
-        simulation_time=600,
-        width=15,
-        length=1200,
-        cf=0.75,
-        train1_arriving_pax=1600,
-        train2_arriving_pax=1600,
-        train1_doors=48,
-        train2_doors=48,
-        arr_time1=0,
-        arr_time2=0,
-        queue_length=20,
-        w=550 / 12,
-        ww=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        # Width weight pairs
-                        [60, 0.6],
-                        [60, 0.6],
-                        [36, 0.6],
-                        [36, 0.6],
-                        [40, 1.0],
-                        [54, 1.0],
-                        [40, 1.0],
-                        [64, 1.0],
-                        [54, 1.0],
-                        [54, 1.4],
-                        [54, 1.4],
-                        [54, 1.4],
-                        [54, 1.4],
-                    ]
-                )
-            )
-        ),
-    )
-
+def calc_workbook(file_path: str, params: Params):
     eff_area = params.width * params.length * params.cf
 
     www = params.ww[0, :]
@@ -234,7 +195,6 @@ def main():
     train1_remaining_arrivals = params.train2_arriving_pax
     train2_remaining_arrivals = params.train2_arriving_pax
 
-    file_path = "platform_F_twotrains_twoway_1600_120s.xlsx"
     wb = openpyxl.Workbook()
 
     sheet = wb.active
@@ -464,6 +424,50 @@ def main():
     )
     wb.save(file_path)
     wb.close()
+
+
+def main():
+    calc_workbook(
+        file_path="platform_F_twotrains_twoway_1600_120s.xlsx",
+        params=Params(
+            simulation_time=600,
+            width=15,
+            length=1200,
+            cf=0.75,
+            train1_arriving_pax=1600,
+            train2_arriving_pax=1600,
+            train1_doors=48,
+            train2_doors=48,
+            arr_time1=0,
+            arr_time2=0,
+            queue_length=20,
+            w=550 / 12,
+            ww=(
+                1
+                / 12
+                * np.transpose(
+                    np.array(
+                        [
+                            # Width weight pairs
+                            [60, 0.6],
+                            [60, 0.6],
+                            [36, 0.6],
+                            [36, 0.6],
+                            [40, 1.0],
+                            [54, 1.0],
+                            [40, 1.0],
+                            [64, 1.0],
+                            [54, 1.0],
+                            [54, 1.4],
+                            [54, 1.4],
+                            [54, 1.4],
+                            [54, 1.4],
+                        ]
+                    )
+                )
+            ),
+        ),
+    )
 
 
 if __name__ == "__main__":
