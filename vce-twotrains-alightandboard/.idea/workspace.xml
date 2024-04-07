@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="d7e3512b-62b1-4a51-a0c8-0f05aaa48edb" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/platform_F_twotrains_twoway.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/platform_F_twotrains_twoway.xlsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/vce-twotrains-alightandboard.py" beforeDir="false" afterPath="$PROJECT_DIR$/vce-twotrains-alightandboard.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -112,6 +111,14 @@
       <option name="presentableId" value="Default" />
       <updated>1668360773749</updated>
     </task>
+    <task id="LOCAL-00001" summary="No more manual column numbers&#10;&#10;They are all calculated automatically now">
+      <created>1712463713795</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1712463713795</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -124,5 +131,9 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="No more manual column numbers&#10;&#10;They are all calculated automatically now" />
+    <option name="LAST_COMMIT_MESSAGE" value="No more manual column numbers&#10;&#10;They are all calculated automatically now" />
   </component>
 </project>

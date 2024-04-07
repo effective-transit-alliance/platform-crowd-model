@@ -109,6 +109,35 @@ def space_per_pax_fn(k, a):
     else:
         return a
 
+def plat_crowd_grade(inst_crowding: float) -> str:
+
+    if inst_crowding > 35:
+        return "A"
+    elif 25 < inst_crowding <= 35:
+        return "B"
+    elif 15 < inst_crowding <= 25:
+        return "C"
+    elif 10 < inst_crowding <= 15:
+        return "D"
+    elif 5 < inst_crowding <= 10:
+        return "E"
+    else:
+        return "F"
+
+def egress_crowd_grade(w, plat_egress_rate: float) -> str:
+
+    if plat_egress_rate <= w * 5 / 60:
+        return "A"
+    elif w * 5 / 60 < plat_egress_rate <= w * 7 / 60:
+        return "B"
+    elif w * 7 / 60 < plat_egress_rate <= w * 9.5 / 60:
+        return "C"
+    elif w * 9.5 / 60 < plat_egress_rate <= w * 13 / 60:
+        return "D"
+    elif w * 13 / 60 < plat_egress_rate <= w * 17 / 60:
+        return "E"
+    else:
+        return "F"
 
 def main():
     # how many seconds we want to simulate
@@ -186,7 +215,7 @@ def main():
     train1_remaining_arrivals = train2_arriving_pax
     train2_remaining_arrivals = train2_arriving_pax
 
-    file_path = "platform_F_twotrains_twoway_new.xlsx"
+    file_path = "platform_F_twotrains_twoway_1600_120s.xlsx"
     wb = openpyxl.Workbook()
 
     sheet = wb.active
@@ -352,33 +381,9 @@ def main():
         egr = plat_egress_rate / width * www
         print(egr, np.sum(egr))
 
-        if inst_crowding > 35:
-            plat_crowd_los = "A"
-        elif 25 < inst_crowding <= 35:
-            plat_crowd_los = "B"
-        elif 15 < inst_crowding <= 25:
-            plat_crowd_lose = "C"
-        elif 10 < inst_crowding <= 15:
-            plat_crowd_los = "D"
-        elif 5 < inst_crowding <= 10:
-            plat_crowd_los = "E"
-        else:
-            plat_crowd_los = "F"
-        get_cell(columns.plat_crowd_los).value = plat_crowd_los
+        get_cell(columns.plat_crowd_los).value = plat_crowd_grade(inst_crowding)
 
-        if plat_egress_rate <= w * 5 / 60:
-            egress_los = "A"
-        elif w * 5 / 60 < plat_egress_rate <= w * 7 / 60:
-            egress_los = "B"
-        elif w * 7 / 60 < plat_egress_rate <= w * 9.5 / 60:
-            egress_los = "C"
-        elif w * 9.5 / 60 < plat_egress_rate <= w * 13 / 60:
-            egress_los = "D"
-        elif w * 13 / 60 < plat_egress_rate <= w * 17 / 60:
-            egress_los = "E"
-        else:
-            egress_los = "F"
-        get_cell(columns.egress_los).value = egress_los
+        get_cell(columns.egress_los).value = egress_crowd_grade(w, plat_egress_rate)
 
     def make_chart(title, min_col):
         chart = openpyxl.chart.ScatterChart()
