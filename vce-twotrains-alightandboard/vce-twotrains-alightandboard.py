@@ -23,7 +23,7 @@ train1doors = 48  # single-door equivalents
 train2doors = 48  # single-door equivalents
 arrtime1 = 0  # time of first train arrival
 arrtime2 = 0  # time of second train arrival
-queue_length = 20 #feet of queue in front of each stair that pushes max upstairs flow
+queue_length = 20  # feet of queue in front of each stair that pushes max upstairs flow
 w = 550 / 12
 ww = (
     1
@@ -43,6 +43,7 @@ print("www = ", www)
 # basic flow: train egress > platform crowd > VCE egress rate > back to platform crowd
 # if t2 >= simtime, only consider one train.
 # keep high VCE egress rate if queues at stairs are long
+
 
 def deboardratefn(k, t, t0, u):
     """
@@ -69,21 +70,19 @@ def plat_clearance_fn(k, a, w, karr, qmax):
     """
 
     if karr <= qmax:
-        return max(0, min(
-            (111 * a / (max(1, k)) - 162)/((a / (max(1, k)))**2),
-                19 * w / 60
-                )
-            )  # P = (111M - 162)/(M^2) is the upstairs flow eq per ft wide.
+        return max(
+            0,
+            min((111 * a / (max(1, k)) - 162) / ((a / (max(1, k))) ** 2), 19 * w / 60),
+        )  # P = (111M - 162)/(M^2) is the upstairs flow eq per ft wide.
 
     elif karr > qmax:
         return max(
-            7 * w / 60, min(
-                (111 * a / (max(1, k)) - 162) / ((a / (max(1, k))) ** 2),
-                19 * w / 60
-                )
-            )   # Waiting volume over threshold maintains miminum 7 pax/ft/min, which is LOS B/C boundary.
+            7 * w / 60,
+            min((111 * a / (max(1, k)) - 162) / ((a / (max(1, k))) ** 2), 19 * w / 60),
+        )  # Waiting volume over threshold maintains miminum 7 pax/ft/min, which is LOS B/C boundary.
     else:
         return 0
+
 
 def plat_ingress_fn(r, w):
     """
@@ -143,7 +142,9 @@ for i in range(0, simtime):
     train2_remaining_arrivals -= train2offrate
     numonplatform += train1offrate
     numonplatform += train2offrate
-    plat_egress_rate = plat_clearance_fn(numonplatform, eff_area, w, waitingonplatform, sum(www)*queue_length)
+    plat_egress_rate = plat_clearance_fn(
+        numonplatform, eff_area, w, waitingonplatform, sum(www) * queue_length
+    )
     numonplatform -= plat_egress_rate
     plat_ingress_rate = plat_ingress_fn(plat_egress_rate, w)
     numonplatform += plat_ingress_rate
@@ -172,7 +173,9 @@ for i in range(0, simtime):
     if numonplatform < 0:
         numonplatform = 0
 
-    waitingonplatform = waitingonplatform + train1offrate + train2offrate - plat_egress_rate
+    waitingonplatform = (
+        waitingonplatform + train1offrate + train2offrate - plat_egress_rate
+    )
     if waitingonplatform < 0:
         waitingonplatform = 0
     print(
@@ -257,7 +260,9 @@ sheet.cell(row=2, column=10).value = simtime
 sheet.cell(row=1, column=11).value = "LOS F Egress Rate (pax/s)"
 sheet.cell(row=2, column=11).value = w * 19 / 60
 sheet.cell(row=1, column=12).value = "Emergency Egress Time (s)"
-sheet.cell(row=2, column=12).value = (train1arrivingpax + train2arrivingpax) / (w * 19 / 60)
+sheet.cell(row=2, column=12).value = (train1arrivingpax + train2arrivingpax) / (
+    w * 19 / 60
+)
 
 sheet.cell(row=3, column=1).value = "Time after arrival (s)"
 sheet.cell(row=3, column=2).value = "Passengers on Train 1"
