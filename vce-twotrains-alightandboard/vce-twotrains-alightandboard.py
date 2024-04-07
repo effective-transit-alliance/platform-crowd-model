@@ -1,7 +1,8 @@
-# This is a recursive peak-hour platform clearance calculator.
-# simtime simulation length in seconds
-# w is total width of upstairs VCEs in feet.
-# model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
+"""
+This is a recursive peak-hour platform clearance calculator.
+model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
+"""
+
 import openpyxl
 import numpy as np
 
@@ -13,7 +14,7 @@ wb.save(filepath)
 wb.close()
 
 # how many seconds we want to simulate
-simtime = 600
+simulation_time = 600
 
 width = 15
 
@@ -45,6 +46,7 @@ arrtime2 = 0
 # feet of queue in front of each stair that pushes max upstairs flow
 queue_length = 20
 
+# total width of upstairs VCEs in feet.
 w = 550 / 12
 
 ww = (
@@ -67,7 +69,7 @@ print("www = ", www)
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
 
-# if t2 >= simtime, only consider one train.
+# if t2 >= simulation_time, only consider one train.
 
 # keep high VCE egress rate if queues at stairs are long
 
@@ -172,7 +174,7 @@ train1pax = train1arrivingpax
 train2pax = train2arrivingpax
 train1_remaining_arrivals = train2arrivingpax
 train2_remaining_arrivals = train2arrivingpax
-for i in range(0, simtime):
+for i in range(0, simulation_time):
     train1offrate = deboardratefn(
         train1_remaining_arrivals, i, arrtime1, train1doors
     )
@@ -299,7 +301,7 @@ sheet.cell(row=2, column=8).value = train2arrivingpax
 sheet.cell(row=1, column=9).value = "Train 2 Arrival Time"
 sheet.cell(row=2, column=9).value = arrtime2
 sheet.cell(row=1, column=10).value = "Simulation Length (s)"
-sheet.cell(row=2, column=10).value = simtime
+sheet.cell(row=2, column=10).value = simulation_time
 sheet.cell(row=1, column=11).value = "LOS F Egress Rate (pax/s)"
 sheet.cell(row=2, column=11).value = w * 19 / 60
 sheet.cell(row=1, column=12).value = "Emergency Egress Time (s)"
