@@ -3,6 +3,7 @@ This is a recursive peak-hour platform clearance calculator.
 model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 """
 
+import dataclasses
 import numpy as np
 import openpyxl
 from openpyxl.cell import Cell
@@ -140,79 +141,98 @@ def egress_crowd_grade(w, plat_egress_rate: float) -> str:
         return "F"
 
 
-def main():
+@dataclasses.dataclass
+class Params:
     # how many seconds we want to simulate
-    simulation_time = 600
+    simulation_time: int
 
-    width = 15
+    width: int
 
-    length = 1200
+    length: int
 
     # area correction factor
-    cf = 0.75
-
-    eff_area = width * length * cf
+    cf: float
 
     # train 1 load
-    train1_arriving_pax = 1600
+    train1_arriving_pax: int
 
     # train 2 load
-    train2_arriving_pax = 1600
+    train2_arriving_pax: int
 
     # single-door equivalents
-    train1_doors = 48
+    train1_doors: int
 
     # single-door equivalents
-    train2_doors = 48
+    train2_doors: int
 
     # time of first train arrival
-    arr_time1 = 0
+    arr_time1: int
 
     # time of second train arrival
-    arr_time2 = 0
+    arr_time2: int
 
     # feet of queue in front of each stair that pushes max upstairs flow
-    queue_length = 20
+    queue_length: int
 
     # total width of upstairs VCEs in feet.
-    w = 550 / 12
+    w: float
 
-    ww = (
-        1
-        / 12
-        * np.transpose(
-            np.array(
-                [
-                    # Width weight pairs
-                    [60, 0.6],
-                    [60, 0.6],
-                    [36, 0.6],
-                    [36, 0.6],
-                    [40, 1.0],
-                    [54, 1.0],
-                    [40, 1.0],
-                    [64, 1.0],
-                    [54, 1.0],
-                    [54, 1.4],
-                    [54, 1.4],
-                    [54, 1.4],
-                    [54, 1.4],
-                ]
+    ww: any
+
+
+def main():
+    params = Params(
+        simulation_time=600,
+        width=15,
+        length=1200,
+        cf=0.75,
+        train1_arriving_pax=1600,
+        train2_arriving_pax=1600,
+        train1_doors=48,
+        train2_doors=48,
+        arr_time1=0,
+        arr_time2=0,
+        queue_length=20,
+        w=550 / 12,
+        ww=(
+            1
+            / 12
+            * np.transpose(
+                np.array(
+                    [
+                        # Width weight pairs
+                        [60, 0.6],
+                        [60, 0.6],
+                        [36, 0.6],
+                        [36, 0.6],
+                        [40, 1.0],
+                        [54, 1.0],
+                        [40, 1.0],
+                        [64, 1.0],
+                        [54, 1.0],
+                        [54, 1.4],
+                        [54, 1.4],
+                        [54, 1.4],
+                        [54, 1.4],
+                    ]
+                )
             )
-        )
+        ),
     )
 
-    www = ww[0, :]
+    eff_area = params.width * params.length * params.cf
+
+    www = params.ww[0, :]
 
     print("www = ", www)
 
     # initialize counters
     total_pax_on_platform = 0
     waitingonplatform = 0
-    train1_pax = train1_arriving_pax
-    train2_pax = train2_arriving_pax
-    train1_remaining_arrivals = train2_arriving_pax
-    train2_remaining_arrivals = train2_arriving_pax
+    train1_pax = params.train1_arriving_pax
+    train2_pax = params.train2_arriving_pax
+    train1_remaining_arrivals = params.train2_arriving_pax
+    train2_remaining_arrivals = params.train2_arriving_pax
 
     file_path = "platform_F_twotrains_twoway_1600_120s.xlsx"
     wb = openpyxl.Workbook()
@@ -227,19 +247,20 @@ def main():
         sheet.cell(column=21, row=rownum).value = description
         sheet.cell(column=22, row=rownum).value = value
 
-    make_row(width, "Platform width (ft)")
-    make_row(length, "Platform length (ft)")
-    make_row(w, "Total VCE width (ft)")
-    make_row(cf, "Effective Area Multiplier")
+    make_row(params.width, "Platform width (ft)")
+    make_row(params.length, "Platform length (ft)")
+    make_row(params.w, "Total VCE width (ft)")
+    make_row(params.cf, "Effective Area Multiplier")
     make_row(eff_area, "Usable Platform Area (sqft)")
-    make_row(train1_arriving_pax, "Train 1 Arriving Passengers")
-    make_row(arr_time1, "Train 1 Arrival Time")
-    make_row(train2_arriving_pax, "Train 2 Arriving Passengers")
-    make_row(arr_time2, "Train 2 Arrival Time")
-    make_row(simulation_time, "Simulation Length (s)")
-    make_row(w * 19 / 60, "LOS F Egress Rate (pax/s)")
+    make_row(params.train1_arriving_pax, "Train 1 Arriving Passengers")
+    make_row(params.arr_time1, "Train 1 Arrival Time")
+    make_row(params.train2_arriving_pax, "Train 2 Arriving Passengers")
+    make_row(params.arr_time2, "Train 2 Arrival Time")
+    make_row(params.simulation_time, "Simulation Length (s)")
+    make_row(params.w * 19 / 60, "LOS F Egress Rate (pax/s)")
     make_row(
-        (train1_arriving_pax + train2_arriving_pax) / (w * 19 / 60),
+        (params.train1_arriving_pax + params.train2_arriving_pax)
+        / (params.w * 19 / 60),
         "Emergency Egress Time (s)",
     )
 
@@ -279,14 +300,20 @@ def main():
 
     FIRST_DATA_ROW = 2
 
-    for time_after in range(0, simulation_time):
+    for time_after in range(0, params.simulation_time):
         train1_off_rate = deboardratefn(
-            train1_remaining_arrivals, time_after, arr_time1, train1_doors
+            train1_remaining_arrivals,
+            time_after,
+            params.arr_time1,
+            params.train1_doors,
         )
         train1_pax -= train1_off_rate
         train1_remaining_arrivals -= train1_off_rate
         train2_off_rate = deboardratefn(
-            train2_remaining_arrivals, time_after, arr_time2, train2_doors
+            train2_remaining_arrivals,
+            time_after,
+            params.arr_time2,
+            params.train2_doors,
         )
         train2_pax -= train2_off_rate
         train2_remaining_arrivals -= train2_off_rate
@@ -295,26 +322,26 @@ def main():
         plat_egress_rate = plat_clearance_fn(
             total_pax_on_platform,
             eff_area,
-            w,
+            params.w,
             waitingonplatform,
-            sum(www) * queue_length,
+            sum(www) * params.queue_length,
         )
         total_pax_on_platform -= plat_egress_rate
-        plat_ingress_rate = plat_ingress_fn(plat_egress_rate, w)
+        plat_ingress_rate = plat_ingress_fn(plat_egress_rate, params.w)
         total_pax_on_platform += plat_ingress_rate
         train1_on_rate = boardratefn(
             train1_off_rate,
             plat_ingress_rate,
             time_after,
-            arr_time1,
-            train1_doors,
+            params.arr_time1,
+            params.train1_doors,
         )
         train2_on_rate = boardratefn(
             train2_off_rate,
             plat_ingress_rate,
             time_after,
-            arr_time2,
-            train2_doors,
+            params.arr_time2,
+            params.train2_doors,
         )
 
         if train1_pax <= plat_ingress_rate:
@@ -324,7 +351,7 @@ def main():
             train1_pax += 0
             total_pax_on_platform -= 0
 
-        if train2_pax <= train2_arriving_pax:
+        if train2_pax <= params.train2_arriving_pax:
             train2_pax += train2_on_rate
             total_pax_on_platform -= train2_on_rate
         else:
@@ -385,7 +412,7 @@ def main():
             - train2_on_rate
         )
         get_cell(columns.net_pax_flow_rate).value = net_pax_flow_rate
-        egr = plat_egress_rate / width * www
+        egr = plat_egress_rate / params.width * www
         print(egr, np.sum(egr))
 
         get_cell(columns.plat_crowd_los).value = plat_crowd_grade(
@@ -393,7 +420,7 @@ def main():
         )
 
         get_cell(columns.egress_los).value = egress_crowd_grade(
-            w, plat_egress_rate
+            params.w, plat_egress_rate
         )
 
     def make_chart(title, min_col):
@@ -403,7 +430,7 @@ def main():
         chart.x_axis.title = "Size"
         chart.y_axis.title = "Percentage"
 
-        max_row = simulation_time + FIRST_DATA_ROW - 1
+        max_row = params.simulation_time + FIRST_DATA_ROW - 1
         xvalues = Reference(
             sheet, min_col=1, min_row=FIRST_DATA_ROW, max_row=max_row
         )
@@ -427,9 +454,12 @@ def main():
 
     print(
         "LOS F egress rate is "
-        + str(w * 19 / 60)
+        + str(params.w * 19 / 60)
         + " pax/second. Emergency egress time is roughly "
-        + str((plat_ingress_rate + train2_arriving_pax) / (w * 19 / 60))
+        + str(
+            (plat_ingress_rate + params.train2_arriving_pax)
+            / (params.w * 19 / 60)
+        )
         + " seconds."
     )
     wb.save(file_path)
