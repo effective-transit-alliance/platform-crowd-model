@@ -5,6 +5,7 @@ model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 
 import numpy as np
 import openpyxl
+from openpyxl.cell import Cell
 from openpyxl.chart import Reference, Series
 
 
@@ -223,26 +224,24 @@ def main():
 
     colnum = 0
 
-    def make_column(field_name, description: str):
+    def make_column_num(description: str):
         nonlocal colnum
         colnum = colnum + 1
-        setattr(columns, field_name, colnum)
-        sheet.cell(
-            row=1, column=getattr(columns, field_name)
-        ).value = description
+        sheet.cell(row=1, column=colnum).value = description
+        return colnum
 
-    make_column("time_after", "Time after arrival (s)")
-    make_column("train1_pax", "Passengers on Train 1")
-    make_column("train2_pax", "Passengers on Train 2")
-    make_column("train1_board_rate", "Train 1 Board Rate (pax/s)")
-    make_column("train2_board_rate", "Train 2 Board Rate (pax/s)")
-    make_column("train1_arriving_pax", "Platform Ingress Rate (pax/s)")
-    make_column("net_flow_rate", "Passengers on Platform")
-    make_column("total_pax_on_platform", "Platform Space per Passanger (sqft)")
-    make_column("inst_crowding", "Platform Egress Rate (pax/s)")
-    make_column("net_pax_flow_rate", "Net Platform Flow Rate")
-    make_column("plat_crowd_los", "Platform Crowding LOS")
-    make_column("egress_los", "Egress LOS")
+    columns.time_after = make_column_num("Time after arrival (s)")
+    columns.train1_pax = make_column_num("Passengers on Train 1")
+    columns.train2_pax = make_column_num("Passengers on Train 2")
+    columns.train1_board_rate = make_column_num("Train 1 Board Rate (pax/s)")
+    columns.train2_board_rate = make_column_num("Train 2 Board Rate (pax/s)")
+    columns.plat_ingress_rate = make_column_num("Platform Ingress Rate (pax/s)")
+    columns.plat_egress_rate = make_column_num("Platform Egress Rate (pax/s)")
+    columns.total_pax_on_platform = make_column_num("Passengers on Platform")
+    columns.inst_crowding = make_column_num("Platform Space per Passanger (sqft)")
+    columns.net_pax_flow_rate = make_column_num("Net Platform Flow Rate")
+    columns.plat_crowd_los = make_column_num("Platform Crowding LOS")
+    columns.egress_los = make_column_num("Egress LOS")
 
     del colnum
 
@@ -286,7 +285,7 @@ def main():
             train2_doors,
         )
 
-        if train1_pax <= train1_arriving_pax:
+        if train1_pax <= plat_ingress_rate:
             train1_pax += train1_on_rate
             total_pax_on_platform -= train1_on_rate
         else:
@@ -322,21 +321,26 @@ def main():
             inst_crowding,
             plat_egress_rate,
         )
+
         row = time_after + FIRST_DATA_ROW
-        sheet.cell(row=row, column=1).value = time_after
-        sheet.cell(row=row, column=2).value = train1_pax
-        sheet.cell(row=row, column=3).value = train2_pax
-        sheet.cell(row=row, column=4).value = train1_on_rate - train1_off_rate
-        sheet.cell(row=row, column=5).value = train2_on_rate - train2_off_rate
-        sheet.cell(row=row, column=6).value = (
+
+        def get_cell(column: int) -> Cell:
+            return sheet.cell(row=row, column=column)
+
+        get_cell(columns.time_after).value = time_after
+        get_cell(columns.train1_pax).value = train1_pax
+        get_cell(columns.train2_pax).value = train2_pax
+        get_cell(columns.train1_board_rate).value = train1_on_rate - train1_off_rate
+        get_cell(columns.train2_board_rate).value = train2_on_rate - train2_off_rate
+        get_cell(columns.plat_ingress_rate).value = (
             plat_ingress_rate + train1_off_rate + train2_off_rate
         )
-        sheet.cell(row=row, column=9).value = total_pax_on_platform
-        sheet.cell(row=row, column=10).value = inst_crowding
-        sheet.cell(row=row, column=7).value = (
+        get_cell(columns.total_pax_on_platform).value = total_pax_on_platform
+        get_cell(columns.inst_crowding).value = inst_crowding
+        get_cell(columns.plat_egress_rate).value = (
             -plat_egress_rate - train1_on_rate - train2_on_rate
         )
-        net_flow_rate = (
+        net_pax_flow_rate = (
             plat_ingress_rate
             + train1_off_rate
             + train2_off_rate
@@ -344,34 +348,37 @@ def main():
             - train1_on_rate
             - train2_on_rate
         )
-        sheet.cell(row=row, column=8).value = net_flow_rate
+        get_cell(columns.net_pax_flow_rate).value = net_pax_flow_rate
         egr = plat_egress_rate / width * www
         print(egr, np.sum(egr))
+
         if inst_crowding > 35:
-            sheet.cell(row=row, column=11).value = "A"
+            plat_crowd_los = "A"
         elif 25 < inst_crowding <= 35:
-            sheet.cell(row=row, column=11).value = "B"
+            plat_crowd_los = "B"
         elif 15 < inst_crowding <= 25:
-            sheet.cell(row=row, column=11).value = "C"
+            plat_crowd_lose = "C"
         elif 10 < inst_crowding <= 15:
-            sheet.cell(row=row, column=11).value = "D"
+            plat_crowd_los = "D"
         elif 5 < inst_crowding <= 10:
-            sheet.cell(row=row, column=11).value = "E"
+            plat_crowd_los = "E"
         else:
-            sheet.cell(row=row, column=11).value = "F"
+            plat_crowd_los = "F"
+        get_cell(columns.plat_crowd_los).value = plat_crowd_los
 
         if plat_egress_rate <= w * 5 / 60:
-            sheet.cell(row=row, column=12).value = "A"
+            egress_los = "A"
         elif w * 5 / 60 < plat_egress_rate <= w * 7 / 60:
-            sheet.cell(row=row, column=12).value = "B"
+            egress_los = "B"
         elif w * 7 / 60 < plat_egress_rate <= w * 9.5 / 60:
-            sheet.cell(row=row, column=12).value = "C"
+            egress_los = "C"
         elif w * 9.5 / 60 < plat_egress_rate <= w * 13 / 60:
-            sheet.cell(row=row, column=12).value = "D"
+            egress_los = "D"
         elif w * 13 / 60 < plat_egress_rate <= w * 17 / 60:
-            sheet.cell(row=row, column=12).value = "E"
+            egress_los = "E"
         else:
-            sheet.cell(row=row, column=12).value = "F"
+            egress_los = "F"
+        get_cell(columns.egress_los).value = egress_los
 
     def make_chart(title, min_col):
         chart = openpyxl.chart.ScatterChart()
@@ -391,15 +398,15 @@ def main():
         chart.series.append(series)
         return chart
 
-    sheet.add_chart(make_chart("Net Platform Flow Rate", 8), "M5")
-    sheet.add_chart(make_chart("Passengers on Platform", 9), "M25")
-    sheet.add_chart(make_chart("Space per Passenger", 10), "M45")
+    sheet.add_chart(make_chart("Net Platform Flow Rate", columns.net_pax_flow_rate), "M5")
+    sheet.add_chart(make_chart("Passengers on Platform", columns.total_pax_on_platform), "M25")
+    sheet.add_chart(make_chart("Space per Passenger", columns.inst_crowding), "M45")
 
     print(
         "LOS F egress rate is "
         + str(w * 19 / 60)
         + " pax/second. Emergency egress time is roughly "
-        + str((train1_arriving_pax + train2_arriving_pax) / (w * 19 / 60))
+        + str((plat_ingress_rate + train2_arriving_pax) / (w * 19 / 60))
         + " seconds."
     )
     wb.save(file_path)
