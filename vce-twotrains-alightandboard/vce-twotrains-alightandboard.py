@@ -180,7 +180,7 @@ class Params:
     ww: any
 
 
-def calc_workbook(file_path: str, params: Params):
+def calc_workbook(params: Params) -> openpyxl.Workbook:
     eff_area = params.width * params.length * params.cf
 
     www = params.ww[0, :]
@@ -422,13 +422,11 @@ def calc_workbook(file_path: str, params: Params):
         )
         + " seconds."
     )
-    wb.save(file_path)
-    wb.close()
+    return wb
 
 
 def main():
-    calc_workbook(
-        file_path="platform_F_twotrains_twoway_1600_120s.xlsx",
+    wb = calc_workbook(
         params=Params(
             simulation_time=600,
             width=15,
@@ -468,6 +466,8 @@ def main():
             ),
         ),
     )
+    wb.save("platform_F_twotrains_twoway_1600_120s.xlsx")
+    wb.close()
 
 
 if __name__ == "__main__":
