@@ -109,8 +109,8 @@ def space_per_pax_fn(k, a):
     else:
         return a
 
-def plat_crowd_grade(inst_crowding: float) -> str:
 
+def plat_crowd_grade(inst_crowding: float) -> str:
     if inst_crowding > 35:
         return "A"
     elif 25 < inst_crowding <= 35:
@@ -124,8 +124,8 @@ def plat_crowd_grade(inst_crowding: float) -> str:
     else:
         return "F"
 
-def egress_crowd_grade(w, plat_egress_rate: float) -> str:
 
+def egress_crowd_grade(w, plat_egress_rate: float) -> str:
     if plat_egress_rate <= w * 5 / 60:
         return "A"
     elif w * 5 / 60 < plat_egress_rate <= w * 7 / 60:
@@ -138,6 +138,7 @@ def egress_crowd_grade(w, plat_egress_rate: float) -> str:
         return "E"
     else:
         return "F"
+
 
 def main():
     # how many seconds we want to simulate
@@ -179,27 +180,25 @@ def main():
     ww = (
         1
         / 12
-        * np.array(
-            [
-                # Widths
-                [60, 60, 36, 36, 40, 54, 40, 64, 54, 54, 54, 54, 54],
-                # Weights
+        * np.transpose(
+            np.array(
                 [
-                    0.6,
-                    0.6,
-                    0.6,
-                    0.6,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.4,
-                    1.4,
-                    1.4,
-                    1.4,
-                ],
-            ]
+                    # Width weight pairs
+                    [60, 0.6],
+                    [60, 0.6],
+                    [36, 0.6],
+                    [36, 0.6],
+                    [40, 1.0],
+                    [54, 1.0],
+                    [40, 1.0],
+                    [64, 1.0],
+                    [54, 1.0],
+                    [54, 1.4],
+                    [54, 1.4],
+                    [54, 1.4],
+                    [54, 1.4],
+                ]
+            )
         )
     )
 
@@ -264,10 +263,14 @@ def main():
     columns.train2_pax = make_column_num("Passengers on Train 2")
     columns.train1_board_rate = make_column_num("Train 1 Board Rate (pax/s)")
     columns.train2_board_rate = make_column_num("Train 2 Board Rate (pax/s)")
-    columns.plat_ingress_rate = make_column_num("Platform Ingress Rate (pax/s)")
+    columns.plat_ingress_rate = make_column_num(
+        "Platform Ingress Rate (pax/s)"
+    )
     columns.plat_egress_rate = make_column_num("Platform Egress Rate (pax/s)")
     columns.total_pax_on_platform = make_column_num("Passengers on Platform")
-    columns.inst_crowding = make_column_num("Platform Space per Passanger (sqft)")
+    columns.inst_crowding = make_column_num(
+        "Platform Space per Passanger (sqft)"
+    )
     columns.net_pax_flow_rate = make_column_num("Net Platform Flow Rate")
     columns.plat_crowd_los = make_column_num("Platform Crowding LOS")
     columns.egress_los = make_column_num("Egress LOS")
@@ -359,8 +362,12 @@ def main():
         get_cell(columns.time_after).value = time_after
         get_cell(columns.train1_pax).value = train1_pax
         get_cell(columns.train2_pax).value = train2_pax
-        get_cell(columns.train1_board_rate).value = train1_on_rate - train1_off_rate
-        get_cell(columns.train2_board_rate).value = train2_on_rate - train2_off_rate
+        get_cell(columns.train1_board_rate).value = (
+            train1_on_rate - train1_off_rate
+        )
+        get_cell(columns.train2_board_rate).value = (
+            train2_on_rate - train2_off_rate
+        )
         get_cell(columns.plat_ingress_rate).value = (
             plat_ingress_rate + train1_off_rate + train2_off_rate
         )
@@ -381,9 +388,13 @@ def main():
         egr = plat_egress_rate / width * www
         print(egr, np.sum(egr))
 
-        get_cell(columns.plat_crowd_los).value = plat_crowd_grade(inst_crowding)
+        get_cell(columns.plat_crowd_los).value = plat_crowd_grade(
+            inst_crowding
+        )
 
-        get_cell(columns.egress_los).value = egress_crowd_grade(w, plat_egress_rate)
+        get_cell(columns.egress_los).value = egress_crowd_grade(
+            w, plat_egress_rate
+        )
 
     def make_chart(title, min_col):
         chart = openpyxl.chart.ScatterChart()
@@ -403,9 +414,16 @@ def main():
         chart.series.append(series)
         return chart
 
-    sheet.add_chart(make_chart("Net Platform Flow Rate", columns.net_pax_flow_rate), "M5")
-    sheet.add_chart(make_chart("Passengers on Platform", columns.total_pax_on_platform), "M25")
-    sheet.add_chart(make_chart("Space per Passenger", columns.inst_crowding), "M45")
+    sheet.add_chart(
+        make_chart("Net Platform Flow Rate", columns.net_pax_flow_rate), "M5"
+    )
+    sheet.add_chart(
+        make_chart("Passengers on Platform", columns.total_pax_on_platform),
+        "M25",
+    )
+    sheet.add_chart(
+        make_chart("Space per Passenger", columns.inst_crowding), "M45"
+    )
 
     print(
         "LOS F egress rate is "
