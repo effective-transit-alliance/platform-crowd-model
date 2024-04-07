@@ -12,19 +12,41 @@ sheet = wb.active
 wb.save(filepath)
 wb.close()
 
-simtime = 600  # how many seconds we want to simulate
+# how many seconds we want to simulate
+simtime = 600
+
 width = 15
+
 length = 1200
-cf = 0.75  # area correction factor
+
+# area correction factor
+cf = 0.75
+
 eff_area = width * length * cf
-train1arrivingpax = 1600  # train 1 load
-train2arrivingpax = 1600  # train 2 load
-train1doors = 48  # single-door equivalents
-train2doors = 48  # single-door equivalents
-arrtime1 = 0  # time of first train arrival
-arrtime2 = 0  # time of second train arrival
-queue_length = 20  # feet of queue in front of each stair that pushes max upstairs flow
+
+# train 1 load
+train1arrivingpax = 1600
+
+# train 2 load
+train2arrivingpax = 1600
+
+# single-door equivalents
+train1doors = 48
+
+# single-door equivalents
+train2doors = 48
+
+# time of first train arrival
+arrtime1 = 0
+
+# time of second train arrival
+arrtime2 = 0
+
+# feet of queue in front of each stair that pushes max upstairs flow
+queue_length = 20
+
 w = 550 / 12
+
 ww = (
     1
     / 12
@@ -37,11 +59,16 @@ ww = (
         ]
     )
 )
+
 www = ww[0, :]
+
 print("www = ", www)
 
-# basic flow: train egress > platform crowd > VCE egress rate > back to platform crowd
+# basic flow: train egress > platform crowd > VCE egress rate > back to
+# platform crowd
+
 # if t2 >= simtime, only consider one train.
+
 # keep high VCE egress rate if queues at stairs are long
 
 
@@ -70,24 +97,36 @@ def plat_clearance_fn(k, a, w, karr, qmax):
     """
 
     if karr <= qmax:
+        # P = (111M - 162)/(M^2) is the upstairs flow eq per ft wide.
         return max(
             0,
-            min((111 * a / (max(1, k)) - 162) / ((a / (max(1, k))) ** 2), 19 * w / 60),
-        )  # P = (111M - 162)/(M^2) is the upstairs flow eq per ft wide.
+            min(
+                (111 * a / (max(1, k)) - 162) / ((a / (max(1, k))) ** 2),
+                19 * w / 60,
+            ),
+        )
 
     elif karr > qmax:
+        # Waiting volume over threshold maintains miminum 7 pax/ft/min,
+        # which is LOS B/C boundary.
         return max(
             7 * w / 60,
-            min((111 * a / (max(1, k)) - 162) / ((a / (max(1, k))) ** 2), 19 * w / 60),
-        )  # Waiting volume over threshold maintains miminum 7 pax/ft/min, which is LOS B/C boundary.
+            min(
+                (111 * a / (max(1, k)) - 162) / ((a / (max(1, k))) ** 2),
+                19 * w / 60,
+            ),
+        )
     else:
         return 0
 
 
 def plat_ingress_fn(r, w):
     """
-    :param r: platform egress rate, itself a function of the platform crowd
+    :param r: platform egress rate, itself a function of the platform
+    crowd
+
     :param w: total width of vertical circulation elements
+
     :return: platform ingress rate across stairs (pax/s)
     """
     if r > 17 * w / 60:
@@ -107,9 +146,9 @@ def boardratefn(r_deboard, r_platingress, t, t0, u):
     :return: train ingress rate across all doors (pax/s)
     """
     if t > t0 and r_deboard == 0:
-        return min(
-            r_platingress / 2, u / 8
-        )  # arbitrary number of 1 pax every 4 seconds. Assumes passengers partition evenly between the 2 trains.
+        # arbitrary number of 1 pax every 4 seconds. Assumes passengers
+        # partition evenly between the 2 trains.
+        return min(r_platingress / 2, u / 8)
     else:
         return 0
 
@@ -134,10 +173,14 @@ train2pax = train2arrivingpax
 train1_remaining_arrivals = train2arrivingpax
 train2_remaining_arrivals = train2arrivingpax
 for i in range(0, simtime):
-    train1offrate = deboardratefn(train1_remaining_arrivals, i, arrtime1, train1doors)
+    train1offrate = deboardratefn(
+        train1_remaining_arrivals, i, arrtime1, train1doors
+    )
     train1pax -= train1offrate
     train1_remaining_arrivals -= train1offrate
-    train2offrate = deboardratefn(train2_remaining_arrivals, i, arrtime2, train2doors)
+    train2offrate = deboardratefn(
+        train2_remaining_arrivals, i, arrtime2, train2doors
+    )
     train2pax -= train2offrate
     train2_remaining_arrivals -= train2offrate
     numonplatform += train1offrate
@@ -260,9 +303,9 @@ sheet.cell(row=2, column=10).value = simtime
 sheet.cell(row=1, column=11).value = "LOS F Egress Rate (pax/s)"
 sheet.cell(row=2, column=11).value = w * 19 / 60
 sheet.cell(row=1, column=12).value = "Emergency Egress Time (s)"
-sheet.cell(row=2, column=12).value = (train1arrivingpax + train2arrivingpax) / (
-    w * 19 / 60
-)
+sheet.cell(row=2, column=12).value = (
+    train1arrivingpax + train2arrivingpax
+) / (w * 19 / 60)
 
 sheet.cell(row=3, column=1).value = "Time after arrival (s)"
 sheet.cell(row=3, column=2).value = "Passengers on Train 1"
