@@ -18,10 +18,14 @@ numonplatform = 0  # consider calling "arrpaxonplatform
 w = 500 / 12
 
 
-def train_alight_fn(k, a, t, t0, d):  # convert to rate per second by dividing by 60
+def train_alight_fn(
+    k, a, t, t0, d
+):  # convert to rate per second by dividing by 60
     if t >= t0 and k > 0:
         return max(
-            min(((267 * (a / k) - 722) / ((a / k) ** 2)) * d / 60, 25 * d / 60),
+            min(
+                ((267 * (a / k) - 722) / ((a / k) ** 2)) * d / 60, 25 * d / 60
+            ),
             5 * d / 60,
         )  # P = (267M - 722)/(M^2) is the bidirectional flow eq. per ft wide. M is sqft per ped
     else:
@@ -31,7 +35,9 @@ def train_alight_fn(k, a, t, t0, d):  # convert to rate per second by dividing b
 def plat_clearance_fn(k, a, w):
     if k > 0:
         return max(
-            min(((111 * (a / k) - 162) / ((a / k) ** 2)) * w / 60, 19 * w / 60),
+            min(
+                ((111 * (a / k) - 162) / ((a / k) ** 2)) * w / 60, 19 * w / 60
+            ),
             5 * w / 60,
         )  # P = (111M - 162)/(M^2) is the upstairs flow eq per ft wide.
     else:
