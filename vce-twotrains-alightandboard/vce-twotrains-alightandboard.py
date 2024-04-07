@@ -3,8 +3,10 @@ This is a recursive peak-hour platform clearance calculator.
 model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 """
 
-import openpyxl
 import numpy as np
+import openpyxl
+from openpyxl.chart import Reference, Series
+
 
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
@@ -106,12 +108,6 @@ def space_per_pax_fn(k, a):
     else:
         return a
 
-filepath = "platform_F_twotrains_twoway_new.xlsx"
-wb = openpyxl.load_workbook(filepath)
-
-sheet = wb.active
-wb.save(filepath)
-wb.close()
 
 # how many seconds we want to simulate
 simulation_time = 600
@@ -173,6 +169,14 @@ train1pax = train1arrivingpax
 train2pax = train2arrivingpax
 train1_remaining_arrivals = train2arrivingpax
 train2_remaining_arrivals = train2arrivingpax
+
+filepath = "platform_F_twotrains_twoway_new.xlsx"
+wb = openpyxl.Workbook()
+
+sheet = wb.active
+
+FIRST_DATA_ROW = 5
+
 for i in range(0, simulation_time):
     train1offrate = deboardratefn(
         train1_remaining_arrivals, i, arrtime1, train1doors
@@ -232,20 +236,21 @@ for i in range(0, simulation_time):
         instcrowding,
         plat_egress_rate,
     )
-    sheet.cell(row=i + 4, column=1).value = i
-    sheet.cell(row=i + 4, column=2).value = train1pax
-    sheet.cell(row=i + 4, column=3).value = train2pax
-    sheet.cell(row=i + 4, column=4).value = train1onrate - train1offrate
-    sheet.cell(row=i + 4, column=5).value = train2onrate - train2offrate
-    sheet.cell(row=i + 4, column=6).value = (
+    row = i + FIRST_DATA_ROW
+    sheet.cell(row=row, column=1).value = i
+    sheet.cell(row=row, column=2).value = train1pax
+    sheet.cell(row=row, column=3).value = train2pax
+    sheet.cell(row=row, column=4).value = train1onrate - train1offrate
+    sheet.cell(row=row, column=5).value = train2onrate - train2offrate
+    sheet.cell(row=row, column=6).value = (
         plat_ingress_rate + train1offrate + train2offrate
     )
-    sheet.cell(row=i + 4, column=9).value = numonplatform
-    sheet.cell(row=i + 4, column=10).value = instcrowding
-    sheet.cell(row=i + 4, column=7).value = (
+    sheet.cell(row=row, column=9).value = numonplatform
+    sheet.cell(row=row, column=10).value = instcrowding
+    sheet.cell(row=row, column=7).value = (
         -plat_egress_rate - train1onrate - train2onrate
     )
-    sheet.cell(row=i + 4, column=8).value = (
+    sheet.cell(row=row, column=8).value = (
         plat_ingress_rate
         + train1offrate
         + train2offrate
@@ -256,30 +261,30 @@ for i in range(0, simulation_time):
     egr = plat_egress_rate / width * www
     print(egr, np.sum(egr))
     if instcrowding > 35:
-        sheet.cell(row=i + 4, column=11).value = "A"
+        sheet.cell(row=row, column=11).value = "A"
     elif 25 < instcrowding <= 35:
-        sheet.cell(row=i + 4, column=11).value = "B"
+        sheet.cell(row=row, column=11).value = "B"
     elif 15 < instcrowding <= 25:
-        sheet.cell(row=i + 4, column=11).value = "C"
+        sheet.cell(row=row, column=11).value = "C"
     elif 10 < instcrowding <= 15:
-        sheet.cell(row=i + 4, column=11).value = "D"
+        sheet.cell(row=row, column=11).value = "D"
     elif 5 < instcrowding <= 10:
-        sheet.cell(row=i + 4, column=11).value = "E"
+        sheet.cell(row=row, column=11).value = "E"
     else:
-        sheet.cell(row=i + 4, column=11).value = "F"
+        sheet.cell(row=row, column=11).value = "F"
 
     if plat_egress_rate <= w * 5 / 60:
-        sheet.cell(row=i + 4, column=12).value = "A"
+        sheet.cell(row=row, column=12).value = "A"
     elif w * 5 / 60 < plat_egress_rate <= w * 7 / 60:
-        sheet.cell(row=i + 4, column=12).value = "B"
+        sheet.cell(row=row, column=12).value = "B"
     elif w * 7 / 60 < plat_egress_rate <= w * 9.5 / 60:
-        sheet.cell(row=i + 4, column=12).value = "C"
+        sheet.cell(row=row, column=12).value = "C"
     elif w * 9.5 / 60 < plat_egress_rate <= w * 13 / 60:
-        sheet.cell(row=i + 4, column=12).value = "D"
+        sheet.cell(row=row, column=12).value = "D"
     elif w * 13 / 60 < plat_egress_rate <= w * 17 / 60:
-        sheet.cell(row=i + 4, column=12).value = "E"
+        sheet.cell(row=row, column=12).value = "E"
     else:
-        sheet.cell(row=i + 4, column=12).value = "F"
+        sheet.cell(row=row, column=12).value = "F"
 
 sheet.cell(row=1, column=1).value = "Platform width (ft)"
 sheet.cell(row=2, column=1).value = width
@@ -321,6 +326,30 @@ sheet.cell(row=3, column=8).value = "Net Platform Flow Rate"
 sheet.cell(row=3, column=11).value = "Platform Crowding LOS"
 sheet.cell(row=3, column=12).value = "Egress LOS"
 
+
+def make_chart(title, min_col):
+    chart = openpyxl.chart.ScatterChart()
+    chart.title = title
+    chart.style = 13
+    chart.x_axis.title = "Size"
+    chart.y_axis.title = "Percentage"
+
+    max_row = simulation_time + FIRST_DATA_ROW - 1
+    xvalues = Reference(
+        sheet, min_col=1, min_row=FIRST_DATA_ROW, max_row=max_row
+    )
+    values = Reference(
+        sheet, min_col=min_col, min_row=FIRST_DATA_ROW, max_row=max_row
+    )
+    series = Series(values, xvalues, title_from_data=True)
+    chart.series.append(series)
+    return chart
+
+
+sheet.add_chart(make_chart("Net Platform Flow Rate", 8), "M5")
+sheet.add_chart(make_chart("Passengers on Platform", 9), "M25")
+sheet.add_chart(make_chart("Space per Passenger", 10), "M45")
+
 print(
     "LOS F egress rate is "
     + str(w * 19 / 60)
@@ -329,3 +358,4 @@ print(
     + " seconds."
 )
 wb.save(filepath)
+wb.close()
