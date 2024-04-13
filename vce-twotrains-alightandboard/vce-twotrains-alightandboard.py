@@ -230,7 +230,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         sheet.cell(column=21, row=rownum).value = description
         sheet.cell(column=22, row=rownum).value = value
 
-    make_row("Parameter", "Value")
+    make_row("Value", "Parameter")
     make_row(params.width, "Platform width (ft)")
     make_row(params.length, "Platform length (ft)")
     make_row(params.w, "Total VCE width (ft)")
@@ -506,14 +506,25 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         return chart
 
     sheet.add_chart(
-        make_chart("Net Platform Flow Rate", columns.net_pax_flow_rate, "Time (s)", "Flow (Passengers/s)"), "M5"
+        make_chart("Net Platform Flow Rate",
+                   columns.net_pax_flow_rate,
+                   "Time (s)",
+                   "Flow (Passengers/s)"),
+        "M4",
     )
     sheet.add_chart(
-        make_chart("Passengers on Platform", columns.total_pax_on_platform, "Time (s)", "Passengers"),
-        "M25",
+        make_chart("Passengers on Platform",
+                   columns.total_pax_on_platform,
+                   "Time (s)",
+                   "Passengers"),
+        "M18",
     )
     sheet.add_chart(
-        make_chart_with_chopped_y("Space per Passenger", columns.inst_crowding, "Time (s)", "Space per passenger (sqft)"), "M45"
+        make_chart_with_chopped_y("Space per Passenger",
+                                  columns.inst_crowding,
+                                  "Time (s)",
+                                  "Space per passenger (sqft)"),
+        "M32",
     )
 
     print(
@@ -572,7 +583,13 @@ def main():
             ),
         ),
     )
-    wb.save("platform_F_twotrains_twoway_1600_120s.xlsx")
+    wb.save("platform_F_twotrains_twoway_"
+            + str(1600)
+            + "_"
+            + str(1600)
+            + "_"
+            + str(120)
+            + ".xlsx")
     wb.close()
 
 
