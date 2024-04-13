@@ -9,14 +9,10 @@ import openpyxl
 from openpyxl.cell import Cell
 from openpyxl.chart import Reference, Series
 
-
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
 
-# if t2 >= simulation_time, only consider one train.
-
 # keep high VCE egress rate if queues at stairs are long
-
 
 def alight_rate_fn(k, t, t0, u):
     """
@@ -27,7 +23,7 @@ def alight_rate_fn(k, t, t0, u):
     :return: egress rate from train to platform across all doors (pax/s)
     """
     if t >= t0 and k > 0:
-        return u
+        return min(k, u)
     else:
         return 0
 
@@ -101,16 +97,17 @@ def plat_ingress_fn(kdep, a, w, qmax, r_up):
 
 def board_rate_fn(vmax, r_off, t, arr_t, dep_t, outbound_demand):
     """
-    :param vmax: maximum train deboard rate
-    :param r_off: platform ingress rate
+    :param vmax: maximum train deboard rate, pass train1_doors or train2_doors from params
+    :param r_off: train deboard rate, pass alight_rate_fn
     :param t: time in seconds, pass counter
     :param arr_t: train arrival time
     :param: dep_t: train departure time
-    :param: outbound_demand
+    :param: outbound_demand: number of passengers waiting on platform to board,
+    pass departing_pax_on_plat
     :return: train ingress rate across all doors (pax/s)
     """
     if arr_t < t < dep_t and outbound_demand > 0:
-        return max(0, vmax - r_off)
+        return max(0, min(vmax - r_off, outbound_demand))
     else:
         return 0
 
@@ -212,7 +209,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     # initialize counters
     total_pax_on_platform = 0
     arrived_pax_waiting_on_plat = 0
-    departing_pax_waiting_on_plat = 0
+    departing_pax_waiting_on_plat_1 = 0
+    departing_pax_waiting_on_plat_2 = 0
     train1_pax = params.train1_arriving_pax
     train2_pax = params.train2_arriving_pax
     train1_remaining_arrivals = params.train1_arriving_pax
@@ -232,6 +230,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         sheet.cell(column=21, row=rownum).value = description
         sheet.cell(column=22, row=rownum).value = value
 
+    make_row("Parameter", "Value")
     make_row(params.width, "Platform width (ft)")
     make_row(params.length, "Platform length (ft)")
     make_row(params.w, "Total VCE width (ft)")
@@ -345,36 +344,36 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         plat_ingress_rate_2 = plat_ingress_fn(
             train2_remaining_boarders,
             10000,
-            params.w * params.train2_outbound_demand/(params.train1_outbound_demand + params.train2_outbound_demand),
+            params.w * params.train2_outbound_demand/(
+                params.train1_outbound_demand
+                + params.train2_outbound_demand),
             100,
             plat_egress_rate
         )
-        departing_pax_waiting_on_plat += plat_ingress_rate_1
-        departing_pax_waiting_on_plat += plat_ingress_rate_2
+        departing_pax_waiting_on_plat_1 += plat_ingress_rate_1
+        departing_pax_waiting_on_plat_2 += plat_ingress_rate_2
         total_pax_on_platform += plat_ingress_rate_1
         total_pax_on_platform += plat_ingress_rate_2
         train1_on_rate = board_rate_fn(
+            params.train1_doors,
             train1_off_rate,
-            plat_ingress_rate_1,
             time_after,
             params.arr_time1,
-            params.train1_doors,
-            departing_pax_waiting_on_plat * (params.train1_outbound_demand/(params.train1_outbound_demand
-                                                                            + params.train2_outbound_demand))
+            params.simulation_time,
+            departing_pax_waiting_on_plat_1
         )
         train2_on_rate = board_rate_fn(
+            params.train2_doors,
             train2_off_rate,
-            plat_ingress_rate_2,
             time_after,
             params.arr_time2,
-            params.train2_doors,
-            departing_pax_waiting_on_plat * (params.train2_outbound_demand/(params.train1_outbound_demand
-                                                                            + params.train2_outbound_demand))
+            params.simulation_time,
+            departing_pax_waiting_on_plat_2
         )
 
-        departing_pax_waiting_on_plat -= train1_on_rate
+        departing_pax_waiting_on_plat_1 -= train1_on_rate
 
-        departing_pax_waiting_on_plat -= train2_on_rate
+        departing_pax_waiting_on_plat_2 -= train2_on_rate
 
         total_pax_on_platform -= train1_on_rate
 
@@ -391,7 +390,12 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         inst_crowding = space_per_pax_fn(total_pax_on_platform, eff_area)
         if total_pax_on_platform < 0:
             total_pax_on_platform = 0
-
+        if departing_pax_waiting_on_plat_1 < 0:
+            departing_pax_waiting_on_plat_1 = 0
+        if departing_pax_waiting_on_plat_2 < 0:
+            departing_pax_waiting_on_plat_2 = 0
+        if arrived_pax_waiting_on_plat < 0:
+            arrived_pax_waiting_on_plat = 0
         print(
             "At time " + str(time_after),
             "s, waiting to alight train 1 = " + str(train1_remaining_arrivals),
@@ -403,8 +407,10 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             ", total pax on platform = " + str(int(total_pax_on_platform)),
             ", space per pax = " + str(int(inst_crowding)),
             ", upstairs rate = " + str(1/10*int(10*(plat_egress_rate))),
-            ", downstairs rate = " + str(1/10*int(10*((plat_ingress_rate_1 + plat_ingress_rate_2)))),
-            ", still to board = " + str(1/10*int(10*(train1_remaining_boarders + train2_remaining_boarders)))
+            ", downstairs rate = " + str(1/10*int(10*((plat_ingress_rate_1
+                                                       + plat_ingress_rate_2)))),
+            ", still to board = " + str(1/10*int(10*(train1_remaining_boarders +
+                                                     train2_remaining_boarders)))
         )
 
         row = time_after + FIRST_DATA_ROW
@@ -422,21 +428,24 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             train2_on_rate - train2_off_rate
         )
         get_cell(columns.plat_ingress_rate).value = (
-            plat_ingress_rate_1+plat_ingress_rate_2 + train1_off_rate + train2_off_rate
+            plat_ingress_rate_1
+            + plat_ingress_rate_2
+            + train1_off_rate
+            + train2_off_rate
+        )
+        net_pax_flow_rate = (
+                plat_ingress_rate_1
+                + plat_ingress_rate_2
+                + train1_off_rate
+                + train2_off_rate
+                - plat_egress_rate
+                - train1_on_rate
+                - train2_on_rate
         )
         get_cell(columns.total_pax_on_platform).value = total_pax_on_platform
         get_cell(columns.inst_crowding).value = inst_crowding
         get_cell(columns.plat_egress_rate).value = (
             -plat_egress_rate - train1_on_rate - train2_on_rate
-        )
-        net_pax_flow_rate = (
-            plat_ingress_rate_1
-            + plat_ingress_rate_2
-            + train1_off_rate
-            + train2_off_rate
-            - plat_egress_rate
-            - train1_on_rate
-            - train2_on_rate
         )
         get_cell(columns.net_pax_flow_rate).value = net_pax_flow_rate
         egr = plat_egress_rate / params.width * www
