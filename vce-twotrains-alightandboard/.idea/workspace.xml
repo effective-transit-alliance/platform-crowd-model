@@ -125,7 +125,14 @@
       <option name="project" value="LOCAL" />
       <updated>1713047642728</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Clean up Excel sheet formatting&#10;&#10;Clean up chart function code">
+      <created>1713049196940</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1713049196940</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -142,6 +149,7 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="No more manual column numbers&#10;&#10;They are all calculated automatically now" />
     <MESSAGE value="Pass correct arguments to platform and train ingress functions" />
-    <option name="LAST_COMMIT_MESSAGE" value="Pass correct arguments to platform and train ingress functions" />
+    <MESSAGE value="Clean up Excel sheet formatting&#10;&#10;Clean up chart function code" />
+    <option name="LAST_COMMIT_MESSAGE" value="Clean up Excel sheet formatting&#10;&#10;Clean up chart function code" />
   </component>
 </project>
