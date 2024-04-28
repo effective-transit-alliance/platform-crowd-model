@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d7e3512b-62b1-4a51-a0c8-0f05aaa48edb" name="Changes" comment="">
+    <list default="true" id="d7e3512b-62b1-4a51-a0c8-0f05aaa48edb" name="Changes" comment="Add counter for boarding train passengers&#10;Revise upstairs and downstairs flow rate functions">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/vce-twotrains-alightandboard.py" beforeDir="false" afterPath="$PROJECT_DIR$/vce-twotrains-alightandboard.py" afterDir="false" />
     </list>
@@ -132,7 +132,14 @@
       <option name="project" value="LOCAL" />
       <updated>1713049196940</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Change variable and counter names for greater clarity&#10;Clean up ingress flow model">
+      <created>1714255649071</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1714255649071</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -150,6 +157,7 @@
     <MESSAGE value="No more manual column numbers&#10;&#10;They are all calculated automatically now" />
     <MESSAGE value="Pass correct arguments to platform and train ingress functions" />
     <MESSAGE value="Clean up Excel sheet formatting&#10;&#10;Clean up chart function code" />
-    <option name="LAST_COMMIT_MESSAGE" value="Clean up Excel sheet formatting&#10;&#10;Clean up chart function code" />
+    <MESSAGE value="Change variable and counter names for greater clarity&#10;Clean up ingress flow model" />
+    <option name="LAST_COMMIT_MESSAGE" value="Change variable and counter names for greater clarity&#10;Clean up ingress flow model" />
   </component>
 </project>
