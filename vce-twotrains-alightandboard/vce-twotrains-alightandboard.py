@@ -51,29 +51,31 @@ def plat_clearance_fn(karr, a, w, qmax):
             )
         )
 
-def plat_ingress_fn(kdep, a, w, qmax, r_up):
+def plat_ingress_fn(kdep, a, w, r_up):
     """
     :param kdep: number of people waiting to get onto a stairwell
     :param a: usable concourse area
     :param w: total width of vertical circulation elements
-    :param: qmax: number of people that can fit around stair thresholds
     :param: r_up: upstairs flow, passed from plat_egress_fn
     :return: platform ingress rate on stairs
     """
     # 1st question, how much downstairs flow demand exists?
     # 2nd question, how much stair capacity does upstairs flow take?
     # P = (111M - 162)/(M^2) is the upstairs flow eq per ft wide.
-    if kdep <= 1:
-        return min(0, kdep)
-    else:
+    if kdep > 0:
         return min(
-            max(0, 12 * w / 60 - r_up),
-            # Max of downstairs LOS C/D boundary flow rate
-            max(
-                0, ((111 * (a / max(1, kdep)) - 162) /
-                    ((a / max(1, kdep)) ** 2) - r_up)
+            kdep,
+            min(
+                max(0, 12 * w / 60 - r_up),
+                # Max of downstairs LOS C/D boundary flow rate
+                max(
+                    0, ((111 * (a / max(1, kdep)) - 162) /
+                        ((a / max(1, kdep)) ** 2) - r_up)
+                )
             )
         )
+    else:
+        return 0
 
 def boarder_frac_fn(trainA_boarders, trainB_boarders):
     if trainA_boarders + trainB_boarders > 0:
@@ -328,23 +330,21 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         total_pax_on_platform -= plat_egress_rate
         plat_ingress_rate_1 = plat_ingress_fn(
             train1_boarders_upstairs,
-            10000,
+            5000,
             params.w * boarder_frac_fn(
                 train1_boarders_upstairs,
                 train2_boarders_upstairs
             ),
-            100,
             plat_egress_rate
         )
 
         plat_ingress_rate_2 = plat_ingress_fn(
             train2_boarders_upstairs,
-            10000,
+            5000,
             params.w * boarder_frac_fn(
                 train2_boarders_upstairs,
                 train1_boarders_upstairs
             ),
-            100,
             plat_egress_rate
         )
         train1_boarders_on_plat += plat_ingress_rate_1
@@ -608,29 +608,29 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
 def main():
     wb = calc_workbook(
-        params=Params(
+        params=Params(  #Platform F
             simulation_time=600,
             width=15,
             length=1100,
             cf=0.75,
-            train1_arriving_pax=1600,
-            train2_arriving_pax=1600,
-            train1_outbound_demand=300,
-            train2_outbound_demand=300,
+            train1_arriving_pax=1200,
+            train2_arriving_pax=1200,
+            train1_outbound_demand=400,
+            train2_outbound_demand=400,
             train1_doors=48,
             train2_doors=48,
             arr_time1=0,
-            arr_time2=120,
+            arr_time2=150,
             queue_length=20,
-            w=530 / 12,
+            w=578 / 12,
             ww=(
                 1
                 / 12
                 * np.transpose(
                     np.array(
                         [
-                            [36, 1],
-                            [36, 1],
+                            [60, 1],
+                            [60, 1],
                             [40, 1],
                             [54, 1],
                             [40, 1],
@@ -646,13 +646,8 @@ def main():
             ),
         ),
     )
-    wb.save("platform_F_twotrains_twoway_"
-            + str(1600)
-            + "_"
-            + str(1600)
-            + "_"
-            + str(120)
-            + ".xlsx")
+
+    wb.save("platform_F_1200_1200_150s.xlsx")
     wb.close()
 
 
