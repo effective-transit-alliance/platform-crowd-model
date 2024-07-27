@@ -5,7 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d7e3512b-62b1-4a51-a0c8-0f05aaa48edb" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../vce-onetrain/penn_station_platforms_20221109.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/../vce-onetrain/penn_station_platforms_20221109.xlsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/vce-twotrains-alightandboard.py" beforeDir="false" afterPath="$PROJECT_DIR$/vce-twotrains-alightandboard.py" afterDir="false" />
     </list>
@@ -147,7 +146,14 @@
       <option name="project" value="LOCAL" />
       <updated>1714325297022</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Change crowding parameter in downstairs flow function">
+      <created>1715009658726</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1715009658727</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -167,6 +173,7 @@
     <MESSAGE value="Clean up Excel sheet formatting&#10;&#10;Clean up chart function code" />
     <MESSAGE value="Change variable and counter names for greater clarity&#10;Clean up ingress flow model" />
     <MESSAGE value="Add counter for boarding train passengers&#10;Revise upstairs and downstairs flow rate functions&#10;Add double-series graphs" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add counter for boarding train passengers&#10;Revise upstairs and downstairs flow rate functions&#10;Add double-series graphs" />
+    <MESSAGE value="Change crowding parameter in downstairs flow function" />
+    <option name="LAST_COMMIT_MESSAGE" value="Change crowding parameter in downstairs flow function" />
   </component>
 </project>
