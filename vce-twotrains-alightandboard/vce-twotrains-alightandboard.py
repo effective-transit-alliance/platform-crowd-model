@@ -607,47 +607,48 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
 
 def main():
-    wb = calc_workbook(
-        params=Params(  #Platform F
-            simulation_time=600,
-            width=15,
-            length=1100,
-            cf=0.75,
-            train1_arriving_pax=1200,
-            train2_arriving_pax=1200,
-            train1_outbound_demand=400,
-            train2_outbound_demand=400,
-            train1_doors=48,
-            train2_doors=48,
-            arr_time1=0,
-            arr_time2=150,
-            queue_length=20,
-            w=578 / 12,
-            ww=(
+    params = Params(  # Platform F
+        simulation_time=600,
+        width=15,
+        length=1100,
+        cf=0.75,
+        train1_arriving_pax=1200,
+        train2_arriving_pax=1200,
+        train1_outbound_demand=400,
+        train2_outbound_demand=400,
+        train1_doors=48,
+        train2_doors=48,
+        arr_time1=0,
+        arr_time2=150,
+        queue_length=20,
+        w=578 / 12,
+        ww=(
                 1
                 / 12
                 * np.transpose(
-                    np.array(
-                        [
-                            [60, 1],
-                            [60, 1],
-                            [40, 1],
-                            [54, 1],
-                            [40, 1],
-                            [54, 1],
-                            [54, 1],
-                            [54, 1],
-                            [54, 1],
-                            [54, 1],
-                            [54, 1],
-                        ]
-                    )
+            np.array(
+                [
+                    [60, 1],
+                    [60, 1],
+                    [40, 1],
+                    [54, 1],
+                    [40, 1],
+                    [54, 1],
+                    [54, 1],
+                    [54, 1],
+                    [54, 1],
+                    [54, 1],
+                    [54, 1],
+                ]
                 )
-            ),
-        ),
+            )
+        )
+    )
+    wb = calc_workbook(
+    params=params
     )
 
-    wb.save("platform_F_1200_1200_150s.xlsx")
+    wb.save(f"platform_F_{params.train1_arriving_pax}_{params.train2_arriving_pax}_{params.arr_time2 - params.arr_time1}s.xlsx")
     wb.close()
 
 
