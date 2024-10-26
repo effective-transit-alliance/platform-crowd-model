@@ -143,6 +143,9 @@ def egress_crowd_grade(w, plat_egress_rate: float) -> str:
 
 @dataclasses.dataclass
 class Params:
+    # File slug
+    file_slug: str
+
     # how many seconds we want to simulate
     simulation_time: int
 
@@ -185,6 +188,11 @@ class Params:
 
     ww: any
 
+    # Number of people already on platform at time 0 wanting to board train 1
+    train1_awaiting_boarders: int
+
+    # Number of people already on platform at time 0 wanting to board train 2
+    train2_awaiting_boarders: int
 
 def calc_workbook(params: Params) -> openpyxl.Workbook:
     eff_area = params.width * params.length * params.cf
@@ -193,22 +201,28 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
     print("www = ", www)
 
-    # initialize counters
+    # Initialize counters
     total_pax_on_platform = 0
     arrived_pax_waiting_on_plat = 0
     train1_remaining_arrivals = params.train1_arriving_pax
     train2_remaining_arrivals = params.train2_arriving_pax
     train1_new_pax = 0
     train2_new_pax = 0
-    train1_boarders_upstairs = 200
-    train2_boarders_upstairs = 200
+    train1_boarders_upstairs = (
+            params.train1_outbound_demand - params.train1_awaiting_boarders
+    )
+    train2_boarders_upstairs = (
+            params.train2_outbound_demand - params.train2_awaiting_boarders
+    )
     train1_boarders_on_plat = (
-        params.train1_outbound_demand - train1_boarders_upstairs
+        params.train1_awaiting_boarders
     )
     train2_boarders_on_plat = (
-        params.train2_outbound_demand - train2_boarders_upstairs
+        params.train2_awaiting_boarders
     )
-
+    total_pax_on_platform = (
+            params.train1_awaiting_boarders + params.train2_awaiting_boarders
+    )
     wb = openpyxl.Workbook()
 
     sheet = wb.active
@@ -259,9 +273,6 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     columns.time_after = make_column_num("Time after arrival (s)")
     columns.train1_pax = make_column_num("Passengers on Train 1")
     columns.train2_pax = make_column_num("Passengers on Train 2")
-    columns.arrived_pax_waiting_on_plat = make_column_num(
-        "Arrived Passengers On Platform"
-    )
     columns.train1_off_rate = make_column_num("Train 1 Alight Rate (pax/s)")
     columns.train2_off_rate = make_column_num("Train 2 Alight Rate (pax/s)")
     columns.train1_on_rate = make_column_num("Train 1 Board Rate (pax/s)")
@@ -274,7 +285,12 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     columns.departing_pax_on_plat_2 = make_column_num(
         "Train 2 Departing Passengers on Platform"
     )
-    columns.total_pax_on_platform = make_column_num("Passengers on Platform")
+    columns.arrived_pax_waiting_on_plat = make_column_num(
+        "Arrived Passengers on Platform"
+    )
+    columns.total_pax_on_platform = make_column_num(
+        "Total Passengers on Platform"
+    )
     columns.inst_crowding = make_column_num(
         "Platform Space per Passanger (sqft)"
     )
@@ -566,7 +582,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             "Time (s)",
             "Rate (pax/s)"
             ),
-        "M4",
+        "W4",
     )
     sheet.add_chart(
         make_chart_2(
@@ -576,23 +592,34 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             "Time (s)",
             "Passengers"
         ),
-        "u18",
+        "W19",
     )
     sheet.add_chart(
-        make_chart("Passengers on Platform",
-                   columns.total_pax_on_platform,
-                   "Time (s)",
-                   "Passengers"),
-        "M18",
+        make_chart_2(
+            "Passengers on Platform",
+            columns.arrived_pax_waiting_on_plat,
+            columns.total_pax_on_platform,
+            "Time (s)",
+            "Passengers"
+        ),
+        "W34",
     )
     sheet.add_chart(
         make_chart_with_chopped_y("Space per Passenger",
                                   columns.inst_crowding,
                                   "Time (s)",
                                   "Space per passenger (sqft)"),
-        "M32",
+        "W49",
     )
-
+    sheet.add_chart(
+        make_chart_with_chopped_y(
+            "Net Rate",
+            columns.net_pax_flow_rate,
+            "Time (s)",
+            "Net Flow Rate (pax/s)"
+            ),
+        "W64",
+    )
     print(
         "LOS F egress rate is "
         + str(params.w * 19 / 60)
@@ -607,21 +634,24 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
 
 def main():
-    params = Params(  # Platform F
+    params = Params(
+        file_slug="platform3_pr_alt3",
         simulation_time=600,
         width=15,
-        length=1100,
+        length=900,
         cf=0.75,
-        train1_arriving_pax=1200,
-        train2_arriving_pax=1200,
+        train1_arriving_pax=1600,
+        train2_arriving_pax=1600,
         train1_outbound_demand=400,
         train2_outbound_demand=400,
-        train1_doors=48,
-        train2_doors=48,
+        train1_awaiting_boarders=200,
+        train2_awaiting_boarders=200,
+        train1_doors=16,
+        train2_doors=16,
         arr_time1=0,
-        arr_time2=150,
+        arr_time2=120,
         queue_length=20,
-        w=578 / 12,
+        w=537 / 12,
         ww=(
                 1
                 / 12
@@ -648,7 +678,7 @@ def main():
     params=params
     )
 
-    wb.save(f"platform_F_{params.train1_arriving_pax}_{params.train2_arriving_pax}_{params.arr_time2 - params.arr_time1}s.xlsx")
+    wb.save(f"{params.file_slug}_{params.train1_arriving_pax}_{params.train2_arriving_pax}_{params.arr_time2 - params.arr_time1}s.xlsx")
     wb.close()
 
 

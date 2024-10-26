@@ -153,7 +153,14 @@
       <option name="project" value="LOCAL" />
       <updated>1715009658727</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Add f-string code for output filename">
+      <created>1722043102875</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1722043102875</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -174,6 +181,7 @@
     <MESSAGE value="Change variable and counter names for greater clarity&#10;Clean up ingress flow model" />
     <MESSAGE value="Add counter for boarding train passengers&#10;Revise upstairs and downstairs flow rate functions&#10;Add double-series graphs" />
     <MESSAGE value="Change crowding parameter in downstairs flow function" />
-    <option name="LAST_COMMIT_MESSAGE" value="Change crowding parameter in downstairs flow function" />
+    <MESSAGE value="Add f-string code for output filename" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add f-string code for output filename" />
   </component>
 </project>
