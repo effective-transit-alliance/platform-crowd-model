@@ -160,7 +160,14 @@
       <option name="project" value="LOCAL" />
       <updated>1722043102875</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="Correct platform load totaling and space per passenger computation&#10;(arrived_pax_on_platform vs. total_pax_on_platform) and export to Excel.&#10;Add net rate graph.">
+      <created>1729912846082</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1729912846082</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -182,6 +189,7 @@
     <MESSAGE value="Add counter for boarding train passengers&#10;Revise upstairs and downstairs flow rate functions&#10;Add double-series graphs" />
     <MESSAGE value="Change crowding parameter in downstairs flow function" />
     <MESSAGE value="Add f-string code for output filename" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add f-string code for output filename" />
+    <MESSAGE value="Correct platform load totaling and space per passenger computation&#10;(arrived_pax_on_platform vs. total_pax_on_platform) and export to Excel.&#10;Add net rate graph." />
+    <option name="LAST_COMMIT_MESSAGE" value="Correct platform load totaling and space per passenger computation&#10;(arrived_pax_on_platform vs. total_pax_on_platform) and export to Excel.&#10;Add net rate graph." />
   </component>
 </project>
