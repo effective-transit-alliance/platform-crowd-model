@@ -232,8 +232,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     def make_row(value, description: str):
         nonlocal rownum
         rownum = rownum + 1
-        sheet.cell(column=21, row=rownum).value = description
-        sheet.cell(column=22, row=rownum).value = value
+        sheet.cell(column=1, row=rownum).value = description
+        sheet.cell(column=2, row=rownum).value = value
 
     make_row("Value", "Parameter")
     make_row(params.width, "Platform width (ft)")
@@ -261,8 +261,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         pass
 
     columns = Columns()
-
-    colnum = 0
+    # The input parameters go in a table taking up columns 0 (A) and 1 (B).
+    colnum = 2
 
     def make_column_num(description: str):
         nonlocal colnum
@@ -491,9 +491,6 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             plat_egress_rate
         )
         get_cell(columns.net_pax_flow_rate).value = net_pax_flow_rate
-        egr = plat_egress_rate / params.width * www
-        #print(egr, np.sum(egr))
-
         get_cell(columns.plat_crowd_los).value = plat_crowd_grade(
             inst_crowding
         )
@@ -501,7 +498,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         get_cell(columns.egress_los).value = egress_crowd_grade(
             params.w, plat_egress_rate
         )
-
+    #Time gets exported to column 3, see line 264.
     def make_chart(title, min_col, x_title, y_title):
         chart = openpyxl.chart.ScatterChart()
         chart.title = title
@@ -514,7 +511,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
         max_row = params.simulation_time + FIRST_DATA_ROW - 1
         xvalues = Reference(
-            sheet, min_col=1, min_row=FIRST_DATA_ROW, max_row=max_row
+            sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row
         )
         values = Reference(
             sheet, min_col=min_col, min_row=FIRST_DATA_ROW-1, max_row=max_row
@@ -538,7 +535,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
         max_row = params.simulation_time + FIRST_DATA_ROW - 1
         xvalues = Reference(
-            sheet, min_col=1, min_row=FIRST_DATA_ROW, max_row=max_row
+            sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row
         )
         values = Reference(
             sheet, min_col=min_col, min_row=FIRST_DATA_ROW-1, max_row=max_row
@@ -559,7 +556,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
         max_row = params.simulation_time + FIRST_DATA_ROW - 1
         xvalues = Reference(
-            sheet, min_col=1, min_row=FIRST_DATA_ROW, max_row=max_row
+            sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row
         )
         values1 = Reference(
             sheet, min_col=col1, min_row=FIRST_DATA_ROW-1, max_row=max_row
@@ -582,7 +579,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             "Time (s)",
             "Rate (pax/s)"
             ),
-        "W4",
+        "V4",
     )
     sheet.add_chart(
         make_chart_2(
@@ -592,7 +589,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             "Time (s)",
             "Passengers"
         ),
-        "W19",
+        "V19",
     )
     sheet.add_chart(
         make_chart_2(
@@ -602,23 +599,23 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             "Time (s)",
             "Passengers"
         ),
-        "W34",
+        "V34",
     )
     sheet.add_chart(
         make_chart_with_chopped_y("Space per Passenger",
                                   columns.inst_crowding,
                                   "Time (s)",
                                   "Space per passenger (sqft)"),
-        "W49",
+        "V49",
     )
     sheet.add_chart(
-        make_chart_with_chopped_y(
-            "Net Rate",
+        make_chart(
+            "Net Platform Flow Rate",
             columns.net_pax_flow_rate,
             "Time (s)",
             "Net Flow Rate (pax/s)"
             ),
-        "W64",
+        "V64",
     )
     print(
         "LOS F egress rate is "
@@ -635,7 +632,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
 def main():
     params = Params(
-        file_slug="platform3_pr_alt3",
+        file_slug="platform3_pr_alt3_new",
         simulation_time=600,
         width=15,
         length=900,
@@ -649,7 +646,7 @@ def main():
         train1_doors=16,
         train2_doors=16,
         arr_time1=0,
-        arr_time2=120,
+        arr_time2=300,
         queue_length=20,
         w=537 / 12,
         ww=(
