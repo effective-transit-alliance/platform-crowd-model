@@ -1,10 +1,16 @@
+# Virtual Environment
 .venv/
 
+# Tooling Cache
 .ruff_cache/
 .mypy_cache/
 
+# LibreOffice Lock Files
 .~lock*
+
+# Excel Spreadsheet Output
 *.xlsx
 
+# IDEs
 .idea/
 .vscode/
