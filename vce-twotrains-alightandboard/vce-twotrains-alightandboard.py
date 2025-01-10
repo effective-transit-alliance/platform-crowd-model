@@ -3,11 +3,14 @@ This is a recursive peak-hour platform clearance calculator.
 model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 """
 
-import dataclasses
+from dataclasses import dataclass
+from typing import Any
 import numpy as np
 import openpyxl
-from openpyxl.cell import Cell
-from openpyxl.chart import Reference, Series
+from openpyxl.cell import Cell, MergedCell
+from openpyxl.chart import Reference
+from openpyxl.chart.series_factory import SeriesFactory
+from openpyxl.worksheet.worksheet import Worksheet
 
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
@@ -146,7 +149,7 @@ def egress_crowd_grade(w, plat_egress_rate: float) -> str:
         return "F"
 
 
-@dataclasses.dataclass
+@dataclass
 class Params:
     # File slug
     file_slug: str
@@ -191,7 +194,7 @@ class Params:
     # total width of upstairs VCEs in feet.
     w: float
 
-    ww: any
+    ww: Any
 
     # Number of people already on platform at time 0 wanting to board train 1
     train1_awaiting_boarders: int
@@ -227,7 +230,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     )
     wb = openpyxl.Workbook()
 
-    sheet = wb.active
+    assert type(wb.active) is Worksheet
+    sheet: Worksheet = wb.active
 
     rownum = 0
 
@@ -259,42 +263,58 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
     del rownum
 
+    @dataclass
     class Columns:
-        pass
+        time_after: int
+        train1_pax: int
+        train2_pax: int
+        train1_off_rate: int
+        train2_off_rate: int
+        train1_on_rate: int
+        train2_on_rate: int
+        down_rate: int
+        up_rate: int
+        departing_pax_on_plat_1: int
+        departing_pax_on_plat_2: int
+        arrived_pax_waiting_on_plat: int
+        total_pax_on_platform: int
+        inst_crowding: int
+        net_pax_flow_rate: int
+        plat_crowd_los: int
+        egress_los: int
 
-    columns = Columns()
     # The input parameters go in a table taking up columns 0 (A) and 1 (B).
     colnum = 2
 
-    def make_column_num(description: str):
+    def make_column_num(description: str) -> int:
         nonlocal colnum
         colnum = colnum + 1
         sheet.cell(row=1, column=colnum).value = description
         return colnum
 
-    columns.time_after = make_column_num("Time after arrival (s)")
-    columns.train1_pax = make_column_num("Passengers on Train 1")
-    columns.train2_pax = make_column_num("Passengers on Train 2")
-    columns.train1_off_rate = make_column_num("Train 1 Alight Rate (pax/s)")
-    columns.train2_off_rate = make_column_num("Train 2 Alight Rate (pax/s)")
-    columns.train1_on_rate = make_column_num("Train 1 Board Rate (pax/s)")
-    columns.train2_on_rate = make_column_num("Train 2 Board Rate (pax/s)")
-    columns.down_rate = make_column_num("Downstairs Rate (pax/s)")
-    columns.up_rate = make_column_num("Upstairs Rate (pax/s)")
-    columns.departing_pax_on_plat_1 = make_column_num(
-        "Train 1 Departing Passengers on Platform"
+    columns = Columns(
+        time_after=make_column_num("Time after arrival (s),"),
+        train1_pax=make_column_num("Passengers on Train 1"),
+        train2_pax=make_column_num("Passengers on Train 2"),
+        train1_off_rate=make_column_num("Train 1 Alight Rate (pax/s),"),
+        train2_off_rate=make_column_num("Train 2 Alight Rate (pax/s),"),
+        train1_on_rate=make_column_num("Train 1 Board Rate (pax/s),"),
+        train2_on_rate=make_column_num("Train 2 Board Rate (pax/s),"),
+        down_rate=make_column_num("Downstairs Rate (pax/s),"),
+        up_rate=make_column_num("Upstairs Rate (pax/s),"),
+        departing_pax_on_plat_1=make_column_num(
+            "Train 1 Departing Passengers on Platform"
+        ),
+        departing_pax_on_plat_2=make_column_num(
+            "Train 2 Departing Passengers on Platform"
+        ),
+        arrived_pax_waiting_on_plat=make_column_num("Arrived Passengers on Platform"),
+        total_pax_on_platform=make_column_num("Total Passengers on Platform"),
+        inst_crowding=make_column_num("Platform Space per Passanger (sqft),"),
+        net_pax_flow_rate=make_column_num("Net Platform Flow Rate"),
+        plat_crowd_los=make_column_num("Platform Crowding LOS"),
+        egress_los=make_column_num("Egress LOS"),
     )
-    columns.departing_pax_on_plat_2 = make_column_num(
-        "Train 2 Departing Passengers on Platform"
-    )
-    columns.arrived_pax_waiting_on_plat = make_column_num(
-        "Arrived Passengers on Platform"
-    )
-    columns.total_pax_on_platform = make_column_num("Total Passengers on Platform")
-    columns.inst_crowding = make_column_num("Platform Space per Passanger (sqft)")
-    columns.net_pax_flow_rate = make_column_num("Net Platform Flow Rate")
-    columns.plat_crowd_los = make_column_num("Platform Crowding LOS")
-    columns.egress_los = make_column_num("Egress LOS")
 
     del colnum
 
@@ -430,7 +450,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         """
         row = time_after + FIRST_DATA_ROW
 
-        def get_cell(column: int) -> Cell:
+        def get_cell(column: int) -> Cell | MergedCell:
             return sheet.cell(row=row, column=column)
 
         get_cell(columns.time_after).value = time_after
@@ -482,7 +502,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row
         )
         # Y values start one row above X values so that first cell is series name.
-        series = Series(values, xvalues, title_from_data=True)
+        series = SeriesFactory(values, xvalues, title_from_data=True)
         chart.series.append(series)
         return chart
 
@@ -504,7 +524,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row
         )
         # Y values start one row above X values so that first cell is series name.
-        series = Series(values, xvalues, title_from_data=True)
+        series = SeriesFactory(values, xvalues, title_from_data=True)
         chart.series.append(series)
         return chart
 
@@ -527,9 +547,9 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             sheet, min_col=col2, min_row=FIRST_DATA_ROW - 1, max_row=max_row
         )
         # Y values start one row above X values so that first cell is series name.
-        series1 = Series(values1, xvalues, title_from_data=True)
+        series1 = SeriesFactory(values1, xvalues, title_from_data=True)
         chart.series.append(series1)
-        series2 = Series(values2, xvalues, title_from_data=True)
+        series2 = SeriesFactory(values2, xvalues, title_from_data=True)
         chart.series.append(series2)
         return chart
 

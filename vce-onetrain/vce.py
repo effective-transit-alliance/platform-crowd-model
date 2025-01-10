@@ -14,6 +14,7 @@ wb = Workbook()
 filepath = "platform_F_egress.xlsx"
 
 sheet = wb.active
+assert sheet is not None
 
 width = 15
 length = 1100
