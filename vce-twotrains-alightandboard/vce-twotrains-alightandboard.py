@@ -11,13 +11,15 @@ from openpyxl.cell import Cell, MergedCell
 from openpyxl.chart import Reference
 from openpyxl.chart.series_factory import SeriesFactory
 from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.chart import ScatterChart
+from numpy.typing import NDArray
 
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
 
 
 # keep high VCE egress rate if queues at stairs are long
-def alight_rate_fn(k, t, t0, u):
+def alight_rate_fn(k: float, t: float, t0: float, u: float) -> float:
     """
     :param k: number of people waiting to get off train
     :param t: time pass counter (s)
@@ -31,7 +33,7 @@ def alight_rate_fn(k, t, t0, u):
         return 0
 
 
-def plat_clearance_fn(karr, a, w, qmax):
+def plat_clearance_fn(karr: float, a: float, w: float, qmax: float) -> float:
     """
     :param a: usable platform area
     :param w: total width of vertical circulation elements
@@ -52,7 +54,7 @@ def plat_clearance_fn(karr, a, w, qmax):
         )
 
 
-def plat_ingress_fn(kdep, a, w, r_up):
+def plat_ingress_fn(kdep: float, a: float, w: float, r_up: float) -> float:
     """
     :param kdep: number of people waiting to get onto a stairwell
     :param a: usable concourse area
@@ -82,14 +84,21 @@ def plat_ingress_fn(kdep, a, w, r_up):
         return 0
 
 
-def boarder_frac_fn(trainA_boarders, trainB_boarders):
+def boarder_frac_fn(trainA_boarders: float, trainB_boarders: float) -> float:
     if trainA_boarders + trainB_boarders > 0:
         return trainA_boarders / (trainB_boarders + trainA_boarders)
     else:
         return 1
 
 
-def board_rate_fn(r_max, r_off, sim_t, arr_t, dep_t, boarders):
+def board_rate_fn(
+    r_max: float,
+    r_off: float,
+    sim_t: float,
+    arr_t: float,
+    dep_t: float,
+    boarders: float,
+) -> float:
     """
     :param vmax: maximum train deboard rate,
     pass train1_doors or train2_doors from params, since 1 door/sec
@@ -107,7 +116,7 @@ def board_rate_fn(r_max, r_off, sim_t, arr_t, dep_t, boarders):
         return 0
 
 
-def space_per_pax_fn(k, a):
+def space_per_pax_fn(k: float, a: float) -> float:
     """
     :param k: people on platform (pax)
     :param a: usable platform area (ft^2)
@@ -134,7 +143,7 @@ def plat_crowd_grade(inst_crowding: float) -> str:
         return "F"
 
 
-def egress_crowd_grade(w, plat_egress_rate: float) -> str:
+def egress_crowd_grade(w: float, plat_egress_rate: float) -> str:
     if plat_egress_rate <= w * 5 / 60:
         return "A"
     elif w * 5 / 60 < plat_egress_rate <= w * 7 / 60:
@@ -194,7 +203,7 @@ class Params:
     # total width of upstairs VCEs in feet.
     w: float
 
-    ww: Any
+    ww: NDArray[np.floating[Any]]
 
     # Number of people already on platform at time 0 wanting to board train 1
     train1_awaiting_boarders: int
@@ -211,23 +220,20 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     print("www = ", www)
 
     # Initialize counters
-    total_pax_on_platform = 0
-    arrived_pax_waiting_on_plat = 0
-    train1_remaining_arrivals = params.train1_arriving_pax
-    train2_remaining_arrivals = params.train2_arriving_pax
-    train1_new_pax = 0
-    train2_new_pax = 0
-    train1_boarders_upstairs = (
+    arrived_pax_waiting_on_plat: float = 0
+    train1_remaining_arrivals = float(params.train1_arriving_pax)
+    train2_remaining_arrivals = float(params.train2_arriving_pax)
+    train1_new_pax: float = 0
+    train2_new_pax: float = 0
+    train1_boarders_upstairs = float(
         params.train1_outbound_demand - params.train1_awaiting_boarders
     )
-    train2_boarders_upstairs = (
+    train2_boarders_upstairs = float(
         params.train2_outbound_demand - params.train2_awaiting_boarders
     )
-    train1_boarders_on_plat = params.train1_awaiting_boarders
-    train2_boarders_on_plat = params.train2_awaiting_boarders
-    total_pax_on_platform = (
-        params.train1_awaiting_boarders + params.train2_awaiting_boarders
-    )
+    train1_boarders_on_plat = float(params.train1_awaiting_boarders)
+    train2_boarders_on_plat = float(params.train2_awaiting_boarders)
+    total_pax_on_platform = train1_boarders_on_plat + train2_boarders_on_plat
     wb = openpyxl.Workbook()
 
     assert type(wb.active) is Worksheet
@@ -235,7 +241,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
     rownum = 0
 
-    def make_row(value, description: str):
+    def make_row(value: Any, description: str) -> None:
         nonlocal rownum
         rownum = rownum + 1
         sheet.cell(column=1, row=rownum).value = description
@@ -341,12 +347,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         train2_remaining_arrivals -= train2_off_rate
         if train2_remaining_arrivals < 0:
             train2_remaining_arrivals = 0
-        total_pax_on_platform = (
-            total_pax_on_platform + train1_off_rate + train2_off_rate
-        )
-        arrived_pax_waiting_on_plat = (
-            arrived_pax_waiting_on_plat + train1_off_rate + train2_off_rate
-        )
+        total_pax_on_platform += train1_off_rate + train2_off_rate
+        arrived_pax_waiting_on_plat += train1_off_rate + train2_off_rate
         plat_egress_rate = plat_clearance_fn(
             arrived_pax_waiting_on_plat,
             eff_area,
@@ -486,8 +488,10 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         )
 
     # Time gets exported to column 3, see line 264.
-    def make_chart(title, min_col, x_title, y_title):
-        chart = openpyxl.chart.ScatterChart()
+    def make_chart(
+        title: str, min_col: int, x_title: str, y_title: str
+    ) -> ScatterChart:
+        chart = ScatterChart()
         chart.title = title
         chart.style = 13
         chart.x_axis.title = x_title
@@ -506,8 +510,10 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         chart.series.append(series)
         return chart
 
-    def make_chart_with_chopped_y(title, min_col, x_title, y_title):
-        chart = openpyxl.chart.ScatterChart()
+    def make_chart_with_chopped_y(
+        title: str, min_col: int, x_title: str, y_title: str
+    ) -> ScatterChart:
+        chart = ScatterChart()
         chart.title = title
         chart.style = 13
         chart.x_axis.title = x_title
@@ -528,14 +534,17 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         chart.series.append(series)
         return chart
 
-    def make_chart_2(title, col1, col2, x_title, y_title):
-        chart = openpyxl.chart.ScatterChart()
+    def make_chart_2(
+        title: str, col1: int, col2: int, x_title: str, y_title: str
+    ) -> ScatterChart:
+        chart = ScatterChart()
         chart.title = title
         chart.style = 13
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
         chart.x_axis.scaling.min = 0
         chart.x_axis.scaling.max = params.simulation_time
+        assert chart.legend is not None
         chart.legend.position = "b"
 
         max_row = params.simulation_time + FIRST_DATA_ROW - 1
@@ -614,7 +623,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     return wb
 
 
-def main():
+def main() -> None:
     params = Params(
         file_slug="platform3_pr_alt3_new",
         simulation_time=600,
