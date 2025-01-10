@@ -1,7 +1,7 @@
 [project]
 name = "platform-crowd-model"
 version = "0.1.0"
-description = "Add your description here"
+description = "Model platform crowding and alighting and boarding at NY Penn Station"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
