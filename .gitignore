@@ -3,6 +3,7 @@
 .ruff_cache/
 .mypy_cache/
 
+.~lock*
 *.xlsx
 
 .idea/
