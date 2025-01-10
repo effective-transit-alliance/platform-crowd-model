@@ -1,5 +1,5 @@
-train1arr = 1600
-train2arr = 1600
+train1arr: float = 1600
+train2arr: float = 1600
 platarea = 15 * 900
 cf = 0.75
 corrarea = platarea * cf
@@ -14,11 +14,13 @@ train2doorwidth = 8 * 10  # total width of doors
 # initialize counter variables
 train1load = train1arr
 train2load = train2arr
-numonplatform = 0  # consider calling "arrpaxonplatform
+numonplatform: float = 0  # consider calling "arrpaxonplatform
 w = 500 / 12
 
 
-def train_alight_fn(k, a, t, t0, d):  # convert to rate per second by dividing by 60
+def train_alight_fn(
+    k: float, a: float, t: float, t0: float, d: float
+) -> float:  # convert to rate per second by dividing by 60
     if t >= t0 and k > 0:
         return max(
             min(((267 * (a / k) - 722) / ((a / k) ** 2)) * d / 60, 25 * d / 60),
@@ -28,7 +30,7 @@ def train_alight_fn(k, a, t, t0, d):  # convert to rate per second by dividing b
         return 0
 
 
-def plat_clearance_fn(k, a, w):
+def plat_clearance_fn(k: float, a: float, w: float) -> float:
     if k > 0:
         return max(
             min(((111 * (a / k) - 162) / ((a / k) ** 2)) * w / 60, 19 * w / 60),
