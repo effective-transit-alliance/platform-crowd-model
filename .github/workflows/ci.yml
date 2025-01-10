@@ -1,0 +1,39 @@
+name: CI
+on:
+    push
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+    
+      - name: Install python
+        run: uv python install
+
+      - name: Install project
+        run: uv sync --locked --all-extras --dev
+
+      - name: Format
+        run: uv run ruff format --check
+
+      - name: Lint
+        run: uv run ruff check
+
+      - name: Type check
+        run: uv run mypy .
+
+      - name: Run two trains alight and board
+        run: ./vce-two-trains-alight-and-board.py
+
+      - name: Run one train
+        run: ./vce-one-train.py
+
+      - name: Run alight only fine rate
+        run: ./vce-alight-only-fine-rate.py
