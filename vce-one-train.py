@@ -1,3 +1,5 @@
+#!/usr/bin/env -S uv run
+
 # This is a recursive platform clearance calculator.
 # c is total area of platform minus vce's in sqft.
 # k0 is passengers aboard train on arrival
