@@ -652,7 +652,7 @@ def main() -> None:
         arr_time1=0,
         arr_time2=120,
         queue_length=20,
-        w=44.75,
+        w=42.5,
         ww=(
             1
             / 12
@@ -692,7 +692,7 @@ def main() -> None:
         arr_time1=0,
         arr_time2=300,
         queue_length=20,
-        w=44.75,
+        w=42.5,
         ww=(
             1
             / 12
