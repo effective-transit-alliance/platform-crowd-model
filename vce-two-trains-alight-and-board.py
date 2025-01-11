@@ -715,6 +715,86 @@ def main() -> None:
             )
         ),
     )
+    params_p3recon120 = Params(
+        file_slug="platform3_recon",
+        simulation_time=600,
+        width=18,
+        length=900,
+        cf=0.75,
+        train1_arriving_pax=1600,
+        train2_arriving_pax=1600,
+        train1_outbound_demand=400,
+        train2_outbound_demand=400,
+        train1_awaiting_boarders=200,
+        train2_awaiting_boarders=200,
+        train1_doors=40,
+        train2_doors=40,
+        arr_time1=0,
+        arr_time2=120,
+        queue_length=20,
+        w=44.75,
+        ww=(
+            1
+            / 12
+            * np.transpose(
+                np.array(
+                    [
+                        [60, 1],
+                        [60, 1],
+                        [40, 1],
+                        [54, 1],
+                        [40, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                    ]
+                )
+            )
+        ),
+    )
+    params_p3recon300 = Params(
+        file_slug="platform3_recon",
+        simulation_time=600,
+        width=18,
+        length=900,
+        cf=0.75,
+        train1_arriving_pax=1600,
+        train2_arriving_pax=1600,
+        train1_outbound_demand=400,
+        train2_outbound_demand=400,
+        train1_awaiting_boarders=200,
+        train2_awaiting_boarders=200,
+        train1_doors=40,
+        train2_doors=40,
+        arr_time1=0,
+        arr_time2=300,
+        queue_length=20,
+        w=44.75,
+        ww=(
+            1
+            / 12
+            * np.transpose(
+                np.array(
+                    [
+                        [60, 1],
+                        [60, 1],
+                        [40, 1],
+                        [54, 1],
+                        [40, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                    ]
+                )
+            )
+        ),
+    )
     params_p60 = Params(
         file_slug="platform6",
         simulation_time=600,
@@ -837,6 +917,8 @@ def main() -> None:
     )
     run_model(params_p3120)
     run_model(params_p3300)
+    run_model(params_p3recon120)
+    run_model(params_p3recon300)
     run_model(params_p60)
     run_model(params_p10120)
     run_model(params_p11120)
