@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="d7e3512b-62b1-4a51-a0c8-0f05aaa48edb" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vce-twotrains-alightandboard.py" beforeDir="false" afterPath="$PROJECT_DIR$/vce-twotrains-alightandboard.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="GitSEFilterConfiguration">
+    <file-type-list>
+      <filtered-out-file-type name="LOCAL_BRANCH" />
+      <filtered-out-file-type name="REMOTE_BRANCH" />
+      <filtered-out-file-type name="TAG" />
+      <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
+    </file-type-list>
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2HVCGerAANHhtEcriP38NmPHgJ7" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="settings.editor.selected.configurable" value="vcs.Git" />
+  </component>
+  <component name="ReaderModeSettings">
+    <option name="enabled" value="false" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\transit-modeling\vce-twotrains-alightandboard" />
+      <recent name="D:\transit-modeling\vce-twoway" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.vce-twotrains-alightandboard">
+    <configuration name="vce-outputonly" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="vce-outputonly" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/vce-outputonly.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="vce-twotrains-alightandboard" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="vce-outputonly" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/vce-twotrains-alightandboard.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.vce-outputonly" />
+      <item itemvalue="Python.vce-twotrains-alightandboard" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.vce-twotrains-alightandboard" />
+        <item itemvalue="Python.vce-outputonly" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="d7e3512b-62b1-4a51-a0c8-0f05aaa48edb" name="Changes" comment="" />
+      <created>1668360773749</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1668360773749</updated>
+    </task>
+    <task id="LOCAL-00001" summary="No more manual column numbers&#10;&#10;They are all calculated automatically now">
+      <created>1712463713795</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1712463713795</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Pass correct arguments to platform and train ingress functions">
+      <created>1713047642728</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1713047642728</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Clean up Excel sheet formatting&#10;&#10;Clean up chart function code">
+      <created>1713049196940</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1713049196940</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Change variable and counter names for greater clarity&#10;Clean up ingress flow model">
+      <created>1714255649071</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1714255649071</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Add counter for boarding train passengers&#10;Revise upstairs and downstairs flow rate functions&#10;Add double-series graphs">
+      <created>1714325297021</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1714325297022</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Change crowding parameter in downstairs flow function">
+      <created>1715009658726</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1715009658727</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Add f-string code for output filename">
+      <created>1722043102875</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1722043102875</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Correct platform load totaling and space per passenger computation&#10;(arrived_pax_on_platform vs. total_pax_on_platform) and export to Excel.&#10;Add net rate graph.">
+      <created>1729912846082</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1729912846082</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="No more manual column numbers&#10;&#10;They are all calculated automatically now" />
+    <MESSAGE value="Pass correct arguments to platform and train ingress functions" />
+    <MESSAGE value="Clean up Excel sheet formatting&#10;&#10;Clean up chart function code" />
+    <MESSAGE value="Change variable and counter names for greater clarity&#10;Clean up ingress flow model" />
+    <MESSAGE value="Add counter for boarding train passengers&#10;Revise upstairs and downstairs flow rate functions&#10;Add double-series graphs" />
+    <MESSAGE value="Change crowding parameter in downstairs flow function" />
+    <MESSAGE value="Add f-string code for output filename" />
+    <MESSAGE value="Correct platform load totaling and space per passenger computation&#10;(arrived_pax_on_platform vs. total_pax_on_platform) and export to Excel.&#10;Add net rate graph." />
+    <option name="LAST_COMMIT_MESSAGE" value="Correct platform load totaling and space per passenger computation&#10;(arrived_pax_on_platform vs. total_pax_on_platform) and export to Excel.&#10;Add net rate graph." />
+  </component>
+</project>

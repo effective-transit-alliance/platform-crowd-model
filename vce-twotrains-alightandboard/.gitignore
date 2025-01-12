@@ -1,0 +1,9 @@
+# Nix
+result
+result-*
+
+# LibreOffice
+.~lock*
+
+# Script output
+/platform_F_twotrains_twoway_new.xlsx
