@@ -1,2 +1,15 @@
-[tool.black]
-line-length = 79
+[project]
+name = "platform-crowd-model"
+version = "0.1.0"
+description = "Model platform crowding and alighting and boarding at NY Penn Station"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.2.1",
+    "openpyxl>=3.1.5",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9.0",
+]

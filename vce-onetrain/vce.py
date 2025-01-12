@@ -6,7 +6,6 @@
 # w is total width of upstairs VCEs in feet.
 # egress is instantaneous rate of platform egress
 # t1 simulation length in seconds
-import openpyxl
 
 from openpyxl import Workbook
 
