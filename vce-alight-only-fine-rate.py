@@ -1,3 +1,5 @@
+#!/usr/bin/env -S uv run
+
 train1arr: float = 1600
 train2arr: float = 1600
 platarea = 15 * 900

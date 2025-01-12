@@ -1,3 +1,5 @@
+#!/usr/bin/env -S uv run
+
 """
 This is a recursive peak-hour platform clearance calculator.
 model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
