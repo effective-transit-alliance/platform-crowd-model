@@ -11,5 +11,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mypy>=1.14.1",
     "ruff>=0.9.0",
+    "types-openpyxl>=3.1.5.20241225",
 ]
+
+[tool.mypy]
+strict = true

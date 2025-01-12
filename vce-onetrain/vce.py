@@ -14,6 +14,7 @@ wb = Workbook()
 filepath = "platform_F_egress.xlsx"
 
 sheet = wb.active
+assert sheet is not None
 
 width = 15
 length = 1100
@@ -22,20 +23,23 @@ k0 = 2000  # if *2 is here, its a train on both tracks of the platform
 u = 48  # if *2 is here, its a train on both tracks of the platform
 t1 = 240
 w = 550 / 12
-egress = 0  # do not touch this
+egress: float = 0  # do not touch this
 
 
-def trainloadfn(k, u, t):
+def trainloadfn(k: float, u: float, t: float) -> float:
     return max(0, k - u * t)
 
 
-numonplatform = 0
+numonplatform: float = 0
 
 for i in range(1, t1):
 
     def platloadfn(
-        k, u, t, platcnt
-    ):  # number of passengers on platform, determines space per pax
+        k: float,
+        u: float,
+        t: float,
+        platcnt: float,
+    ) -> float:  # number of passengers on platform, determines space per pax
         trnld = trainloadfn(k, u, t)
         if (
             trnld > 0
@@ -44,7 +48,9 @@ for i in range(1, t1):
         else:
             return max(0, platcnt - egress)
 
-    def crowdfn(k, u, t, c, platcnt):  # space per pax, determines egress
+    def crowdfn(
+        k: float, u: float, t: float, c: float, platcnt: float
+    ) -> float:  # space per pax, determines egress
         plat = platloadfn(k, u, t, platcnt)
         if plat == 0:
             return c

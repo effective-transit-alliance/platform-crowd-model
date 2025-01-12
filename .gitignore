@@ -1,7 +1,9 @@
 .venv/
 
 .ruff_cache/
+.mypy_cache/
 
 *.xlsx
 
 .idea/
+.vscode/
