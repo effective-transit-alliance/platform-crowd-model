@@ -635,6 +635,7 @@ def run_model(params: Params) -> None:
 
 
 def main() -> None:
+    # params are labeled  with p<platform number><time in seconds> recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
         file_slug="platform3",
         simulation_time=600,
