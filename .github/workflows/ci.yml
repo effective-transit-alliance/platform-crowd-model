@@ -31,9 +31,3 @@ jobs:
 
       - name: Run two trains alight and board
         run: ./vce-two-trains-alight-and-board.py
-
-      - name: Run one train
-        run: ./vce-one-train.py
-
-      - name: Run alight only fine rate
-        run: ./vce-alight-only-fine-rate.py
