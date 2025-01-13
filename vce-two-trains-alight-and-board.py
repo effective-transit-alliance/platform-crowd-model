@@ -625,25 +625,35 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     return wb
 
 
+def run_model(params: Params) -> None:
+    wb = calc_workbook(params=params)
+
+    wb.save(
+        f"{params.file_slug}_{params.train1_arriving_pax}_{params.train2_arriving_pax}_{params.arr_time2 - params.arr_time1}s.xlsx"
+    )
+    wb.close()
+
+
 def main() -> None:
-    params = Params(
-        file_slug="platform3_pr_alt3_new",
+    # params are labeled  with p<platform number><time in seconds> recon indicates that a platform was modelled accounting for penn reconstruction plans
+    params_p3120 = Params(
+        file_slug="platform3",
         simulation_time=600,
-        width=15,
+        width=18,
         length=900,
         cf=0.75,
-        train1_arriving_pax=1600,
-        train2_arriving_pax=1600,
+        train1_arriving_pax=1620,
+        train2_arriving_pax=1620,
         train1_outbound_demand=400,
         train2_outbound_demand=400,
         train1_awaiting_boarders=200,
         train2_awaiting_boarders=200,
-        train1_doors=16,
-        train2_doors=16,
+        train1_doors=40,
+        train2_doors=40,
         arr_time1=0,
-        arr_time2=300,
+        arr_time2=120,
         queue_length=20,
-        w=537 / 12,
+        w=42.5,
         ww=(
             1
             / 12
@@ -666,12 +676,253 @@ def main() -> None:
             )
         ),
     )
-    wb = calc_workbook(params=params)
-
-    wb.save(
-        f"{params.file_slug}_{params.train1_arriving_pax}_{params.train2_arriving_pax}_{params.arr_time2 - params.arr_time1}s.xlsx"
+    params_p3300 = Params(
+        file_slug="platform3",
+        simulation_time=600,
+        width=18,
+        length=900,
+        cf=0.75,
+        train1_arriving_pax=1620,
+        train2_arriving_pax=1620,
+        train1_outbound_demand=400,
+        train2_outbound_demand=400,
+        train1_awaiting_boarders=200,
+        train2_awaiting_boarders=200,
+        train1_doors=40,
+        train2_doors=40,
+        arr_time1=0,
+        arr_time2=300,
+        queue_length=20,
+        w=42.5,
+        ww=(
+            1
+            / 12
+            * np.transpose(
+                np.array(
+                    [
+                        [60, 1],
+                        [60, 1],
+                        [40, 1],
+                        [54, 1],
+                        [40, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                    ]
+                )
+            )
+        ),
     )
-    wb.close()
+    params_p3recon120 = Params(
+        file_slug="platform3_recon",
+        simulation_time=600,
+        width=18,
+        length=900,
+        cf=0.75,
+        train1_arriving_pax=1620,
+        train2_arriving_pax=1620,
+        train1_outbound_demand=400,
+        train2_outbound_demand=400,
+        train1_awaiting_boarders=200,
+        train2_awaiting_boarders=200,
+        train1_doors=40,
+        train2_doors=40,
+        arr_time1=0,
+        arr_time2=120,
+        queue_length=20,
+        w=44.75,
+        ww=(
+            1
+            / 12
+            * np.transpose(
+                np.array(
+                    [
+                        [60, 1],
+                        [60, 1],
+                        [40, 1],
+                        [54, 1],
+                        [40, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                    ]
+                )
+            )
+        ),
+    )
+    params_p3recon300 = Params(
+        file_slug="platform3_recon",
+        simulation_time=600,
+        width=18,
+        length=900,
+        cf=0.75,
+        train1_arriving_pax=1620,
+        train2_arriving_pax=1620,
+        train1_outbound_demand=400,
+        train2_outbound_demand=400,
+        train1_awaiting_boarders=200,
+        train2_awaiting_boarders=200,
+        train1_doors=40,
+        train2_doors=40,
+        arr_time1=0,
+        arr_time2=300,
+        queue_length=20,
+        w=44.75,
+        ww=(
+            1
+            / 12
+            * np.transpose(
+                np.array(
+                    [
+                        [60, 1],
+                        [60, 1],
+                        [40, 1],
+                        [54, 1],
+                        [40, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                    ]
+                )
+            )
+        ),
+    )
+    params_p60 = Params(
+        file_slug="platform6",
+        simulation_time=600,
+        width=15,
+        length=1100,
+        cf=0.75,
+        train1_arriving_pax=1620,
+        train2_arriving_pax=1620,
+        train1_outbound_demand=400,
+        train2_outbound_demand=400,
+        train1_awaiting_boarders=200,
+        train2_awaiting_boarders=200,
+        train1_doors=40,
+        train2_doors=40,
+        arr_time1=0,
+        arr_time2=0,
+        queue_length=20,
+        w=48.168,
+        ww=(
+            1
+            / 12
+            * np.transpose(
+                np.array(
+                    [
+                        [60, 1],
+                        [60, 1],
+                        [40, 1],
+                        [54, 1],
+                        [40, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                    ]
+                )
+            )
+        ),
+    )
+    params_p10120 = Params(
+        file_slug="platform10",
+        simulation_time=600,
+        width=42,
+        length=1100,
+        cf=0.75,
+        train1_arriving_pax=1620,
+        train2_arriving_pax=1620,
+        train1_outbound_demand=400,
+        train2_outbound_demand=400,
+        train1_awaiting_boarders=200,
+        train2_awaiting_boarders=200,
+        train1_doors=40,
+        train2_doors=40,
+        arr_time1=0,
+        arr_time2=120,
+        queue_length=20,
+        w=70.58,
+        ww=(
+            1
+            / 12
+            * np.transpose(
+                np.array(
+                    [
+                        [60, 1],
+                        [60, 1],
+                        [40, 1],
+                        [54, 1],
+                        [40, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                    ]
+                )
+            )
+        ),
+    )
+    params_p11120 = Params(
+        file_slug="platform11",
+        simulation_time=600,
+        width=18,
+        length=1100,
+        cf=0.75,
+        train1_arriving_pax=1620,
+        train2_arriving_pax=1620,
+        train1_outbound_demand=400,
+        train2_outbound_demand=400,
+        train1_awaiting_boarders=200,
+        train2_awaiting_boarders=200,
+        train1_doors=40,
+        train2_doors=40,
+        arr_time1=0,
+        arr_time2=120,
+        queue_length=20,
+        w=43.58,
+        ww=(
+            1
+            / 12
+            * np.transpose(
+                np.array(
+                    [
+                        [60, 1],
+                        [60, 1],
+                        [40, 1],
+                        [54, 1],
+                        [40, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                        [54, 1],
+                    ]
+                )
+            )
+        ),
+    )
+    run_model(params_p3120)
+    run_model(params_p3300)
+    run_model(params_p3recon120)
+    run_model(params_p3recon300)
+    run_model(params_p60)
+    run_model(params_p10120)
+    run_model(params_p11120)
 
 
 if __name__ == "__main__":
