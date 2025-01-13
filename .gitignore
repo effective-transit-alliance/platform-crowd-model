@@ -1,6 +1,9 @@
 # Virtual Environment
 .venv/
 
+# Python Caching
+__pycache__
+
 # Tooling Cache
 .ruff_cache/
 .mypy_cache/
