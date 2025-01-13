@@ -2,7 +2,7 @@
 
 This repo is for modeling platform crowding and alighting and boarding of trains,
 specifically at NY Penn Station.
-[`vce-two-trains-alight-and-board.py`](./vce-two-trains-alight-and-board.py)
+[`vce_two_trains_alight_and_board.py`](./vce_two_trains_alight_and_board.py)
 models a single island platform with two tracks.
 
 ## Running
@@ -17,7 +17,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 With `uv` installed, you can then just run the script directly:
 
 ```sh
-./vce-two-trains-alight-and-board.py
+./vce_two_trains_alight_and_board.py
 ```
 
 In doing so, `uv` will also install dependencies and set up a virtual environment.

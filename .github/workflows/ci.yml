@@ -30,4 +30,4 @@ jobs:
         run: uv run mypy .
 
       - name: Run two trains alight and board
-        run: ./vce-two-trains-alight-and-board.py
+        run: ./vce_two_trains_alight_and_board.py
