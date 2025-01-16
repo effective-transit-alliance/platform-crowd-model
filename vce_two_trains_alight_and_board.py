@@ -187,23 +187,22 @@ class Field:
         return self
 
 
-def annotated_fields(
-    obj: "DataclassInstance",
-) -> Generator[tuple[Any, Field], None, None]:
+def annotated_field_names(
+    cls: type["DataclassInstance"],
+) -> Generator[tuple[str, Field], None, None]:
     """
-    Iterate over the fields and `@property` methods of a `@dataclass` object
-    and return the value and `Field` for each `Annotated[T, Field]` type.
+    Iterate over the fields and `@property` methods of a `@dataclass` type
+    and return the attr name and `Field` for each `Annotated[T, Field]` type.
     """
 
-    for field in dataclasses.fields(obj):
+    for field in dataclasses.fields(cls):
         field_meta = Field.try_from_annotated(field.type)
         if field_meta is None:
             continue
-        value = getattr(obj, field.name)
-        yield value, field_meta
+        yield field.name, field_meta
 
-    for attr_name in dir(obj.__class__):
-        attr = getattr(obj.__class__, attr_name)
+    for attr_name in dir(cls):
+        attr = getattr(cls, attr_name)
         if not isinstance(attr, property):
             continue
         prop = attr
@@ -212,8 +211,19 @@ def annotated_fields(
         field_meta = Field.try_from_annotated(return_type)
         if field_meta is None:
             continue
-        value = getattr(obj, attr_name)
-        yield value, field_meta
+        yield attr_name, field_meta
+
+
+def annotated_field_values(
+    obj: "DataclassInstance",
+) -> Generator[tuple[str, Any, Field], None, None]:
+    """
+    Iterate over the fields and `@property` methods of a `@dataclass` object
+    and return the attr name, value, and `Field` for each `Annotated[T, Field]` type.
+    """
+
+    for attr, field in annotated_field_names(obj.__class__):
+        yield attr, getattr(obj, attr), field
 
 
 @dataclass
@@ -415,68 +425,19 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     sheet.cell(column=1, row=1).value = "Parameter"
     sheet.cell(column=2, row=1).value = "Value"
 
-    for i, (value, field) in enumerate(annotated_fields(params)):
+    for i, (_attr, value, field) in enumerate(annotated_field_values(params)):
         sheet.cell(column=1, row=i + 2).value = field.description
         sheet.cell(column=2, row=i + 2).value = value
-
-    @dataclass
-    class Columns:
-        time_after: int
-        train1_pax: int
-        train2_pax: int
-        train1_off_rate: int
-        train2_off_rate: int
-        train1_on_rate: int
-        train2_on_rate: int
-        down_rate: int
-        up_rate: int
-        departing_pax_on_plat_1: int
-        departing_pax_on_plat_2: int
-        arrived_pax_waiting_on_plat: int
-        total_pax_on_platform: int
-        inst_crowding: int
-        net_pax_flow_rate: int
-        plat_crowd_los: int
-        egress_los: int
-
-    # The input parameters go in a table taking up columns 0 (A) and 1 (B).
-    colnum = 2
-
-    def make_column_num(description: str) -> int:
-        nonlocal colnum
-        colnum = colnum + 1
-        sheet.cell(row=1, column=colnum).value = description
-        return colnum
-
-    columns = Columns(
-        time_after=make_column_num("Time after arrival (s),"),
-        train1_pax=make_column_num("Passengers on Train 1"),
-        train2_pax=make_column_num("Passengers on Train 2"),
-        train1_off_rate=make_column_num("Train 1 Alight Rate (pax/s),"),
-        train2_off_rate=make_column_num("Train 2 Alight Rate (pax/s),"),
-        train1_on_rate=make_column_num("Train 1 Board Rate (pax/s),"),
-        train2_on_rate=make_column_num("Train 2 Board Rate (pax/s),"),
-        down_rate=make_column_num("Downstairs Rate (pax/s),"),
-        up_rate=make_column_num("Upstairs Rate (pax/s),"),
-        departing_pax_on_plat_1=make_column_num(
-            "Train 1 Departing Passengers on Platform"
-        ),
-        departing_pax_on_plat_2=make_column_num(
-            "Train 2 Departing Passengers on Platform"
-        ),
-        arrived_pax_waiting_on_plat=make_column_num("Arrived Passengers on Platform"),
-        total_pax_on_platform=make_column_num("Total Passengers on Platform"),
-        inst_crowding=make_column_num("Platform Space per Passanger (sqft),"),
-        net_pax_flow_rate=make_column_num("Net Platform Flow Rate"),
-        plat_crowd_los=make_column_num("Platform Crowding LOS"),
-        egress_los=make_column_num("Egress LOS"),
-    )
-
-    del colnum
 
     FIRST_DATA_ROW = 2
 
     print("Elapsed_Time", "Train_1_Pax", "Train_2_Pax")
+
+    def get_column_for(attr_name: str) -> int:
+        for i, (attr, _field) in enumerate(annotated_field_names(Instant)):
+            if attr == attr_name:
+                return 2 + i
+        raise AttributeError(Instant, attr_name)
 
     for time_after in range(0, params.simulation_length):
         train1_off_rate = alight_rate_fn(
@@ -629,7 +590,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             egress_los=egress_crowd_grade(params.total_vce_width, plat_egress_rate),
         )
 
-        for i, (value, field) in enumerate(annotated_fields(instant)):
+        for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
             column = 2 + i
             sheet.cell(row=1, column=column).value = field.description
             sheet.cell(row=instant.time + 2, column=column).value = value
@@ -712,8 +673,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     sheet.add_chart(
         make_chart_2(
             "Up and Down Rates",
-            columns.up_rate,
-            columns.down_rate,
+            get_column_for("up_rate"),
+            get_column_for("down_rate"),
             "Time (s)",
             "Rate (pax/s)",
         ),
@@ -722,8 +683,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     sheet.add_chart(
         make_chart_2(
             "Passengers Aboard Trains",
-            columns.train1_pax,
-            columns.train2_pax,
+            get_column_for("train1_pax"),
+            get_column_for("train2_pax"),
             "Time (s)",
             "Passengers",
         ),
@@ -732,8 +693,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     sheet.add_chart(
         make_chart_2(
             "Passengers on Platform",
-            columns.arrived_pax_waiting_on_plat,
-            columns.total_pax_on_platform,
+            get_column_for("arrived_pax_waiting_on_platform"),
+            get_column_for("total_pax_on_platform"),
             "Time (s)",
             "Passengers",
         ),
@@ -742,7 +703,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     sheet.add_chart(
         make_chart_with_chopped_y(
             "Space per Passenger",
-            columns.inst_crowding,
+            get_column_for("platform_crowding"),
             "Time (s)",
             "Space per passenger (sqft)",
         ),
@@ -751,21 +712,14 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     sheet.add_chart(
         make_chart(
             "Net Platform Flow Rate",
-            columns.net_pax_flow_rate,
+            get_column_for("net_pax_flow_rate"),
             "Time (s)",
             "Net Flow Rate (pax/s)",
         ),
         "V64",
     )
     print(
-        "LOS F egress rate is "
-        + str(params.total_vce_width * 19 / 60)
-        + " pax/second. Emergency egress time is roughly "
-        + str(
-            (params.train1_arriving_pax + params.train2_arriving_pax)
-            / (params.total_vce_width * 19 / 60)
-        )
-        + " seconds."
+        f"LOS F egress rate is {params.los_f_egress_rate} pax/s. Emergency egress time is {params.emergency_egress_time} seconds."
     )
     return wb
 
