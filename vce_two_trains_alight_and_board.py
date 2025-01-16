@@ -162,62 +162,72 @@ def egress_crowd_grade(w: float, plat_egress_rate: float) -> str:
 
 @dataclass
 class Params:
-    # File slug
-    file_slug: str
+    filename_prefix: str
+    """Prefix of filename to save the spreadsheet in."""
 
-    # how many seconds we want to simulate
     simulation_time: int
+    """Time (in seconds) to simulate."""
 
-    width: int
+    platform_width: int
+    """Platform width (in feet)."""
 
-    length: int
+    platform_length: int
+    """Platform length (in feet)."""
 
-    # area correction factor
-    cf: float
+    usable_platform_area_multiplier: float
+    """
+    A multiplier to estimate the usable platform area (in square feet)
+    given obstructive elements on the platform (e.x. stairs, escalators, elevators, columns).
+    """
 
-    # train 1 arriving passenger load
     train1_arriving_pax: int
+    """Number of passengers arriving on train 1."""
 
-    # train 2 arriving passenger load
     train2_arriving_pax: int
+    """Number of passengers arriving on train 2."""
 
-    # train 1 departing passenger demand
-    train1_outbound_demand: int
+    train1_departing_pax: int
+    """Number of passengers departing on train 1."""
 
-    # train 2 departing passenger demand
-    train2_outbound_demand: int
+    train2_departing_pax: int
+    """Number of passengers departing on train 2."""
 
-    # single-door equivalents
     train1_doors: int
+    """Number of doors (single-door equivalents) on train 1."""
 
-    # single-door equivalents
     train2_doors: int
+    """Number of doors (single-door equivalents) on train 2."""
 
-    # time of first train arrival
-    arr_time1: int
+    train1_arrival_time: int
+    """Time (in seconds) when train 1 arrives."""
 
-    # time of second train arrival
-    arr_time2: int
+    train2_arrival_time: int
+    """Time (in seconds) when train 2 arrives."""
 
-    # feet of queue in front of each stair that pushes max flow
     queue_length: int
+    """Length (in feet) of the queue in front of each stair that pushes max flow."""
 
-    # total width of upstairs VCEs in feet.
-    w: float
+    total_vce_width: float
+    """Total width (in feet) of all of the VCEs (vertical circulation elements) going upstairs."""
 
-    ww: NDArray[np.floating[Any]]
+    vce_widths: NDArray[np.floating]
+    """Widths (in feet) of each VCE (vertical circulation element)."""
 
-    # Number of people already on platform at time 0 wanting to board train 1
-    train1_awaiting_boarders: int
+    train1_boarding_pax: int
+    """Number of passengers already on the platform at time 0 wanting to board train 1."""
 
-    # Number of people already on platform at time 0 wanting to board train 2
-    train2_awaiting_boarders: int
+    train2_boarding_pax: int
+    """Number of passengers already on the platform at time 0 wanting to board train 2."""
 
 
 def calc_workbook(params: Params) -> openpyxl.Workbook:
-    eff_area = params.width * params.length * params.cf
+    eff_area = (
+        params.platform_width
+        * params.platform_length
+        * params.usable_platform_area_multiplier
+    )
 
-    www = params.ww[0, :]
+    www = params.vce_widths[0, :]
 
     print("www = ", www)
 
@@ -228,13 +238,13 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     train1_new_pax: float = 0
     train2_new_pax: float = 0
     train1_boarders_upstairs = float(
-        params.train1_outbound_demand - params.train1_awaiting_boarders
+        params.train1_departing_pax - params.train1_boarding_pax
     )
     train2_boarders_upstairs = float(
-        params.train2_outbound_demand - params.train2_awaiting_boarders
+        params.train2_departing_pax - params.train2_boarding_pax
     )
-    train1_boarders_on_plat = float(params.train1_awaiting_boarders)
-    train2_boarders_on_plat = float(params.train2_awaiting_boarders)
+    train1_boarders_on_plat = float(params.train1_boarding_pax)
+    train2_boarders_on_plat = float(params.train2_boarding_pax)
     total_pax_on_platform = train1_boarders_on_plat + train2_boarders_on_plat
     wb = openpyxl.Workbook()
 
@@ -250,22 +260,22 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         sheet.cell(column=2, row=rownum).value = value
 
     make_row("Value", "Parameter")
-    make_row(params.width, "Platform width (ft)")
-    make_row(params.length, "Platform length (ft)")
-    make_row(params.w, "Total VCE width (ft)")
-    make_row(params.cf, "Effective Area Multiplier")
+    make_row(params.platform_width, "Platform width (ft)")
+    make_row(params.platform_length, "Platform length (ft)")
+    make_row(params.total_vce_width, "Total VCE width (ft)")
+    make_row(params.usable_platform_area_multiplier, "Effective Area Multiplier")
     make_row(eff_area, "Usable Platform Area (sqft)")
     make_row(params.train1_arriving_pax, "Train 1 Arriving Passengers")
-    make_row(params.train1_outbound_demand, "Train 1 Departing Passengers")
-    make_row(params.arr_time1, "Train 1 Arrival Time")
+    make_row(params.train1_departing_pax, "Train 1 Departing Passengers")
+    make_row(params.train1_arrival_time, "Train 1 Arrival Time")
     make_row(params.train2_arriving_pax, "Train 2 Arriving Passengers")
-    make_row(params.train2_outbound_demand, "Train 2 Departing Passengers")
-    make_row(params.arr_time2, "Train 2 Arrival Time")
+    make_row(params.train2_departing_pax, "Train 2 Departing Passengers")
+    make_row(params.train2_arrival_time, "Train 2 Arrival Time")
     make_row(params.simulation_time, "Simulation Length (s)")
-    make_row(params.w * 19 / 60, "LOS F Egress Rate (pax/s)")
+    make_row(params.total_vce_width * 19 / 60, "LOS F Egress Rate (pax/s)")
     make_row(
         (params.train1_arriving_pax + params.train2_arriving_pax)
-        / (params.w * 19 / 60),
+        / (params.total_vce_width * 19 / 60),
         "Emergency Egress Time (s)",
     )
 
@@ -334,7 +344,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         train1_off_rate = alight_rate_fn(
             train1_remaining_arrivals,
             time_after,
-            params.arr_time1,
+            params.train1_arrival_time,
             params.train1_doors,
         )
         train1_remaining_arrivals -= train1_off_rate
@@ -343,7 +353,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         train2_off_rate = alight_rate_fn(
             train2_remaining_arrivals,
             time_after,
-            params.arr_time2,
+            params.train2_arrival_time,
             params.train2_doors,
         )
         train2_remaining_arrivals -= train2_off_rate
@@ -354,8 +364,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         plat_egress_rate = plat_clearance_fn(
             arrived_pax_waiting_on_plat,
             eff_area,
-            params.w,
-            params.w * params.queue_length / 5,
+            params.total_vce_width,
+            params.total_vce_width * params.queue_length / 5,
         )
         arrived_pax_waiting_on_plat -= plat_egress_rate
         if arrived_pax_waiting_on_plat < 0:
@@ -364,7 +374,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         plat_ingress_rate_1 = plat_ingress_fn(
             train1_boarders_upstairs,
             5000,
-            params.w
+            params.total_vce_width
             * boarder_frac_fn(train1_boarders_upstairs, train2_boarders_upstairs),
             plat_egress_rate,
         )
@@ -372,7 +382,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         plat_ingress_rate_2 = plat_ingress_fn(
             train2_boarders_upstairs,
             5000,
-            params.w
+            params.total_vce_width
             * boarder_frac_fn(train2_boarders_upstairs, train1_boarders_upstairs),
             plat_egress_rate,
         )
@@ -384,7 +394,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             params.train1_doors,
             train1_off_rate,
             time_after,
-            params.arr_time1,
+            params.train1_arrival_time,
             params.simulation_time,
             train1_boarders_on_plat,
         )
@@ -392,7 +402,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             params.train2_doors,
             train2_off_rate,
             time_after,
-            params.arr_time2,
+            params.train2_arrival_time,
             params.simulation_time,
             train2_boarders_on_plat,
         )
@@ -486,7 +496,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         get_cell(columns.plat_crowd_los).value = plat_crowd_grade(inst_crowding)
 
         get_cell(columns.egress_los).value = egress_crowd_grade(
-            params.w, plat_egress_rate
+            params.total_vce_width, plat_egress_rate
         )
 
     # Time gets exported to column 3, see line 264.
@@ -614,11 +624,11 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     )
     print(
         "LOS F egress rate is "
-        + str(params.w * 19 / 60)
+        + str(params.total_vce_width * 19 / 60)
         + " pax/second. Emergency egress time is roughly "
         + str(
             (params.train1_arriving_pax + params.train2_arriving_pax)
-            / (params.w * 19 / 60)
+            / (params.total_vce_width * 19 / 60)
         )
         + " seconds."
     )
@@ -629,7 +639,7 @@ def run_model(params: Params) -> None:
     wb = calc_workbook(params=params)
 
     wb.save(
-        f"{params.file_slug}_{params.train1_arriving_pax}_{params.train2_arriving_pax}_{params.arr_time2 - params.arr_time1}s.xlsx"
+        f"{params.filename_prefix}_{params.train1_arriving_pax}_{params.train2_arriving_pax}_{params.train2_arrival_time - params.train1_arrival_time}s.xlsx"
     )
     wb.close()
 
@@ -637,24 +647,24 @@ def run_model(params: Params) -> None:
 def main() -> None:
     # params are labeled  with p<platform number><time in seconds> recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
-        file_slug="platform3",
+        filename_prefix="platform3",
         simulation_time=600,
-        width=18,
-        length=900,
-        cf=0.75,
+        platform_width=18,
+        platform_length=900,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
-        train1_outbound_demand=400,
-        train2_outbound_demand=400,
-        train1_awaiting_boarders=200,
-        train2_awaiting_boarders=200,
+        train1_departing_pax=400,
+        train2_departing_pax=400,
+        train1_boarding_pax=200,
+        train2_boarding_pax=200,
         train1_doors=40,
         train2_doors=40,
-        arr_time1=0,
-        arr_time2=120,
+        train1_arrival_time=0,
+        train2_arrival_time=120,
         queue_length=20,
-        w=42.5,
-        ww=(
+        total_vce_width=42.5,
+        vce_widths=(
             1
             / 12
             * np.transpose(
@@ -677,24 +687,24 @@ def main() -> None:
         ),
     )
     params_p3300 = Params(
-        file_slug="platform3",
+        filename_prefix="platform3",
         simulation_time=600,
-        width=18,
-        length=900,
-        cf=0.75,
+        platform_width=18,
+        platform_length=900,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
-        train1_outbound_demand=400,
-        train2_outbound_demand=400,
-        train1_awaiting_boarders=200,
-        train2_awaiting_boarders=200,
+        train1_departing_pax=400,
+        train2_departing_pax=400,
+        train1_boarding_pax=200,
+        train2_boarding_pax=200,
         train1_doors=40,
         train2_doors=40,
-        arr_time1=0,
-        arr_time2=300,
+        train1_arrival_time=0,
+        train2_arrival_time=300,
         queue_length=20,
-        w=42.5,
-        ww=(
+        total_vce_width=42.5,
+        vce_widths=(
             1
             / 12
             * np.transpose(
@@ -717,24 +727,24 @@ def main() -> None:
         ),
     )
     params_p3recon120 = Params(
-        file_slug="platform3_recon",
+        filename_prefix="platform3_recon",
         simulation_time=600,
-        width=18,
-        length=900,
-        cf=0.75,
+        platform_width=18,
+        platform_length=900,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
-        train1_outbound_demand=400,
-        train2_outbound_demand=400,
-        train1_awaiting_boarders=200,
-        train2_awaiting_boarders=200,
+        train1_departing_pax=400,
+        train2_departing_pax=400,
+        train1_boarding_pax=200,
+        train2_boarding_pax=200,
         train1_doors=40,
         train2_doors=40,
-        arr_time1=0,
-        arr_time2=120,
+        train1_arrival_time=0,
+        train2_arrival_time=120,
         queue_length=20,
-        w=44.75,
-        ww=(
+        total_vce_width=44.75,
+        vce_widths=(
             1
             / 12
             * np.transpose(
@@ -757,24 +767,24 @@ def main() -> None:
         ),
     )
     params_p3recon300 = Params(
-        file_slug="platform3_recon",
+        filename_prefix="platform3_recon",
         simulation_time=600,
-        width=18,
-        length=900,
-        cf=0.75,
+        platform_width=18,
+        platform_length=900,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
-        train1_outbound_demand=400,
-        train2_outbound_demand=400,
-        train1_awaiting_boarders=200,
-        train2_awaiting_boarders=200,
+        train1_departing_pax=400,
+        train2_departing_pax=400,
+        train1_boarding_pax=200,
+        train2_boarding_pax=200,
         train1_doors=40,
         train2_doors=40,
-        arr_time1=0,
-        arr_time2=300,
+        train1_arrival_time=0,
+        train2_arrival_time=300,
         queue_length=20,
-        w=44.75,
-        ww=(
+        total_vce_width=44.75,
+        vce_widths=(
             1
             / 12
             * np.transpose(
@@ -797,24 +807,24 @@ def main() -> None:
         ),
     )
     params_p60 = Params(
-        file_slug="platform6",
+        filename_prefix="platform6",
         simulation_time=600,
-        width=15,
-        length=1100,
-        cf=0.75,
+        platform_width=15,
+        platform_length=1100,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
-        train1_outbound_demand=400,
-        train2_outbound_demand=400,
-        train1_awaiting_boarders=200,
-        train2_awaiting_boarders=200,
+        train1_departing_pax=400,
+        train2_departing_pax=400,
+        train1_boarding_pax=200,
+        train2_boarding_pax=200,
         train1_doors=40,
         train2_doors=40,
-        arr_time1=0,
-        arr_time2=0,
+        train1_arrival_time=0,
+        train2_arrival_time=0,
         queue_length=20,
-        w=48.168,
-        ww=(
+        total_vce_width=48.168,
+        vce_widths=(
             1
             / 12
             * np.transpose(
@@ -837,24 +847,24 @@ def main() -> None:
         ),
     )
     params_p10120 = Params(
-        file_slug="platform10",
+        filename_prefix="platform10",
         simulation_time=600,
-        width=42,
-        length=1100,
-        cf=0.75,
+        platform_width=42,
+        platform_length=1100,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
-        train1_outbound_demand=400,
-        train2_outbound_demand=400,
-        train1_awaiting_boarders=200,
-        train2_awaiting_boarders=200,
+        train1_departing_pax=400,
+        train2_departing_pax=400,
+        train1_boarding_pax=200,
+        train2_boarding_pax=200,
         train1_doors=40,
         train2_doors=40,
-        arr_time1=0,
-        arr_time2=120,
+        train1_arrival_time=0,
+        train2_arrival_time=120,
         queue_length=20,
-        w=70.58,
-        ww=(
+        total_vce_width=70.58,
+        vce_widths=(
             1
             / 12
             * np.transpose(
@@ -877,24 +887,24 @@ def main() -> None:
         ),
     )
     params_p11120 = Params(
-        file_slug="platform11",
+        filename_prefix="platform11",
         simulation_time=600,
-        width=18,
-        length=1100,
-        cf=0.75,
+        platform_width=18,
+        platform_length=1100,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
-        train1_outbound_demand=400,
-        train2_outbound_demand=400,
-        train1_awaiting_boarders=200,
-        train2_awaiting_boarders=200,
+        train1_departing_pax=400,
+        train2_departing_pax=400,
+        train1_boarding_pax=200,
+        train2_boarding_pax=200,
         train1_doors=40,
         train2_doors=40,
-        arr_time1=0,
-        arr_time2=120,
+        train1_arrival_time=0,
+        train2_arrival_time=120,
         queue_length=20,
-        w=43.58,
-        ww=(
+        total_vce_width=43.58,
+        vce_widths=(
             1
             / 12
             * np.transpose(
