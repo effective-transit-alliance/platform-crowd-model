@@ -6,15 +6,19 @@ model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 """
 
 from dataclasses import dataclass
-from typing import Any
+import dataclasses
+from typing import Annotated, Any, Generator, Self, Type, cast, TYPE_CHECKING
+import typing
 import numpy as np
 import openpyxl
-from openpyxl.cell import Cell, MergedCell
 from openpyxl.chart import Reference
 from openpyxl.chart.series_factory import SeriesFactory
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.chart import ScatterChart
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
 
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
@@ -161,63 +165,146 @@ def egress_crowd_grade(w: float, plat_egress_rate: float) -> str:
 
 
 @dataclass
+class Field:
+    """A type annotation for a field."""
+
+    name: str
+    """The human-readable name of the field."""
+
+    units: str
+    """The field's units."""
+
+    @property
+    def description(self) -> str:
+        return f"{self.name} ({self.units})"
+
+    @classmethod
+    def try_from_annotated(cls, annotated_type: Any) -> Self | None:
+        if typing.get_origin(annotated_type) is not Annotated:
+            return None
+        (self,) = cast(Type[Annotated[Any, Any]], annotated_type).__metadata__
+        assert type(self) is cls, f"{type(self)} supposed to be f{cls}"
+        return self
+
+
+def annotated_fields(
+    obj: "DataclassInstance",
+) -> Generator[tuple[Any, Field], None, None]:
+    """
+    Iterate over the fields and `@property` methods of a `@dataclass` object
+    and return the value and `Field` for each `Annotated[T, Field]` type.
+    """
+
+    for field in dataclasses.fields(obj):
+        field_meta = Field.try_from_annotated(field.type)
+        if field_meta is None:
+            continue
+        value = getattr(obj, field.name)
+        yield value, field_meta
+
+    for attr_name in dir(obj.__class__):
+        attr = getattr(obj.__class__, attr_name)
+        if not isinstance(attr, property):
+            continue
+        prop = attr
+        signature = typing.get_type_hints(prop.fget, include_extras=True)
+        return_type = signature["return"]
+        field_meta = Field.try_from_annotated(return_type)
+        if field_meta is None:
+            continue
+        value = getattr(obj, attr_name)
+        yield value, field_meta
+
+
+@dataclass
 class Params:
     filename_prefix: str
     """Prefix of filename to save the spreadsheet in."""
 
-    simulation_time: int
+    simulation_length: Annotated[int, Field(name="Simulation Length", units="s")]
     """Time (in seconds) to simulate."""
 
-    platform_width: int
+    platform_width: Annotated[int, Field(name="Platform Width", units="ft")]
     """Platform width (in feet)."""
 
-    platform_length: int
+    platform_length: Annotated[int, Field(name="Platform Length", units="ft")]
     """Platform length (in feet)."""
 
-    usable_platform_area_multiplier: float
+    usable_platform_area_multiplier: Annotated[
+        float, Field(name="Usable Platform Area Multiplier", units="ft^2")
+    ]
     """
     A multiplier to estimate the usable platform area (in square feet)
     given obstructive elements on the platform (e.x. stairs, escalators, elevators, columns).
     """
 
-    train1_arriving_pax: int
+    train1_arriving_pax: Annotated[
+        int, Field(name="Train 1 Arriving Passengers", units="pax")
+    ]
     """Number of passengers arriving on train 1."""
 
-    train2_arriving_pax: int
+    train2_arriving_pax: Annotated[
+        int, Field(name="Train 2 Arriving Passengers", units="pax")
+    ]
     """Number of passengers arriving on train 2."""
 
-    train1_departing_pax: int
+    train1_departing_pax: Annotated[
+        int, Field(name="Train 1 Departing Passengers", units="pax")
+    ]
     """Number of passengers departing on train 1."""
 
-    train2_departing_pax: int
+    train2_departing_pax: Annotated[
+        int, Field(name="Train 2 Departing Passengers", units="pax")
+    ]
     """Number of passengers departing on train 2."""
 
-    train1_doors: int
+    train1_doors: Annotated[int, Field(name="Train 1 Doors", units="door")]
     """Number of doors (single-door equivalents) on train 1."""
 
-    train2_doors: int
+    train2_doors: Annotated[int, Field(name="Train 2 Doors", units="door")]
     """Number of doors (single-door equivalents) on train 2."""
 
-    train1_arrival_time: int
+    train1_arrival_time: Annotated[int, Field(name="Train 1 Arrival Time", units="s")]
     """Time (in seconds) when train 1 arrives."""
 
-    train2_arrival_time: int
+    train2_arrival_time: Annotated[int, Field(name="Train 1 Arrival Time", units="s")]
     """Time (in seconds) when train 2 arrives."""
 
-    queue_length: int
+    queue_length: Annotated[int, Field(name="Stair Queue Length", units="ft")]
     """Length (in feet) of the queue in front of each stair that pushes max flow."""
 
-    total_vce_width: float
+    total_vce_width: Annotated[float, Field(name="Total VCE Width", units="ft")]
     """Total width (in feet) of all of the VCEs (vertical circulation elements) going upstairs."""
 
     vce_widths: NDArray[np.floating]
     """Widths (in feet) of each VCE (vertical circulation element)."""
 
-    train1_boarding_pax: int
+    train1_boarding_pax: Annotated[
+        int, Field(name="Train 1 Boarding Passengers", units="pax")
+    ]
     """Number of passengers already on the platform at time 0 wanting to board train 1."""
 
-    train2_boarding_pax: int
+    train2_boarding_pax: Annotated[
+        int, Field(name="Train 2 Boarding Passengers", units="pax")
+    ]
     """Number of passengers already on the platform at time 0 wanting to board train 2."""
+
+    @property
+    def los_f_egress_rate(
+        self,
+    ) -> Annotated[float, Field(name="LOS F Egress Rate", units="pax/s")]:
+        """LOS (level of service) F egress rate (in pax/s)."""
+        return self.total_vce_width * 19 / 60
+
+    # TODO is LOS F emergency?
+    @property
+    def emergency_egress_time(
+        self,
+    ) -> Annotated[float, Field(name="Emergency Egress Time", units="s")]:
+        """Emergency egress time (in seconds)."""
+        return (
+            self.train1_arriving_pax + self.train2_arriving_pax
+        ) / self.los_f_egress_rate
 
 
 @dataclass
@@ -226,55 +313,71 @@ class Instant:
     An instant in the simulation.
     """
 
-    time: int
+    time: Annotated[int, Field(name="Time", units="s")]
     """Time (in seconds)."""
 
-    train1_pax: float
+    train1_pax: Annotated[float, Field(name="Train 1 Passengers", units="pax")]
     """Train 1 number of passengers."""
 
-    train2_pax: float
+    train2_pax: Annotated[float, Field(name="Train 2 Passengers", units="pax")]
     """Train 2 number of passengers."""
 
-    train1_off_rate: float
+    train1_off_rate: Annotated[
+        float, Field(name="Train 1 Alighting Rate", units="pax/s")
+    ]
     """Train 1 alighting rate (in pax/s)."""
 
-    train2_off_rate: float
+    train2_off_rate: Annotated[
+        float, Field(name="Train 2 Alighting Rate", units="pax/s")
+    ]
     """Train 2 alighting rate (in pax/s)."""
 
-    train1_on_rate: float
+    train1_on_rate: Annotated[float, Field(name="Train 1 Boarding Rate", units="pax/s")]
     """Train 1 boarding rate (in pax/s)."""
 
-    train2_on_rate: float
+    train2_on_rate: Annotated[float, Field(name="Train 2 Boarding Rate", units="pax/s")]
     """Train 2 boarding rate (in pax/s)."""
 
-    down_rate: float
+    down_rate: Annotated[float, Field(name="Downstairs Rate", units="pax/s")]
     """Downstairs rate (in pax/s)."""
 
-    up_rate: float
+    up_rate: Annotated[float, Field(name="Upstairs Rate", units="pax/s")]
     """Upstairs rate (in pax/s)."""
 
-    train1_departing_pax_on_platform: float
+    train1_departing_pax_on_platform: Annotated[
+        float, Field(name="Train 1 Departing Passengers on Platform", units="pax")
+    ]
     """Train 1 departing passengers on platform."""
 
-    train2_departing_pax_on_platform: float
+    train2_departing_pax_on_platform: Annotated[
+        float, Field(name="Train 2 Departing Passengers on Platform", units="pax")
+    ]
     """Train 2 departing passengers on platform."""
 
-    arrived_pax_waiting_on_platform: float
+    arrived_pax_waiting_on_platform: Annotated[
+        float, Field(name="Arrived Passengers on Platform", units="pax")
+    ]
     """Number of passengers who arrived on platform."""
 
-    total_pax_on_platform: float
+    total_pax_on_platform: Annotated[
+        float, Field(name="Total Passengers on Platform", units="pax")
+    ]
     """Total number of passengers on platform."""
 
-    platform_crowding: float
+    platform_crowding: Annotated[
+        float, Field(name="Platform Space per Passenger", units="ft^2")
+    ]
     """Platform space per passenger (in square feet)."""
 
-    net_pax_flow_rate: float
+    net_pax_flow_rate: Annotated[
+        float, Field(name="Net Platform Flow Rate", units="pax/s")
+    ]
     """Net platform flow rate."""
 
-    platform_crowd_los: str
+    platform_crowd_los: Annotated[str, Field(name="Platform Crowding LOS", units="LOS")]
     """Platform crowding LOS (level of service)"""
 
-    egress_los: str
+    egress_los: Annotated[str, Field(name="Egress LOS", units="LOS")]
     """Egress LOS (level of service)."""
 
 
@@ -309,35 +412,12 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     assert type(wb.active) is Worksheet
     sheet: Worksheet = wb.active
 
-    rownum = 0
+    sheet.cell(column=1, row=1).value = "Parameter"
+    sheet.cell(column=2, row=1).value = "Value"
 
-    def make_row(value: Any, description: str) -> None:
-        nonlocal rownum
-        rownum = rownum + 1
-        sheet.cell(column=1, row=rownum).value = description
-        sheet.cell(column=2, row=rownum).value = value
-
-    make_row("Value", "Parameter")
-    make_row(params.platform_width, "Platform width (ft)")
-    make_row(params.platform_length, "Platform length (ft)")
-    make_row(params.total_vce_width, "Total VCE width (ft)")
-    make_row(params.usable_platform_area_multiplier, "Effective Area Multiplier")
-    make_row(eff_area, "Usable Platform Area (sqft)")
-    make_row(params.train1_arriving_pax, "Train 1 Arriving Passengers")
-    make_row(params.train1_departing_pax, "Train 1 Departing Passengers")
-    make_row(params.train1_arrival_time, "Train 1 Arrival Time")
-    make_row(params.train2_arriving_pax, "Train 2 Arriving Passengers")
-    make_row(params.train2_departing_pax, "Train 2 Departing Passengers")
-    make_row(params.train2_arrival_time, "Train 2 Arrival Time")
-    make_row(params.simulation_time, "Simulation Length (s)")
-    make_row(params.total_vce_width * 19 / 60, "LOS F Egress Rate (pax/s)")
-    make_row(
-        (params.train1_arriving_pax + params.train2_arriving_pax)
-        / (params.total_vce_width * 19 / 60),
-        "Emergency Egress Time (s)",
-    )
-
-    del rownum
+    for i, (value, field) in enumerate(annotated_fields(params)):
+        sheet.cell(column=1, row=i + 2).value = field.description
+        sheet.cell(column=2, row=i + 2).value = value
 
     @dataclass
     class Columns:
@@ -398,7 +478,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
     print("Elapsed_Time", "Train_1_Pax", "Train_2_Pax")
 
-    for time_after in range(0, params.simulation_time):
+    for time_after in range(0, params.simulation_length):
         train1_off_rate = alight_rate_fn(
             train1_remaining_arrivals,
             time_after,
@@ -453,7 +533,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             train1_off_rate,
             time_after,
             params.train1_arrival_time,
-            params.simulation_time,
+            params.simulation_length,
             train1_boarders_on_plat,
         )
         train2_on_rate = board_rate_fn(
@@ -461,7 +541,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             train2_off_rate,
             time_after,
             params.train2_arrival_time,
-            params.simulation_time,
+            params.simulation_length,
             train2_boarders_on_plat,
         )
 
@@ -549,34 +629,10 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             egress_los=egress_crowd_grade(params.total_vce_width, plat_egress_rate),
         )
 
-        row = time_after + FIRST_DATA_ROW
-
-        def get_cell(column: int) -> Cell | MergedCell:
-            return sheet.cell(row=row, column=column)
-
-        get_cell(columns.time_after).value = instant.time
-        get_cell(columns.train1_pax).value = instant.train1_pax
-        get_cell(columns.train2_pax).value = instant.train2_pax
-        get_cell(
-            columns.arrived_pax_waiting_on_plat
-        ).value = instant.arrived_pax_waiting_on_platform
-        get_cell(columns.train1_off_rate).value = instant.train1_off_rate
-        get_cell(columns.train2_off_rate).value = instant.train2_off_rate
-        get_cell(columns.train1_on_rate).value = instant.train1_on_rate
-        get_cell(columns.train2_on_rate).value = instant.train2_on_rate
-        get_cell(columns.down_rate).value = instant.down_rate
-        get_cell(
-            columns.departing_pax_on_plat_1
-        ).value = instant.train1_departing_pax_on_platform
-        get_cell(
-            columns.departing_pax_on_plat_2
-        ).value = instant.train2_departing_pax_on_platform
-        get_cell(columns.total_pax_on_platform).value = instant.total_pax_on_platform
-        get_cell(columns.inst_crowding).value = instant.platform_crowding
-        get_cell(columns.up_rate).value = instant.up_rate
-        get_cell(columns.net_pax_flow_rate).value = instant.net_pax_flow_rate
-        get_cell(columns.plat_crowd_los).value = instant.platform_crowd_los
-        get_cell(columns.egress_los).value = instant.egress_los
+        for i, (value, field) in enumerate(annotated_fields(instant)):
+            column = 2 + i
+            sheet.cell(row=1, column=column).value = field.description
+            sheet.cell(row=instant.time + 2, column=column).value = value
 
     # Time gets exported to column 3, see line 264.
     def make_chart(
@@ -588,10 +644,10 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
         chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = params.simulation_time
+        chart.x_axis.scaling.max = params.simulation_length
         chart.legend = None
 
-        max_row = params.simulation_time + FIRST_DATA_ROW - 1
+        max_row = params.simulation_length + FIRST_DATA_ROW - 1
         xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
         values = Reference(
             sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row
@@ -610,12 +666,12 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
         chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = params.simulation_time
+        chart.x_axis.scaling.max = params.simulation_length
         chart.y_axis.scaling.min = 0
         chart.y_axis.scaling.max = 50
         chart.legend = None
 
-        max_row = params.simulation_time + FIRST_DATA_ROW - 1
+        max_row = params.simulation_length + FIRST_DATA_ROW - 1
         xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
         values = Reference(
             sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row
@@ -634,11 +690,11 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
         chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = params.simulation_time
+        chart.x_axis.scaling.max = params.simulation_length
         assert chart.legend is not None
         chart.legend.position = "b"
 
-        max_row = params.simulation_time + FIRST_DATA_ROW - 1
+        max_row = params.simulation_length + FIRST_DATA_ROW - 1
         xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
         values1 = Reference(
             sheet, min_col=col1, min_row=FIRST_DATA_ROW - 1, max_row=max_row
@@ -727,7 +783,7 @@ def main() -> None:
     # params are labeled  with p<platform number><time in seconds> recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
         filename_prefix="platform3",
-        simulation_time=600,
+        simulation_length=600,
         platform_width=18,
         platform_length=900,
         usable_platform_area_multiplier=0.75,
@@ -767,7 +823,7 @@ def main() -> None:
     )
     params_p3300 = Params(
         filename_prefix="platform3",
-        simulation_time=600,
+        simulation_length=600,
         platform_width=18,
         platform_length=900,
         usable_platform_area_multiplier=0.75,
@@ -807,7 +863,7 @@ def main() -> None:
     )
     params_p3recon120 = Params(
         filename_prefix="platform3_recon",
-        simulation_time=600,
+        simulation_length=600,
         platform_width=18,
         platform_length=900,
         usable_platform_area_multiplier=0.75,
@@ -847,7 +903,7 @@ def main() -> None:
     )
     params_p3recon300 = Params(
         filename_prefix="platform3_recon",
-        simulation_time=600,
+        simulation_length=600,
         platform_width=18,
         platform_length=900,
         usable_platform_area_multiplier=0.75,
@@ -887,7 +943,7 @@ def main() -> None:
     )
     params_p60 = Params(
         filename_prefix="platform6",
-        simulation_time=600,
+        simulation_length=600,
         platform_width=15,
         platform_length=1100,
         usable_platform_area_multiplier=0.75,
@@ -927,7 +983,7 @@ def main() -> None:
     )
     params_p10120 = Params(
         filename_prefix="platform10",
-        simulation_time=600,
+        simulation_length=600,
         platform_width=42,
         platform_length=1100,
         usable_platform_area_multiplier=0.75,
@@ -967,7 +1023,7 @@ def main() -> None:
     )
     params_p11120 = Params(
         filename_prefix="platform11",
-        simulation_time=600,
+        simulation_length=600,
         platform_width=18,
         platform_length=1100,
         usable_platform_area_multiplier=0.75,
