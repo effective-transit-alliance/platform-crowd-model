@@ -220,6 +220,64 @@ class Params:
     """Number of passengers already on the platform at time 0 wanting to board train 2."""
 
 
+@dataclass
+class Instant:
+    """
+    An instant in the simulation.
+    """
+
+    time: int
+    """Time (in seconds)."""
+
+    train1_pax: float
+    """Train 1 number of passengers."""
+
+    train2_pax: float
+    """Train 2 number of passengers."""
+
+    train1_off_rate: float
+    """Train 1 alighting rate (in pax/s)."""
+
+    train2_off_rate: float
+    """Train 2 alighting rate (in pax/s)."""
+
+    train1_on_rate: float
+    """Train 1 boarding rate (in pax/s)."""
+
+    train2_on_rate: float
+    """Train 2 boarding rate (in pax/s)."""
+
+    down_rate: float
+    """Downstairs rate (in pax/s)."""
+
+    up_rate: float
+    """Upstairs rate (in pax/s)."""
+
+    train1_departing_pax_on_platform: float
+    """Train 1 departing passengers on platform."""
+
+    train2_departing_pax_on_platform: float
+    """Train 2 departing passengers on platform."""
+
+    arrived_pax_waiting_on_platform: float
+    """Number of passengers who arrived on platform."""
+
+    total_pax_on_platform: float
+    """Total number of passengers on platform."""
+
+    platform_crowding: float
+    """Platform space per passenger (in square feet)."""
+
+    net_pax_flow_rate: float
+    """Net platform flow rate."""
+
+    platform_crowd_los: str
+    """Platform crowding LOS (level of service)"""
+
+    egress_los: str
+    """Egress LOS (level of service)."""
+
+
 def calc_workbook(params: Params) -> openpyxl.Workbook:
     eff_area = (
         params.platform_width
@@ -462,42 +520,63 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             + " pax are upstairs"
         )
         """
+
+        instant = Instant(
+            time=time_after,
+            train1_pax=train1_remaining_arrivals + train1_new_pax,
+            train2_pax=train2_remaining_arrivals + train2_new_pax,
+            arrived_pax_waiting_on_platform=arrived_pax_waiting_on_plat,
+            train1_off_rate=train1_off_rate,
+            train2_off_rate=train2_off_rate,
+            train1_on_rate=train1_on_rate,
+            train2_on_rate=train2_on_rate,
+            down_rate=plat_ingress_rate_1 + plat_ingress_rate_2,
+            train1_departing_pax_on_platform=train1_boarders_on_plat,
+            train2_departing_pax_on_platform=train2_boarders_on_plat,
+            total_pax_on_platform=total_pax_on_platform,
+            platform_crowding=inst_crowding,
+            up_rate=plat_egress_rate,
+            net_pax_flow_rate=(
+                plat_ingress_rate_1
+                + plat_ingress_rate_2
+                + train1_off_rate
+                + train2_off_rate
+                - plat_egress_rate
+                - train1_on_rate
+                - train2_on_rate
+            ),
+            platform_crowd_los=plat_crowd_grade(inst_crowding),
+            egress_los=egress_crowd_grade(params.total_vce_width, plat_egress_rate),
+        )
+
         row = time_after + FIRST_DATA_ROW
 
         def get_cell(column: int) -> Cell | MergedCell:
             return sheet.cell(row=row, column=column)
 
-        get_cell(columns.time_after).value = time_after
-        get_cell(columns.train1_pax).value = train1_remaining_arrivals + train1_new_pax
-        get_cell(columns.train2_pax).value = train2_remaining_arrivals + train2_new_pax
+        get_cell(columns.time_after).value = instant.time
+        get_cell(columns.train1_pax).value = instant.train1_pax
+        get_cell(columns.train2_pax).value = instant.train2_pax
         get_cell(
             columns.arrived_pax_waiting_on_plat
-        ).value = arrived_pax_waiting_on_plat
-        get_cell(columns.train1_off_rate).value = train1_off_rate
-        get_cell(columns.train2_off_rate).value = train2_off_rate
-        get_cell(columns.train1_on_rate).value = train1_on_rate
-        get_cell(columns.train2_on_rate).value = train2_on_rate
-        get_cell(columns.down_rate).value = plat_ingress_rate_1 + plat_ingress_rate_2
-        get_cell(columns.departing_pax_on_plat_1).value = train1_boarders_on_plat
-        get_cell(columns.departing_pax_on_plat_2).value = train2_boarders_on_plat
-        net_pax_flow_rate = (
-            plat_ingress_rate_1
-            + plat_ingress_rate_2
-            + train1_off_rate
-            + train2_off_rate
-            - plat_egress_rate
-            - train1_on_rate
-            - train2_on_rate
-        )
-        get_cell(columns.total_pax_on_platform).value = total_pax_on_platform
-        get_cell(columns.inst_crowding).value = inst_crowding
-        get_cell(columns.up_rate).value = plat_egress_rate
-        get_cell(columns.net_pax_flow_rate).value = net_pax_flow_rate
-        get_cell(columns.plat_crowd_los).value = plat_crowd_grade(inst_crowding)
-
-        get_cell(columns.egress_los).value = egress_crowd_grade(
-            params.total_vce_width, plat_egress_rate
-        )
+        ).value = instant.arrived_pax_waiting_on_platform
+        get_cell(columns.train1_off_rate).value = instant.train1_off_rate
+        get_cell(columns.train2_off_rate).value = instant.train2_off_rate
+        get_cell(columns.train1_on_rate).value = instant.train1_on_rate
+        get_cell(columns.train2_on_rate).value = instant.train2_on_rate
+        get_cell(columns.down_rate).value = instant.down_rate
+        get_cell(
+            columns.departing_pax_on_plat_1
+        ).value = instant.train1_departing_pax_on_platform
+        get_cell(
+            columns.departing_pax_on_plat_2
+        ).value = instant.train2_departing_pax_on_platform
+        get_cell(columns.total_pax_on_platform).value = instant.total_pax_on_platform
+        get_cell(columns.inst_crowding).value = instant.platform_crowding
+        get_cell(columns.up_rate).value = instant.up_rate
+        get_cell(columns.net_pax_flow_rate).value = instant.net_pax_flow_rate
+        get_cell(columns.plat_crowd_los).value = instant.platform_crowd_los
+        get_cell(columns.egress_los).value = instant.egress_los
 
     # Time gets exported to column 3, see line 264.
     def make_chart(
