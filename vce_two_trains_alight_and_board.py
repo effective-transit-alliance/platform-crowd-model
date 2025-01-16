@@ -174,10 +174,10 @@ class Params:
     platform_length: int
     """Platform length (in feet)."""
 
-    effective_platform_area_multiplier: float
+    usable_platform_area_multiplier: float
     """
-    A multiplier to estimate the effective platform area given obstructive elements
-    on the platform (e.x. stairs, escalators, elevators, columns).
+    A multiplier to estimate the usable platform area (in square feet)
+    given obstructive elements on the platform (e.x. stairs, escalators, elevators, columns).
     """
 
     train1_arriving_pax: int
@@ -224,7 +224,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     eff_area = (
         params.platform_width
         * params.platform_length
-        * params.effective_platform_area_multiplier
+        * params.usable_platform_area_multiplier
     )
 
     www = params.vce_widths[0, :]
@@ -263,7 +263,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     make_row(params.platform_width, "Platform width (ft)")
     make_row(params.platform_length, "Platform length (ft)")
     make_row(params.total_vce_width, "Total VCE width (ft)")
-    make_row(params.effective_platform_area_multiplier, "Effective Area Multiplier")
+    make_row(params.usable_platform_area_multiplier, "Effective Area Multiplier")
     make_row(eff_area, "Usable Platform Area (sqft)")
     make_row(params.train1_arriving_pax, "Train 1 Arriving Passengers")
     make_row(params.train1_departing_pax, "Train 1 Departing Passengers")
@@ -651,7 +651,7 @@ def main() -> None:
         simulation_time=600,
         platform_width=18,
         platform_length=900,
-        effective_platform_area_multiplier=0.75,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
         train1_departing_pax=400,
@@ -691,7 +691,7 @@ def main() -> None:
         simulation_time=600,
         platform_width=18,
         platform_length=900,
-        effective_platform_area_multiplier=0.75,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
         train1_departing_pax=400,
@@ -731,7 +731,7 @@ def main() -> None:
         simulation_time=600,
         platform_width=18,
         platform_length=900,
-        effective_platform_area_multiplier=0.75,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
         train1_departing_pax=400,
@@ -771,7 +771,7 @@ def main() -> None:
         simulation_time=600,
         platform_width=18,
         platform_length=900,
-        effective_platform_area_multiplier=0.75,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
         train1_departing_pax=400,
@@ -811,7 +811,7 @@ def main() -> None:
         simulation_time=600,
         platform_width=15,
         platform_length=1100,
-        effective_platform_area_multiplier=0.75,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
         train1_departing_pax=400,
@@ -851,7 +851,7 @@ def main() -> None:
         simulation_time=600,
         platform_width=42,
         platform_length=1100,
-        effective_platform_area_multiplier=0.75,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
         train1_departing_pax=400,
@@ -891,7 +891,7 @@ def main() -> None:
         simulation_time=600,
         platform_width=18,
         platform_length=1100,
-        effective_platform_area_multiplier=0.75,
+        usable_platform_area_multiplier=0.75,
         train1_arriving_pax=1620,
         train2_arriving_pax=1620,
         train1_departing_pax=400,
