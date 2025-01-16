@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 # keep high VCE egress rate if queues at stairs are long
-def alight_rate_fn(k: float, t: float, t0: float, u: float) -> float:
+def alight_rate(k: float, t: float, t0: float, u: float) -> float:
     """
     :param k: number of people waiting to get off train
     :param t: time pass counter (s)
@@ -39,7 +39,7 @@ def alight_rate_fn(k: float, t: float, t0: float, u: float) -> float:
         return 0
 
 
-def plat_clearance_fn(karr: float, a: float, w: float, qmax: float) -> float:
+def platform_clearance(karr: float, a: float, w: float, qmax: float) -> float:
     """
     :param a: usable platform area
     :param w: total width of vertical circulation elements
@@ -60,7 +60,7 @@ def plat_clearance_fn(karr: float, a: float, w: float, qmax: float) -> float:
         )
 
 
-def plat_ingress_fn(kdep: float, a: float, w: float, r_up: float) -> float:
+def platform_ingress(kdep: float, a: float, w: float, r_up: float) -> float:
     """
     :param kdep: number of people waiting to get onto a stairwell
     :param a: usable concourse area
@@ -90,14 +90,14 @@ def plat_ingress_fn(kdep: float, a: float, w: float, r_up: float) -> float:
         return 0
 
 
-def boarder_frac_fn(trainA_boarders: float, trainB_boarders: float) -> float:
+def boarder_fraction(trainA_boarders: float, trainB_boarders: float) -> float:
     if trainA_boarders + trainB_boarders > 0:
         return trainA_boarders / (trainB_boarders + trainA_boarders)
     else:
         return 1
 
 
-def board_rate_fn(
+def board_rate(
     r_max: float,
     r_off: float,
     sim_t: float,
@@ -122,7 +122,7 @@ def board_rate_fn(
         return 0
 
 
-def space_per_pax_fn(k: float, a: float) -> float:
+def space_per_pax(k: float, a: float) -> float:
     """
     :param k: people on platform (pax)
     :param a: usable platform area (ft^2)
@@ -134,7 +134,7 @@ def space_per_pax_fn(k: float, a: float) -> float:
         return a
 
 
-def plat_crowd_grade(inst_crowding: float) -> str:
+def platform_crowd_los(inst_crowding: float) -> str:
     if inst_crowding > 35:
         return "A"
     elif 25 < inst_crowding <= 35:
@@ -149,7 +149,7 @@ def plat_crowd_grade(inst_crowding: float) -> str:
         return "F"
 
 
-def egress_crowd_grade(w: float, plat_egress_rate: float) -> str:
+def egress_crowd_los(w: float, plat_egress_rate: float) -> str:
     if plat_egress_rate <= w * 5 / 60:
         return "A"
     elif w * 5 / 60 < plat_egress_rate <= w * 7 / 60:
@@ -440,7 +440,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         raise AttributeError(Instant, attr_name)
 
     for time_after in range(0, params.simulation_length):
-        train1_off_rate = alight_rate_fn(
+        train1_off_rate = alight_rate(
             train1_remaining_arrivals,
             time_after,
             params.train1_arrival_time,
@@ -449,7 +449,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         train1_remaining_arrivals -= train1_off_rate
         if train1_remaining_arrivals < 0:
             train1_remaining_arrivals = 0
-        train2_off_rate = alight_rate_fn(
+        train2_off_rate = alight_rate(
             train2_remaining_arrivals,
             time_after,
             params.train2_arrival_time,
@@ -460,7 +460,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             train2_remaining_arrivals = 0
         total_pax_on_platform += train1_off_rate + train2_off_rate
         arrived_pax_waiting_on_plat += train1_off_rate + train2_off_rate
-        plat_egress_rate = plat_clearance_fn(
+        plat_egress_rate = platform_clearance(
             arrived_pax_waiting_on_plat,
             eff_area,
             params.total_vce_width,
@@ -470,26 +470,26 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         if arrived_pax_waiting_on_plat < 0:
             arrived_pax_waiting_on_plat = 0
         total_pax_on_platform -= plat_egress_rate
-        plat_ingress_rate_1 = plat_ingress_fn(
+        plat_ingress_rate_1 = platform_ingress(
             train1_boarders_upstairs,
             5000,
             params.total_vce_width
-            * boarder_frac_fn(train1_boarders_upstairs, train2_boarders_upstairs),
+            * boarder_fraction(train1_boarders_upstairs, train2_boarders_upstairs),
             plat_egress_rate,
         )
 
-        plat_ingress_rate_2 = plat_ingress_fn(
+        plat_ingress_rate_2 = platform_ingress(
             train2_boarders_upstairs,
             5000,
             params.total_vce_width
-            * boarder_frac_fn(train2_boarders_upstairs, train1_boarders_upstairs),
+            * boarder_fraction(train2_boarders_upstairs, train1_boarders_upstairs),
             plat_egress_rate,
         )
         train1_boarders_on_plat += plat_ingress_rate_1
         train2_boarders_on_plat += plat_ingress_rate_2
         total_pax_on_platform += plat_ingress_rate_1
         total_pax_on_platform += plat_ingress_rate_2
-        train1_on_rate = board_rate_fn(
+        train1_on_rate = board_rate(
             params.train1_doors,
             train1_off_rate,
             time_after,
@@ -497,7 +497,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             params.simulation_length,
             train1_boarders_on_plat,
         )
-        train2_on_rate = board_rate_fn(
+        train2_on_rate = board_rate(
             params.train2_doors,
             train2_off_rate,
             time_after,
@@ -522,7 +522,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
         train2_new_pax += train2_on_rate
 
-        inst_crowding = space_per_pax_fn(total_pax_on_platform, eff_area)
+        inst_crowding = space_per_pax(total_pax_on_platform, eff_area)
         if total_pax_on_platform < 0:
             total_pax_on_platform = 0
         if train1_boarders_on_plat < 0:
@@ -586,8 +586,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
                 - train1_on_rate
                 - train2_on_rate
             ),
-            platform_crowd_los=plat_crowd_grade(inst_crowding),
-            egress_los=egress_crowd_grade(params.total_vce_width, plat_egress_rate),
+            platform_crowd_los=platform_crowd_los(inst_crowding),
+            egress_los=egress_crowd_los(params.total_vce_width, plat_egress_rate),
         )
 
         for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
