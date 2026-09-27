@@ -130,7 +130,9 @@ each using the passenger counts left by the one before.
        ([p. 10-20](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=24)).
      - Stairs go both ways, but escalators go one way.
        A platform's only escalator goes up.
-       With more, the westernmost goes up and the easternmost goes down.
+       With more, the easternmost, toward 7th Avenue, goes up,
+       and the westernmost, toward 8th Avenue, goes down,
+       matching the AM peak, when most passengers are heading toward 7th Avenue.
        Any others go up while the platform is alighting,
        then reverse to go down once fewer than 10% of a train's arriving passengers
        are left on the platform or aboard trains that have arrived,
@@ -219,7 +221,8 @@ or **unclear** (it could go either way).
 - **Pessimistic:** All VCEs are treated as stairs, even escalators, which have higher capacities.
 - **Unclear:** On platforms 3 and 6, which escalators run which way isn't known,
   so they follow the rules above.
-  Which escalator goes down, and when the extra ones reverse, aren't from any source.
+  Which escalator goes down is based on AM peak demand toward 7th Avenue,
+  and when the extra ones reverse isn't from any source.
   Elsewhere, one VCE per platform is excluded (pessimistic), as the ETA report did.
 - **Optimistic:** On platforms other than 3 and 6, all VCEs act as one pooled queue
   (see [Stairs Are One Pooled Queue](#stairs-are-one-pooled-queue)).
@@ -677,19 +680,19 @@ which clears sooner (see [Stairs Are One Pooled Queue](#stairs-are-one-pooled-qu
 <!-- results-table:start -->
 | Platform | Headway | VCE width | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max up rate (pax/s) | Max pax on platform | Max density (pax/m²) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 3 | 0:00 | 43 ft | 0:00, 0:00, 3:34, 3:34 | 3:34, 3:34, 0:56, 0:56 | 8:08 | 8:58 | 4:31 | 6:45 | 11.38 | 3718 | 3.29 (D) |
+| 3 | 0:00 | 43 ft | 0:00, 0:00, 3:36, 3:36 | 3:36, 3:36, 0:56, 0:56 | 7:59 | 8:50 | 4:32 | 7:04 | 11.31 | 3736 | 3.31 (D) |
 | 3 (recon) | 0:00 | 44.75 ft | 0:00, 0:00, 3:38, 3:38 | 3:38, 3:38, 0:44, 0:44 | 6:56 | 7:11 | 7:12 | 7:04 | 12.68 | 3803 | 3.37 (D) |
-| 6 | 0:00 | 30.83 ft | 0:00, 0:00, 7:25, 7:25 | 7:25, 7:25, 1:05, 1:05 | 14:17 | 15:35 | 8:30 | 12:45 | 7.82 | 3961 | 3.45 (D) |
+| 6 | 0:00 | 30.83 ft | 0:00, 0:00, 7:25, 7:25 | 7:25, 7:25, 1:05, 1:05 | 14:01 | 15:02 | 8:30 | 13:00 | 7.91 | 3948 | 3.43 (D) |
 | 10 | 0:00 | 70.58 ft | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 5:09 | 5:24 | 1:26 | 5:24 | 20.00 | 5740 | 1.78 (D) |
 | 11 | 0:00 | 43.58 ft | 0:00, 0:00, 4:31, 4:31 | 4:31, 4:31, 0:43, 0:43 | 8:39 | 8:54 | 5:14 | 8:44 | 12.35 | 4314 | 3.13 (D) |
-| 3 | 2:00 | 43 ft | 0:00, 2:00, 4:00, 7:18 | 1:00, 5:18, 3:19, 1:05 | 9:07 | 9:49 | 8:23 | 5:21 | 11.38 | 1418 | 1.26 (C) |
+| 3 | 2:00 | 43 ft | 0:00, 2:00, 4:00, 7:16 | 0:59, 5:16, 3:17, 1:02 | 9:04 | 9:40 | 8:18 | 5:41 | 11.31 | 1429 | 1.27 (C) |
 | 3 (recon) | 2:00 | 44.75 ft | 0:00, 2:00, 4:00, 6:53 | 0:44, 4:53, 2:53, 0:44 | 8:25 | 8:40 | 7:37 | 7:04 | 12.68 | 1332 | 1.18 (C) |
-| 6 | 2:00 | 30.83 ft | 0:00, 2:00, 4:00, 12:02 | 1:05, 10:02, 7:43, 1:05 | 15:16 | 16:33 | 13:07 | 12:50 | 7.82 | 2812 | 2.45 (D) |
+| 6 | 2:00 | 30.83 ft | 0:00, 2:00, 4:00, 11:40 | 1:05, 9:40, 7:41, 1:05 | 14:50 | 15:27 | 12:45 | 13:04 | 7.91 | 2780 | 2.42 (D) |
 | 10 | 2:00 | 70.58 ft | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 7:06 | 7:21 | 6:43 | 5:24 | 20.00 | 1360 | 0.42 (A) |
 | 11 | 2:00 | 43.58 ft | 0:00, 2:00, 4:00, 8:10 | 0:43, 6:10, 4:10, 0:43 | 10:07 | 10:22 | 10:22 | 8:44 | 12.35 | 1613 | 1.17 (C) |
-| 3 | 5:00 | 43 ft | 0:00, 5:00, 10:00, 15:00 | 1:00, 1:00, 1:00, 1:00 | 16:49 | 17:31 | 16:00 | 5:04 | 11.38 | 1374 | 1.22 (C) |
+| 3 | 5:00 | 43 ft | 0:00, 5:00, 10:00, 15:00 | 0:59, 0:59, 0:59, 0:59 | 16:48 | 17:24 | 15:59 | 4:56 | 11.31 | 1380 | 1.22 (C) |
 | 3 (recon) | 5:00 | 44.75 ft | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:32 | 16:47 | 15:44 | 7:04 | 12.68 | 1319 | 1.17 (C) |
-| 6 | 5:00 | 30.83 ft | 0:00, 5:00, 10:00, 15:00 | 1:05, 1:05, 1:05, 1:05 | 18:14 | 19:31 | 16:05 | 12:12 | 7.82 | 1758 | 1.53 (C) |
+| 6 | 5:00 | 30.83 ft | 0:00, 5:00, 10:00, 15:00 | 1:05, 1:05, 1:05, 1:05 | 18:10 | 18:47 | 16:05 | 12:36 | 7.91 | 1759 | 1.53 (C) |
 | 10 | 5:00 | 70.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:06 | 16:21 | 15:43 | 5:24 | 20.00 | 1340 | 0.42 (A) |
 | 11 | 5:00 | 43.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:57 | 17:12 | 15:43 | 8:44 | 12.35 | 1600 | 1.16 (C) |
 <!-- results-table:end -->
@@ -808,3 +811,9 @@ and each fix's effect is summarized here.
   Platform 3 with 2-minute headways finishes boarding at 284 s instead of 457 s,
   but with 5-minute headways at 363 s instead of 351 s, since the busiest cars' doors hold them up.
   Platform 6 finishes boarding at 372 s instead of 556 s.
+- **Ran the escalator toward 7th Avenue up and the one toward 8th Avenue down,**
+  instead of the other way around, matching AM peak demand toward 7th Avenue.
+  Platform 3 with 2-minute headways clears at 318 s instead of 325 s,
+  and finishes boarding at 293 s instead of 284 s.
+  Platform 6 clears at 497 s instead of 510 s,
+  and finishes boarding at 383 s instead of 372 s.

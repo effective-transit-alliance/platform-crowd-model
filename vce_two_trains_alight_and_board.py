@@ -554,8 +554,10 @@ def vce_roles(vces: tuple[Vce, ...]) -> list[Role]:
     """
     What each VCE does.
     A platform's only escalator goes up.
-    With more, the westernmost goes up, the easternmost goes down,
+    With more, the easternmost, toward 7th Avenue, goes up,
+    the westernmost, toward 8th Avenue, goes down,
     and the rest are `reversible`, going up while the platform is alighting.
+    This matches the AM peak, when most passengers are heading toward 7th Avenue.
     """
     escalators = sorted(
         (i for i, vce in enumerate(vces) if vce.type == "escalator"),
@@ -565,9 +567,9 @@ def vce_roles(vces: tuple[Vce, ...]) -> list[Role]:
     for i in escalators:
         roles[i] = "reversible"
     if escalators:
-        roles[escalators[0]] = "up"
+        roles[escalators[-1]] = "up"
     if len(escalators) > 1:
-        roles[escalators[-1]] = "down"
+        roles[escalators[0]] = "down"
     return roles
 
 
