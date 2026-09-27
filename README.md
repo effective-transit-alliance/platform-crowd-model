@@ -68,7 +68,7 @@ Each second:
    once the remaining arrived passengers fit in them, they taper off.
    The few seconds of walking from the doors to the stairs are ignored.
 3. **Coming downstairs.** Departing passengers come down with whatever stair capacity
-   the upward flow leaves, up to 12 pax/min/ft,
+   the upward flow leaves, up to the LOS C/D boundary, 10 pax/min/ft,
    and also limited by Fruin's stair equation, P = (111M − 162)/M² pax/min/ft,
    with M the space per departing passenger
    in a 5,000 sqft concourse,
@@ -135,3 +135,6 @@ and each fix's effect is summarized here.
 - **Stopped double counting the upward flow against downward flow:**
   each train's share of the stairs had the whole upward flow subtracted from it.
   This barely matters: 0.1 more departing passengers come down on platform 3.
+- **Stopped flow in both directions on stairs at 10 pax/min/ft, not 12,**
+  per the report and the LOS C/D boundary.
+  No effect yet, since the concourse-density limit on downward flow always binds first.

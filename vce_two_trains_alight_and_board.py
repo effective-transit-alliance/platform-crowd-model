@@ -83,7 +83,8 @@ def platform_ingress(kdep: float, a: float, w: float, r_up: float) -> float:
         return min(
             kdep,
             min(
-                max(0, 12 * w / 60 - r_up),
+                # No flow in both directions past the LOS C/D boundary, 10 pax/min/ft.
+                max(0, 10 * w / 60 - r_up),
                 # Max of downstairs LOS C/D boundary flow rate
                 max(
                     0,
