@@ -123,27 +123,17 @@ class Assumptions:
     Fruin, p. 14: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14
     """
 
-    stair_queue_min_flow: Annotated[
-        float, Field(name="Stair Queue Minimum Flow", units="pax/min/ft")
-    ] = 10
-    """
-    Minimum upward stair flow while more arriving passengers are on the platform
-    than fit in the stair queues, the LOS C/D boundary.
-    From the ETA report.
-    """
-
     stair_queue_space: Annotated[float, Field(name="Stair Queue Space", units="ft^2/pax")] = 5
     """
     Space per passenger queued at the stairs.
+    Only used to report when the arriving passengers fit in the stair queues (the taper time).
     TCQSM p. 10-51: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
     """
 
     stair_queue_length: Annotated[float, Field(name="Stair Queue Length", units="ft")] = 20
     """
-    Length of the queue in front of each stair.
-    While more arriving passengers are on the platform than fit in these queues,
-    the upward flow is at least `stair_queue_min_flow`;
-    once they fit, they start to taper off.
+    Length of the queue in front of each stair,
+    used to report when the arriving passengers start to taper off.
     From the ETA report.
     """
 
@@ -247,28 +237,21 @@ def alight_rate(k: float, t: float, t0: float | None, u: float) -> float:
         return 0
 
 
-def platform_clearance(
-    karr: float, area: float, w: float, max_pax_in_stair_queues: float, assumptions: Assumptions
-) -> float:
+def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float:
     """
-    A bug: Fruin's equation is applied with the platform's space per passenger,
-    not the stair's.
-    See the README's "Known Bugs".
+    Arriving passengers queue at the stairs,
+    which discharge them at `Assumptions.stair_capacity` as long as anyone is queued.
 
-    :param karr: number of arriving passengers on the platform heading upstairs
-    :param area: usable platform area (ft^2)
+    Fruin's stair equation relates flow to the space per passenger *on the stair*,
+    which a queued stair holds near its critical density,
+    so it doesn't apply to the space per passenger on the platform.
+    The few seconds of walking from the doors to the stairs are ignored.
+
+    :param karr: number of arriving passengers on the platform (pax)
     :param w: total width of vertical circulation elements (ft)
-    :param max_pax_in_stair_queues: number of people that fit in the stair queues
     :return: platform egress rate on stairs (pax/s)
     """
-    flow = min(
-        stair_flow(assumptions.stair_capacity, w),
-        stair_flow(fruin_ascending_stair_flow(area / max(1, karr)), w),
-    )
-    if karr <= max_pax_in_stair_queues:
-        return min(karr, flow)
-    else:
-        return max(stair_flow(assumptions.stair_queue_min_flow, w), flow)
+    return min(karr, stair_flow(assumptions.stair_capacity, w))
 
 
 def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumptions) -> float:
@@ -735,11 +718,7 @@ def calc_workbook(
         total_pax_on_platform += sum(off_rates)
         arriving_pax_waiting_on_plat += sum(off_rates)
         plat_egress_rate = platform_clearance(
-            arriving_pax_waiting_on_plat,
-            eff_area,
-            params.total_vce_width,
-            max_pax_in_stair_queues,
-            assumptions,
+            arriving_pax_waiting_on_plat, params.total_vce_width, assumptions
         )
         arriving_pax_waiting_on_plat -= plat_egress_rate
         if arriving_pax_waiting_on_plat < 0:
