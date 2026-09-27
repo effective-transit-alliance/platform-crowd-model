@@ -93,6 +93,7 @@ Times are seconds after the first train arrives.
 - **Time at capacity:** how long the upstairs rate is at LOS E capacity.
 - **Taper time:** the last second more arrived passengers are on the platform than fit in the stair queues.
 - **Clear time:** when the last arrived passenger leaves the platform, if within the 600 s simulated.
+- **Boarded time:** when the last departing passenger boards, if within the 600 s simulated.
 - **Max pax on platform** and **Min space/pax:** the most crowded moment on the platform, with its LOS.
 
 The ETA report quotes the first three for platform 3 with trains 2 minutes apart:
@@ -101,15 +102,15 @@ and 12.04 pax/s for 32 s, tapering at 364 s, without it.
 
 ### Current Results
 
-| Platform | Headway | VCE width | Max up rate (pax/s) | Time at capacity | Taper time | Clear time | Max pax on platform | Min space/pax (sqft) |
-|---|---|---|---|---|---|---|---|---|
-| platform3 | 120 s | 42.5 ft | 12.04 | 269 s | 254 s | 269 s | 1521 | 8.0 (E) |
-| platform3 | 300 s | 42.5 ft | 12.04 | 268 s | 420 s | 435 s | 1521 | 8.0 (E) |
-| platform3_recon | 120 s | 44.75 ft | 12.68 | 255 s | 241 s | 256 s | 1496 | 8.1 (E) |
-| platform3_recon | 300 s | 44.75 ft | 12.68 | 254 s | 413 s | 428 s | 1496 | 8.1 (E) |
-| platform6 | 0 s | 48.168 ft | 13.65 | 237 s | 223 s | 238 s | 3057 | 4.0 (F) |
-| platform10 | 120 s | 70.58 ft | 20.00 | 162 s | 186 s | 201 s | 1205 | 28.8 (B) |
-| platform11 | 120 s | 43.58 ft | 12.35 | 262 s | 248 s | 263 s | 1509 | 9.8 (E) |
+| Platform | Headway | VCE width | Max up rate (pax/s) | Time at capacity | Taper time | Clear time | Boarded time | Max pax on platform | Min space/pax (sqft) |
+|---|---|---|---|---|---|---|---|---|---|
+| platform3 | 120 s | 42.5 ft | 12.04 | 269 s | 254 s | 269 s | never | 1521 | 8.0 (E) |
+| platform3 | 300 s | 42.5 ft | 12.04 | 268 s | 420 s | 435 s | never | 1521 | 8.0 (E) |
+| platform3_recon | 120 s | 44.75 ft | 12.68 | 255 s | 241 s | 256 s | never | 1496 | 8.1 (E) |
+| platform3_recon | 300 s | 44.75 ft | 12.68 | 254 s | 413 s | 428 s | never | 1496 | 8.1 (E) |
+| platform6 | 0 s | 48.168 ft | 13.65 | 237 s | 223 s | 238 s | never | 3057 | 4.0 (F) |
+| platform10 | 120 s | 70.58 ft | 20.00 | 162 s | 186 s | 201 s | never | 1205 | 28.8 (B) |
+| platform11 | 120 s | 43.58 ft | 12.35 | 262 s | 248 s | 263 s | never | 1509 | 9.8 (E) |
 
 ### History
 

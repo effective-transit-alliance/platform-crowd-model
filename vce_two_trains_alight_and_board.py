@@ -418,6 +418,9 @@ class Summary:
     clear_time: int | None
     """First second after the last arrival when all arrived passengers have left the platform."""
 
+    boarded_time: int | None
+    """First second when all departing passengers have boarded, or `None` if they never do."""
+
     max_pax_on_platform: float
     """Most passengers on the platform at once."""
 
@@ -469,6 +472,7 @@ def calc_workbook(params: Params) -> tuple[openpyxl.Workbook, Summary]:
         secs_at_capacity=0,
         taper_time=None,
         clear_time=None,
+        boarded_time=None,
         max_pax_on_platform=total_pax_on_platform,
         min_space_per_pax=space_per_pax(total_pax_on_platform, eff_area),
     )
@@ -609,6 +613,15 @@ def calc_workbook(params: Params) -> tuple[openpyxl.Workbook, Summary]:
             and arrived_pax_waiting_on_plat < 1
         ):
             summary.clear_time = time_after
+        if (
+            summary.boarded_time is None
+            and train1_boarders_upstairs
+            + train2_boarders_upstairs
+            + train1_boarders_on_plat
+            + train2_boarders_on_plat
+            < 1
+        ):
+            summary.boarded_time = time_after
         summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
         summary.min_space_per_pax = min(summary.min_space_per_pax, inst_crowding)
 
@@ -776,6 +789,7 @@ RESULTS_COLUMNS = [
     "Time at capacity",
     "Taper time",
     "Clear time",
+    "Boarded time",
     "Max pax on platform",
     "Min space/pax (sqft)",
 ]
@@ -802,6 +816,7 @@ def run_model(params: Params) -> str:
         f"| {params.filename_prefix} | {headway} s | {params.total_vce_width} ft"
         f" | {summary.max_up_rate:.2f} | {summary.secs_at_capacity} s"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
+        f" | {fmt_time(summary.boarded_time)}"
         f" | {summary.max_pax_on_platform:.0f} | {summary.min_space_per_pax:.1f}"
         f" ({platform_crowd_los(summary.min_space_per_pax)}) |"
     )
