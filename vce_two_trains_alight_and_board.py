@@ -50,9 +50,7 @@ class Assumptions:
     """
     Everything the model assumes, shared by every scenario,
     as opposed to the facts about each scenario in `Params`.
-    The defaults are the model's current assumptions,
-    the same as in the `penn-station-can-handle-the-load` tag that the ETA report used,
-    including some that are bugs, documented in the README's "Known Bugs";
+    The defaults are the model's current assumptions;
     override any of them to see how sensitive the results are to it,
     e.g. `Assumptions(stair_capacity=15)`.
     """
