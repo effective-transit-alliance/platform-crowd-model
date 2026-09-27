@@ -299,9 +299,8 @@ def board_rate(
     boarders: float,
 ) -> float:
     """
-    A bug: boarding uses whatever door capacity alighting leaves in the same second,
-    though the ETA report says nobody boards until everyone has alighted.
-    See the README's "Known Bugs".
+    Nobody boards until everyone has alighted, per the ETA report,
+    i.e. the second after `r_off` is last nonzero.
 
     :param r_max: maximum boarding rate across all doors (pax/s)
     :param r_off: train alight rate (pax/s)
@@ -310,8 +309,8 @@ def board_rate(
     :param boarders: number of passengers waiting on platform to board
     :return: train ingress rate across all doors (pax/s)
     """
-    if arr_t is not None and arr_t < sim_t:
-        return min(r_max - r_off, boarders)
+    if arr_t is not None and arr_t < sim_t and r_off == 0:
+        return min(r_max, boarders)
     else:
         return 0
 
