@@ -10,6 +10,7 @@ import dataclasses
 import functools
 import itertools
 import typing
+from collections import defaultdict
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -107,6 +108,17 @@ class Assumptions:
     """
     Length of each car, over which its doors are spread evenly.
     An NJ Transit MultiLevel.
+    Only used on platforms with each VCE's position.
+    """
+
+    walking_speed: Annotated[float, Field(name="Walking Speed", units="ft/s")] = (
+        250 / SECONDS_PER_MINUTE
+    )
+    """
+    Speed arriving passengers walk from the doors to the VCEs.
+    The TCQSM's design walking speed, 250 ft/min
+    (p. 10-20: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=24),
+    though people walk slower in crowds, with less than 25 ft^2/pax (Exhibit 10-10, p. 10-21).
     Only used on platforms with each VCE's position.
     """
 
@@ -457,20 +469,44 @@ def distance_to(vce: Vce, position: float) -> float:
     return max(0, vce.west_end - position, position - vce.east_end)
 
 
-def vce_shares(params: Params) -> list[float]:
+@dataclass(frozen=True)
+class Route:
+    """Where some of the arriving passengers go."""
+
+    share: float
+    """Fraction of the arriving passengers."""
+
+    vce: int
+    """Index of the VCE they queue at."""
+
+    walking_time: int
+    """Time (s) they take to walk there."""
+
+
+def vce_routes(params: Params) -> list[Route]:
     """
-    Fraction of arriving passengers going to each VCE.
-    If the VCEs have positions, each door's passengers go to the nearest VCE,
-    or else they spread across the VCEs in proportion to their widths.
+    Where arriving passengers go.
+    If the VCEs have positions, each door's passengers walk to the nearest VCE,
+    or else they spread across the VCEs in proportion to their widths, taking no time.
     """
     if params.platform_east_end is None:
-        return [vce.width / params.total_vce_width for vce in params.vces]
-    shares = [0.0 for _ in params.vces]
+        return [
+            Route(share=vce.width / params.total_vce_width, vce=i, walking_time=0)
+            for i, vce in enumerate(params.vces)
+        ]
     doors = door_positions(params)
+    routes: list[Route] = []
     for door in doors:
         nearest = min(range(len(params.vces)), key=lambda i: distance_to(params.vces[i], door))
-        shares[nearest] += 1 / len(doors)
-    return shares
+        distance = distance_to(params.vces[nearest], door)
+        routes.append(
+            Route(
+                share=1 / len(doors),
+                vce=nearest,
+                walking_time=round(distance / params.assumptions.walking_speed),
+            )
+        )
+    return routes
 
 
 def pooled_vces(total_width: float) -> tuple[Vce, ...]:
@@ -712,7 +748,9 @@ def calc_workbook(
     arriving_pax_waiting_on_plat: float = 0
     vce_queues = [0.0 for _ in params.vces]
     """Arriving passengers queued at each VCE."""
-    shares = vce_shares(params)
+    routes = vce_routes(params)
+    walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in params.vces])
+    """Arriving passengers walking to each VCE, by the time they reach its queue."""
     trains = range(params.trains)
     arrival_times: list[int | None] = [
         train * params.headway if train < 2 else None for train in trains
@@ -821,8 +859,10 @@ def calc_workbook(
             off_rates.append(off_rate)
         total_pax_on_platform += sum(off_rates)
         arriving_pax_waiting_on_plat += sum(off_rates)
-        for i, share in enumerate(shares):
-            vce_queues[i] += sum(off_rates) * share
+        for route in routes:
+            walking[time_after + route.walking_time][route.vce] += sum(off_rates) * route.share
+        for i, reaching in enumerate(walking.pop(time_after, [])):
+            vce_queues[i] += reaching
         vce_up_rates = [
             platform_clearance(queue, vce.width, assumptions)
             for vce, queue in zip(params.vces, vce_queues, strict=True)
