@@ -146,7 +146,7 @@ each using the passenger counts left by the one before.
   (A > 35, B > 25, C > 15, D > 10, E > 5 sq ft/pax, or else F;
   [Fruin, p. 7](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=7)).
 - **On the stairs**, the upward flow is graded with Fruin's stair LOS
-  (A ≤ 5, B ≤ 7, C ≤ 9.5, D ≤ 13, E ≤ 17 pax/min/ft, or else F;
+  (A ≤ 5, B ≤ 7, C ≤ 10, D ≤ 13, E ≤ 17 pax/min/ft, or else F;
   [Fruin, pp. 12–14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12)).
 
 ### Scenarios
@@ -301,13 +301,6 @@ but has only 40 doors, as a 10-car train does, instead of a 12-car train's 48,
 so its passengers take longer to alight and board (pessimistic).
 Platform 3's tracks only fit 10 cars,
 so its trains should instead carry 1,350 passengers (pessimistic too).
-
-### The stair LOS C/D boundary is 9.5 pax/min/ft, not 10
-
-Fruin puts the stair LOS C/D boundary at 10 pax/min/ft
-([pp. 12–14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12)),
-as does the ETA report, but the model uses 9.5.
-This only affects the stair LOS grades, not the flows.
 
 ## Limitations
 
@@ -473,3 +466,5 @@ and each fix's effect is summarized here.
   instead of the ascending one, giving about 15% more downward flow.
   On platform 3, 379.0 of 400 departing passengers come down within 600 s instead of 368.9,
   and on platform 10, all now board, by 548 s.
+- **Put the stair LOS C/D boundary at 10 pax/min/ft, not 9.5,** per the TRB paper and the report.
+  No effect on results.

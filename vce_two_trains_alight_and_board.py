@@ -185,7 +185,7 @@ class Assumptions:
     stair_los_max_flow: tuple[tuple[str, float], ...] = (
         ("A", 5),
         ("B", 7),
-        ("C", 9.5),
+        ("C", 10),
         ("D", 13),
     )
     """
@@ -193,8 +193,6 @@ class Assumptions:
     each grade allows at most this flow (pax/min per ft of width),
     then E up to `stair_capacity`, or else F.
     Fruin, pp. 12-14: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12
-    A bug: Fruin puts the C/D boundary at 10, not 9.5.
-    See `README.md#the-stair-los-cd-boundary-is-95-paxminft-not-10`.
     """
 
 
