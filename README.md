@@ -442,6 +442,29 @@ Neither is clearly complete:
 
 So these counts are a check on the other sources, not a replacement for the FRA's measurements.
 
+### Field Survey
+
+Since no public source has every VCE's width,
+[`data/field_survey.csv`](./data/field_survey.csv) is a sheet for measuring them in person,
+made by [`scripts/make_field_survey.py`](./scripts/make_field_survey.py).
+It lists each platform's VCEs expected from both the 2022 directory and the Master Plan,
+each sorted east to west, since the two can't be aligned reliably,
+starting with platform 3, the ETA report's focus,
+then platform 11, which has no width data.
+Surveyors fill in the columns after `master_plan_mid_ft`:
+
+- `found`: yes, no, or the `id` of another row it duplicates.
+  Add rows for VCEs neither source lists.
+- `clear_width_in`: the width between the handrails at the platform end,
+  which the capacity standards use.
+- `escalator_step_width_in` and `escalator_direction_am_peak` and `_pm_peak`.
+- `nearest_column_number` and `distance_from_east_end_ft`:
+  platform columns' painted numbers give precise positions.
+- `leads_to`: the concourse, which also shows whether the directory shows a VCE twice.
+- `obstructions`: columns, benches, bins, or narrow landings near the bottom,
+  which the FRA found also slow clearing.
+- `photos` and `notes`.
+
 ### Sources and Their Dates
 
 Penn Station's VCEs have changed over time,
