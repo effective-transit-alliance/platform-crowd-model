@@ -78,7 +78,9 @@ Each second:
 
 Space per passenger is the usable platform area (75% of the platform's area)
 divided by everyone on the platform,
-graded with Fruin's walkway LOS (A > 35, B > 25, C > 15, D > 10, E > 5 sqft/pax, else F).
+graded with Fruin's LOS for queuing and waiting areas
+(A > 13, B > 10, C > 7, D > 3, E > 2 sqft/pax, else F),
+since most passengers on the platform are waiting, either to board or in the stair queues.
 The upward stair flow is graded with Fruin's stair LOS
 (A ≤ 5, B ≤ 7, C ≤ 10, D ≤ 13, E ≤ 17 pax/min/ft, else F).
 
@@ -106,13 +108,13 @@ and 12.04 pax/s for 32 s, tapering at 364 s, without it.
 
 | Platform | Headway | VCE width | Max up rate (pax/s) | Time at capacity | Taper time | Clear time | Boarded time | Max pax on platform | Min space/pax (sqft) |
 |---|---|---|---|---|---|---|---|---|---|
-| platform3 | 120 s | 42.5 ft | 12.04 | 269 s | 254 s | 269 s | never | 1522 | 8.0 (E) |
-| platform3 | 300 s | 42.5 ft | 12.04 | 268 s | 420 s | 435 s | never | 1522 | 8.0 (E) |
-| platform3_recon | 120 s | 44.75 ft | 12.68 | 255 s | 241 s | 256 s | never | 1496 | 8.1 (E) |
-| platform3_recon | 300 s | 44.75 ft | 12.68 | 254 s | 413 s | 428 s | never | 1496 | 8.1 (E) |
-| platform6 | 0 s | 48.168 ft | 13.65 | 237 s | 223 s | 238 s | never | 3058 | 4.0 (F) |
-| platform10 | 120 s | 70.58 ft | 20.00 | 162 s | 186 s | 201 s | 548 s | 1206 | 28.7 (B) |
-| platform11 | 120 s | 43.58 ft | 12.35 | 262 s | 248 s | 263 s | never | 1510 | 9.8 (E) |
+| platform3 | 120 s | 42.5 ft | 12.04 | 269 s | 254 s | 269 s | never | 1522 | 8.0 (C) |
+| platform3 | 300 s | 42.5 ft | 12.04 | 268 s | 420 s | 435 s | never | 1522 | 8.0 (C) |
+| platform3_recon | 120 s | 44.75 ft | 12.68 | 255 s | 241 s | 256 s | never | 1496 | 8.1 (C) |
+| platform3_recon | 300 s | 44.75 ft | 12.68 | 254 s | 413 s | 428 s | never | 1496 | 8.1 (C) |
+| platform6 | 0 s | 48.168 ft | 13.65 | 237 s | 223 s | 238 s | never | 3058 | 4.0 (D) |
+| platform10 | 120 s | 70.58 ft | 20.00 | 162 s | 186 s | 201 s | 548 s | 1206 | 28.7 (A) |
+| platform11 | 120 s | 43.58 ft | 12.35 | 262 s | 248 s | 263 s | never | 1510 | 9.8 (C) |
 
 ### History
 
@@ -146,3 +148,6 @@ and each fix's effect is summarized here.
   and on platform 10, all now board, by 548 s.
 - **Put the stair LOS C/D boundary at 10 pax/min/ft, not 9.5,** per the TRB paper and the report.
   No effect on results.
+- **Graded platform crowding with Fruin's queuing LOS instead of his walkway LOS,**
+  since most passengers on a platform are standing and waiting.
+  At its most crowded, platform 3 is now LOS C instead of E, and platform 6 is D instead of F.

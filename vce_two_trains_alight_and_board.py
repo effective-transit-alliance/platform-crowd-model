@@ -140,15 +140,20 @@ def space_per_pax(k: float, a: float) -> float:
 
 
 def platform_crowd_los(inst_crowding: float) -> str:
-    if inst_crowding > 35:
+    """
+    Fruin's LOS for queuing and waiting areas, like a platform, not for walkways.
+
+    :param inst_crowding: space per passenger (ft^2/pax)
+    """
+    if inst_crowding > 13:
         return "A"
-    elif 25 < inst_crowding <= 35:
+    elif 10 < inst_crowding <= 13:
         return "B"
-    elif 15 < inst_crowding <= 25:
+    elif 7 < inst_crowding <= 10:
         return "C"
-    elif 10 < inst_crowding <= 15:
+    elif 3 < inst_crowding <= 7:
         return "D"
-    elif 5 < inst_crowding <= 10:
+    elif 2 < inst_crowding <= 3:
         return "E"
     else:
         return "F"
