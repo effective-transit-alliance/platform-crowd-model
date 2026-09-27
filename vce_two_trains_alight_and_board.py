@@ -75,10 +75,7 @@ def plat_ingress_fn(kdep: float, a: float, w: float, r_up: float) -> float:
                 # Max of downstairs LOS C/D boundary flow rate
                 max(
                     0,
-                    (
-                        (111 * (a / max(1, kdep)) - 162) / ((a / max(1, kdep)) ** 2)
-                        - r_up
-                    ),
+                    ((111 * (a / max(1, kdep)) - 162) / ((a / max(1, kdep)) ** 2) - r_up),
                 ),
             ),
         )
@@ -222,9 +219,7 @@ class Params:
 
 def calc_workbook(params: Params) -> openpyxl.Workbook:
     eff_area = (
-        params.platform_width
-        * params.platform_length
-        * params.usable_platform_area_multiplier
+        params.platform_width * params.platform_length * params.usable_platform_area_multiplier
     )
 
     www = params.vce_widths[0, :]
@@ -237,12 +232,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     train2_remaining_arrivals = float(params.train2_arriving_pax)
     train1_new_pax: float = 0
     train2_new_pax: float = 0
-    train1_boarders_upstairs = float(
-        params.train1_departing_pax - params.train1_boarding_pax
-    )
-    train2_boarders_upstairs = float(
-        params.train2_departing_pax - params.train2_boarding_pax
-    )
+    train1_boarders_upstairs = float(params.train1_departing_pax - params.train1_boarding_pax)
+    train2_boarders_upstairs = float(params.train2_departing_pax - params.train2_boarding_pax)
     train1_boarders_on_plat = float(params.train1_boarding_pax)
     train2_boarders_on_plat = float(params.train2_boarding_pax)
     total_pax_on_platform = train1_boarders_on_plat + train2_boarders_on_plat
@@ -320,12 +311,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         train2_on_rate=make_column_num("Train 2 Board Rate (pax/s),"),
         down_rate=make_column_num("Downstairs Rate (pax/s),"),
         up_rate=make_column_num("Upstairs Rate (pax/s),"),
-        departing_pax_on_plat_1=make_column_num(
-            "Train 1 Departing Passengers on Platform"
-        ),
-        departing_pax_on_plat_2=make_column_num(
-            "Train 2 Departing Passengers on Platform"
-        ),
+        departing_pax_on_plat_1=make_column_num("Train 1 Departing Passengers on Platform"),
+        departing_pax_on_plat_2=make_column_num("Train 2 Departing Passengers on Platform"),
         arrived_pax_waiting_on_plat=make_column_num("Arrived Passengers on Platform"),
         total_pax_on_platform=make_column_num("Total Passengers on Platform"),
         inst_crowding=make_column_num("Platform Space per Passanger (sqft),"),
@@ -470,9 +457,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         get_cell(columns.time_after).value = time_after
         get_cell(columns.train1_pax).value = train1_remaining_arrivals + train1_new_pax
         get_cell(columns.train2_pax).value = train2_remaining_arrivals + train2_new_pax
-        get_cell(
-            columns.arrived_pax_waiting_on_plat
-        ).value = arrived_pax_waiting_on_plat
+        get_cell(columns.arrived_pax_waiting_on_plat).value = arrived_pax_waiting_on_plat
         get_cell(columns.train1_off_rate).value = train1_off_rate
         get_cell(columns.train2_off_rate).value = train2_off_rate
         get_cell(columns.train1_on_rate).value = train1_on_rate
@@ -500,9 +485,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         )
 
     # Time gets exported to column 3, see line 264.
-    def make_chart(
-        title: str, min_col: int, x_title: str, y_title: str
-    ) -> ScatterChart:
+    def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
         chart.title = title
         chart.style = 13
@@ -514,9 +497,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
         max_row = params.simulation_time + FIRST_DATA_ROW - 1
         xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
-        values = Reference(
-            sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row
-        )
+        values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
         series = SeriesFactory(values, xvalues, title_from_data=True)
         chart.series.append(series)
@@ -538,17 +519,13 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
         max_row = params.simulation_time + FIRST_DATA_ROW - 1
         xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
-        values = Reference(
-            sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row
-        )
+        values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
         series = SeriesFactory(values, xvalues, title_from_data=True)
         chart.series.append(series)
         return chart
 
-    def make_chart_2(
-        title: str, col1: int, col2: int, x_title: str, y_title: str
-    ) -> ScatterChart:
+    def make_chart_2(title: str, col1: int, col2: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
         chart.title = title
         chart.style = 13
@@ -561,12 +538,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
         max_row = params.simulation_time + FIRST_DATA_ROW - 1
         xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
-        values1 = Reference(
-            sheet, min_col=col1, min_row=FIRST_DATA_ROW - 1, max_row=max_row
-        )
-        values2 = Reference(
-            sheet, min_col=col2, min_row=FIRST_DATA_ROW - 1, max_row=max_row
-        )
+        values1 = Reference(sheet, min_col=col1, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
+        values2 = Reference(sheet, min_col=col2, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
         series1 = SeriesFactory(values1, xvalues, title_from_data=True)
         chart.series.append(series1)
