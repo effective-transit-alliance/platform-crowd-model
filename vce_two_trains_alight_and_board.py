@@ -41,6 +41,16 @@ def alight_rate(k: float, t: float, t0: float, u: float) -> float:
         return 0
 
 
+def fruin_stair_flow(m: float) -> float:
+    """
+    Fruin's stair flow equation, P = (111M - 162)/M^2.
+
+    :param m: space per passenger (ft^2/pax)
+    :return: stair flow per foot of stair width (pax/min/ft), not per second or across all stairs
+    """
+    return (111 * m - 162) / m**2
+
+
 def platform_clearance(karr: float, a: float, w: float, qmax: float) -> float:
     """
     :param a: usable platform area
@@ -52,13 +62,13 @@ def platform_clearance(karr: float, a: float, w: float, qmax: float) -> float:
     if karr <= qmax:
         return min(
             karr,
-            min(17 * w / 60, (111 * a / max(1, karr) - 162) / (a / max(1, karr)) ** 2),
+            min(17 * w / 60, fruin_stair_flow(a / max(1, karr)) * w / 60),
         )
     else:
         return max(
             10 * w / 60,
             # Min of upstairs LOS C/D boundary flow rate
-            min(17 * w / 60, (111 * a / max(1, karr) - 162) / (a / max(1, karr)) ** 2),
+            min(17 * w / 60, fruin_stair_flow(a / max(1, karr)) * w / 60),
         )
 
 
@@ -81,7 +91,7 @@ def platform_ingress(kdep: float, a: float, w: float, r_up: float) -> float:
                 # Max of downstairs LOS C/D boundary flow rate
                 max(
                     0,
-                    ((111 * (a / max(1, kdep)) - 162) / ((a / max(1, kdep)) ** 2) - r_up),
+                    fruin_stair_flow(a / max(1, kdep)) * w / 60 - r_up,
                 ),
             ),
         )
