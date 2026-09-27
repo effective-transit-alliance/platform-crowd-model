@@ -22,6 +22,13 @@ With `uv` installed, you can then just run the script directly:
 
 In doing so, `uv` will also install dependencies and set up a virtual environment.
 
+Everything the model assumes, like stair capacity, passenger loads, and LOS thresholds,
+is in the `Assumptions` dataclass at the top of
+[`vce_two_trains_alight_and_board.py`](./vce_two_trains_alight_and_board.py),
+with each assumption's units and source.
+To test how sensitive the results are to one,
+pass a scenario's `Params` different `assumptions`, e.g. `Assumptions(stair_capacity=15)`.
+
 ## Checking
 
 We also use `ruff` for formatting and linting and `ty` and `pyrefly` for type checking.
