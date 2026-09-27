@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 import openpyxl
 from numpy.typing import NDArray
-from openpyxl.cell import Cell, MergedCell
+from openpyxl.cell import Cell
 from openpyxl.chart import Reference, ScatterChart
 from openpyxl.chart.series_factory import SeriesFactory
 from openpyxl.worksheet.worksheet import Worksheet
@@ -217,6 +217,16 @@ class Params:
     """Number of passengers already on the platform at time 0 wanting to board train 2."""
 
 
+def writable_cell(sheet: Worksheet, row: int, column: int) -> Cell:
+    """
+    Like `sheet.cell`, but not a `MergedCell`, whose `value` is read-only.
+    We never merge cells, so this always holds.
+    """
+    cell = sheet.cell(row=row, column=column)
+    assert isinstance(cell, Cell)
+    return cell
+
+
 def calc_workbook(params: Params) -> openpyxl.Workbook:
     eff_area = (
         params.platform_width * params.platform_length * params.usable_platform_area_multiplier
@@ -247,8 +257,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     def make_row(value: Any, description: str) -> None:
         nonlocal rownum
         rownum = rownum + 1
-        sheet.cell(column=1, row=rownum).value = description
-        sheet.cell(column=2, row=rownum).value = value
+        writable_cell(sheet, row=rownum, column=1).value = description
+        writable_cell(sheet, row=rownum, column=2).value = value
 
     make_row("Value", "Parameter")
     make_row(params.platform_width, "Platform width (ft)")
@@ -298,7 +308,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     def make_column_num(description: str) -> int:
         nonlocal colnum
         colnum = colnum + 1
-        sheet.cell(row=1, column=colnum).value = description
+        writable_cell(sheet, row=1, column=colnum).value = description
         return colnum
 
     columns = Columns(
@@ -451,8 +461,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         """
         row = time_after + FIRST_DATA_ROW
 
-        def get_cell(column: int, row: int = row) -> Cell | MergedCell:
-            return sheet.cell(row=row, column=column)
+        def get_cell(column: int, row: int = row) -> Cell:
+            return writable_cell(sheet, row=row, column=column)
 
         get_cell(columns.time_after).value = time_after
         get_cell(columns.train1_pax).value = train1_remaining_arrivals + train1_new_pax

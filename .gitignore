@@ -6,7 +6,6 @@ __pycache__
 
 # Tooling Cache
 .ruff_cache/
-.mypy_cache/
 
 # LibreOffice Lock Files
 .~lock*
