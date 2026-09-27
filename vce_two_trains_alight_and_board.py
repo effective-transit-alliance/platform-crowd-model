@@ -558,10 +558,10 @@ class Instant:
     ]
     """Train 2 departing passengers on platform."""
 
-    arrived_pax_waiting_on_platform: Annotated[
-        float, Field(name="Arrived Passengers on Platform", units="pax")
+    arriving_pax_waiting_on_platform: Annotated[
+        float, Field(name="Arriving Passengers on Platform", units="pax")
     ]
-    """Number of passengers who arrived on platform."""
+    """Number of arriving passengers on the platform."""
 
     total_pax_on_platform: Annotated[float, Field(name="Total Passengers on Platform", units="pax")]
     """Total number of passengers on platform."""
@@ -637,7 +637,7 @@ def calc_workbook(
         print("www = ", www)
 
     # Initialize counters
-    arrived_pax_waiting_on_plat: float = 0
+    arriving_pax_waiting_on_plat: float = 0
     train1_remaining_arrivals = float(assumptions.arriving_pax_per_train)
     train2_remaining_arrivals = float(assumptions.arriving_pax_per_train)
     train1_new_pax: float = 0
@@ -712,17 +712,17 @@ def calc_workbook(
         if train2_remaining_arrivals < 0:
             train2_remaining_arrivals = 0
         total_pax_on_platform += train1_off_rate + train2_off_rate
-        arrived_pax_waiting_on_plat += train1_off_rate + train2_off_rate
+        arriving_pax_waiting_on_plat += train1_off_rate + train2_off_rate
         plat_egress_rate = platform_clearance(
-            arrived_pax_waiting_on_plat,
+            arriving_pax_waiting_on_plat,
             eff_area,
             params.total_vce_width,
             max_pax_in_stair_queues,
             assumptions,
         )
-        arrived_pax_waiting_on_plat -= plat_egress_rate
-        if arrived_pax_waiting_on_plat < 0:
-            arrived_pax_waiting_on_plat = 0
+        arriving_pax_waiting_on_plat -= plat_egress_rate
+        if arriving_pax_waiting_on_plat < 0:
+            arriving_pax_waiting_on_plat = 0
         total_pax_on_platform -= plat_egress_rate
         plat_ingress_rate_1 = platform_ingress(
             train1_boarders_upstairs,
@@ -783,14 +783,14 @@ def calc_workbook(
             train1_boarders_on_plat = 0
         if train2_boarders_on_plat < 0:
             train2_boarders_on_plat = 0
-        if arrived_pax_waiting_on_plat < 0:
-            arrived_pax_waiting_on_plat = 0
+        if arriving_pax_waiting_on_plat < 0:
+            arriving_pax_waiting_on_plat = 0
         if print_time_series:
             print(
                 time_after,
                 train1_remaining_arrivals + train1_new_pax,
                 train2_remaining_arrivals + train2_new_pax,
-                arrived_pax_waiting_on_plat,
+                arriving_pax_waiting_on_plat,
                 plat_egress_rate,
             )
         """
@@ -802,7 +802,7 @@ def calc_workbook(
             str(train2_on_rate - train2_off_rate) + " pax/s train 2 net rate;",
         )
         print(
-            str(int(arrived_pax_waiting_on_plat))
+            str(int(arriving_pax_waiting_on_plat))
             + " deboarded pax on platform;",
             str(int(train1_boarders_on_plat + int(train2_boarders_on_plat)))
             + " boarding pax on platform;",
@@ -819,12 +819,12 @@ def calc_workbook(
         summary.max_up_rate = max(summary.max_up_rate, plat_egress_rate)
         if plat_egress_rate >= capacity - 1e-9:
             summary.secs_at_capacity += 1
-        if arrived_pax_waiting_on_plat > max_pax_in_stair_queues:
+        if arriving_pax_waiting_on_plat > max_pax_in_stair_queues:
             summary.taper_time = time_after
         if (
             summary.clear_time is None
             and time_after > last_arrival_time
-            and arrived_pax_waiting_on_plat < 1
+            and arriving_pax_waiting_on_plat < 1
         ):
             summary.clear_time = time_after
         if (
@@ -867,7 +867,7 @@ def calc_workbook(
                 time=time_after,
                 train1_pax=train1_remaining_arrivals + train1_new_pax,
                 train2_pax=train2_remaining_arrivals + train2_new_pax,
-                arrived_pax_waiting_on_platform=arrived_pax_waiting_on_plat,
+                arriving_pax_waiting_on_platform=arriving_pax_waiting_on_plat,
                 train1_off_rate=train1_off_rate,
                 train2_off_rate=train2_off_rate,
                 train1_on_rate=train1_on_rate,
@@ -990,7 +990,7 @@ def calc_workbook(
     sheet.add_chart(
         make_chart_2(
             "Passengers on Platform",
-            get_column_for("arrived_pax_waiting_on_platform"),
+            get_column_for("arriving_pax_waiting_on_platform"),
             get_column_for("total_pax_on_platform"),
             "Time (s)",
             "Passengers",
