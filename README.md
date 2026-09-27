@@ -352,8 +352,9 @@ This data can't yet replace `total_vce_width`:
   while the model's 42.5 ft is 722 pax/min, the EA's figure for platform 1.
   But the Master Plan probably doesn't include the West End Concourse's VCEs,
   and the EA's data predates Moynihan Train Hall,
-  so platform 3's total width today is probably more than 19.4 ft, by an unknown amount,
-  and it's not yet clear whether the model's 42.5 ft overstates it.
+  so platform 3's total width today is probably more than 19.4 ft.
+  With the West End Concourse's 2 stairs' [estimated widths](#estimated-widths),
+  it's about 464 in. (38.7 ft), a little less than the model's 42.5 ft.
   Either way, a single total overstates how quickly a platform clears
   if some of that width is at its far west end, far from most of the train's doors.
 - **Positions are approximate.**
@@ -404,6 +405,39 @@ Neither is clearly complete:
 
 So these counts are a check on the other sources, not a replacement for the FRA's measurements.
 
+### Estimated Widths
+
+Until the VCEs are measured, some widths no source lists can be estimated from a scaled drawing.
+NJ Transit's PCIP Phase 2 drawings include an
+[existing concourse-level plan](https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf#page=45)
+(sheet A-001, November 2020), a vector drawing at 1" = 40' showing platforms 1 to 8
+and each stair's treads, so a tread's length is roughly its stair's width.
+[`scripts/estimate_vce_widths.py`](./scripts/estimate_vce_widths.py)
+measures them into [`data/estimated_vce_widths.csv`](./data/estimated_vce_widths.csv),
+with every width marked `estimated`.
+
+So far, it estimates the 2 stairs from the West End Concourse down to platform 3,
+the ones the Master Plan's tables don't include:
+
+| Stair | Estimated width | Position (ft west of platform 3's east end) |
+|---|---|---|
+| West End Concourse, west side | 109 in. | 780 to 802 |
+| West End Concourse, east side | 122 in. | 715 to 726 |
+
+The east side's is T-shaped, splitting into two 60 in. flights east and west along the platform.
+With the Master Plan's 5, platform 3's VCEs total about 464 in. (38.7 ft).
+
+These are only estimates:
+
+- On the same sheet, the stairs that seem to match the Master Plan's measure within about 6 in.
+  of its widths (e.g. 66 vs. 69 in. and 44 vs. 44 in.),
+  but a drawn tread isn't necessarily the clear width between handrails.
+- The sheet also shows more stairs over platform 3 than the Master Plan lists.
+  Some are probably stairs between the upper and lower concourses drawn over the platform,
+  but the sheet doesn't label them, so they aren't included.
+- The escalators among the Master Plan's 5 are still counted by width,
+  not by an escalator's capacity.
+
 ### Field Survey
 
 Since no public source has every VCE's width,
@@ -443,7 +477,7 @@ From newest to oldest:
 | [NJ Transit station directory](https://content.njtransit.com/sites/default/files/NY%20Penn%20Station%20Directory_011022.pdf) | January 2022 | Yes | Yes | No | Schematic | Yes |
 | [Master Plan final report](https://esd.ny.gov/sites/default/files/CACWG-Meetings-8-9-Q-A-09-08-21.pdf#page=7), in the Empire Station Complex Q&A | April 2021 | Yes | Only of kept VCEs | Only of kept VCEs | No | Probably not |
 | [Master Plan draft Alternatives Report](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=22) | August 2020 | No | Only of kept VCEs | Only of kept VCEs | Yes, from vector plans | Probably not |
-| [NJ Transit PCIP Phase 1 and 2 reports and drawings](https://liamblank.com/wp-content/uploads/2026/09/penn-station-gateway-catalogue.csv) | 2019 to 2021 | Only of new VCEs | Only of new VCEs | No | Only of new VCEs | n/a |
+| [NJ Transit PCIP Phase 1 and 2 reports and drawings](https://liamblank.com/wp-content/uploads/2026/09/penn-station-gateway-catalogue.csv) | 2019 to 2021 | Only of new VCEs | Only of new VCEs | Only of new VCEs, but existing ones can be estimated from a scaled plan | Only of new VCEs, but existing ones can be estimated from a scaled plan | Yes, on a scaled plan |
 | [Moynihan Station EA, Table 4.4-10](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22) | 2008 data | Yes | Yes | No, only capacities in ped/min | No | Before its expansion |
 | ETA's `total_vce_width` | Unknown | No | No | Totals per platform | No | Unknown |
 
@@ -479,7 +513,10 @@ Notes:
   but also probably exclude the West End Concourse.
 - **NJ Transit's PCIP reports (2019 to 2021).**
   From records requests, archived by Liam Blank.
-  Their drawings only dimension proposed platforms, concourses, and VCEs, not existing ones.
+  Their drawings only dimension proposed platforms, concourses, and VCEs, not existing ones,
+  but PCIP Phase 2's existing concourse-level plan (November 2020) is a scaled vector drawing
+  of platforms 1 to 8, including the West End Concourse,
+  from which existing stairs' widths can be [estimated](#estimated-widths).
 - **Moynihan Station EA (2008 data).**
   Per-platform counts of stairs and escalators, capacities, and clearance times,
   but from before the West End Concourse's expansion and Moynihan Train Hall.

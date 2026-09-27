@@ -1,0 +1,3 @@
+platform,vce,type,width_in,width_status,east_end_ft,west_end_ft,source,notes
+3,"West End Concourse, west side",stair,109,estimated,780,802,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","A straight stair with a mid-landing, running along the platform. Its treads are drawn in two halves split at the platform's edge line, so its width is their sum."
+3,"West End Concourse, east side",stair,122,estimated,715,726,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","A T-shaped stair: one flight down from the concourse to a landing, then two 60 in. flights east and west along the platform. Its width is the upper flight's, whose treads are drawn in two halves, which matches the two lower flights' combined width."
