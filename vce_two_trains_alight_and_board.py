@@ -15,7 +15,7 @@ from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Self, cast
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
 import openpyxl
 import typer
@@ -119,6 +119,16 @@ class Assumptions:
     The TCQSM's design walking speed, 250 ft/min
     (p. 10-20: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=24),
     though people walk slower in crowds, with less than 25 ft^2/pax (Exhibit 10-10, p. 10-21).
+    Only used on platforms with each VCE's position.
+    """
+
+    vce_choice: Annotated[
+        Literal["nearest", "quickest"], Field(name="VCE Choice", units="rule")
+    ] = "quickest"
+    """
+    Which VCE each arriving passenger walks to:
+    the `nearest`, or the `quickest` to get up,
+    i.e. with the least walking time plus waiting time for everyone queued or walking there.
     Only used on platforms with each VCE's position.
     """
 
@@ -470,43 +480,53 @@ def distance_to(vce: Vce, position: float) -> float:
 
 
 @dataclass(frozen=True)
-class Route:
-    """Where some of the arriving passengers go."""
+class Door:
+    """Where some of the arriving passengers come from."""
 
     share: float
     """Fraction of the arriving passengers."""
 
-    vce: int
-    """Index of the VCE they queue at."""
-
-    walking_time: int
-    """Time (s) they take to walk there."""
+    walking_times: list[int]
+    """Time (s) they take to walk to each VCE."""
 
 
-def vce_routes(params: Params) -> list[Route]:
+def doors_to_vces(params: Params) -> list[Door]:
     """
-    Where arriving passengers go.
-    If the VCEs have positions, each door's passengers walk to the nearest VCE,
-    or else they spread across the VCEs in proportion to their widths, taking no time.
+    Where arriving passengers come from, and how far they are from each VCE.
+    If the VCEs have no positions, the platform is one door
+    with no walking time to any VCE.
     """
     if params.platform_east_end is None:
-        return [
-            Route(share=vce.width / params.total_vce_width, vce=i, walking_time=0)
-            for i, vce in enumerate(params.vces)
-        ]
+        return [Door(share=1, walking_times=[0 for _ in params.vces])]
     doors = door_positions(params)
-    routes: list[Route] = []
-    for door in doors:
-        nearest = min(range(len(params.vces)), key=lambda i: distance_to(params.vces[i], door))
-        distance = distance_to(params.vces[nearest], door)
-        routes.append(
-            Route(
-                share=1 / len(doors),
-                vce=nearest,
-                walking_time=round(distance / params.assumptions.walking_speed),
-            )
+    return [
+        Door(
+            share=1 / len(doors),
+            walking_times=[
+                round(distance_to(vce, door) / params.assumptions.walking_speed)
+                for vce in params.vces
+            ],
         )
-    return routes
+        for door in doors
+    ]
+
+
+def choose_vce(params: Params, door: Door, vce_queues: list[float], walking_to: list[float]) -> int:
+    """
+    The VCE the passengers from `door` walk to, per `Assumptions.vce_choice`.
+
+    :param vce_queues: arriving passengers queued at each VCE (pax)
+    :param walking_to: arriving passengers walking to each VCE (pax)
+    """
+
+    def time_to_go_up(i: int) -> float:
+        vce = params.vces[i]
+        capacity = stair_flow(params.assumptions.stair_capacity, vce.width)
+        return door.walking_times[i] + (vce_queues[i] + walking_to[i]) / capacity
+
+    if params.assumptions.vce_choice == "nearest":
+        return min(range(len(params.vces)), key=lambda i: door.walking_times[i])
+    return min(range(len(params.vces)), key=time_to_go_up)
 
 
 def pooled_vces(total_width: float) -> tuple[Vce, ...]:
@@ -748,7 +768,7 @@ def calc_workbook(
     arriving_pax_waiting_on_plat: float = 0
     vce_queues = [0.0 for _ in params.vces]
     """Arriving passengers queued at each VCE."""
-    routes = vce_routes(params)
+    doors = doors_to_vces(params)
     walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in params.vces])
     """Arriving passengers walking to each VCE, by the time they reach its queue."""
     trains = range(params.trains)
@@ -859,8 +879,19 @@ def calc_workbook(
             off_rates.append(off_rate)
         total_pax_on_platform += sum(off_rates)
         arriving_pax_waiting_on_plat += sum(off_rates)
-        for route in routes:
-            walking[time_after + route.walking_time][route.vce] += sum(off_rates) * route.share
+        walking_to = [
+            sum(reaching[i] for reaching in walking.values()) for i in range(len(params.vces))
+        ]
+        for door in doors:
+            alighting = sum(off_rates) * door.share
+            if params.platform_east_end is None:
+                # Spread across the VCEs in proportion to their widths.
+                for i, vce in enumerate(params.vces):
+                    walking[time_after][i] += alighting * vce.width / params.total_vce_width
+                continue
+            i = choose_vce(params, door, vce_queues, walking_to)
+            walking[time_after + door.walking_times[i]][i] += alighting
+            walking_to[i] += alighting
         for i, reaching in enumerate(walking.pop(time_after, [])):
             vce_queues[i] += reaching
         vce_up_rates = [
