@@ -139,12 +139,11 @@ class Assumptions:
 
     bidirectional_stair_flow_limit: Annotated[
         float, Field(name="Bidirectional Stair Flow Limit", units="pax/min/ft")
-    ] = 12
+    ] = 10
     """
     Total stair flow in both directions, which the upward flow leaves for the downward flow.
-    A bug: the ETA report says there's no bidirectional flow on stairs worse than LOS C,
-    i.e. above 10 pax/min/ft.
-    See `README.md#bidirectional-flow-stops-at-12-paxminft-not-10`.
+    The ETA report says there's no bidirectional flow on stairs worse than LOS C,
+    i.e. above the LOS C/D boundary, 10 pax/min/ft.
     """
 
     concourse_area: Annotated[float, Field(name="Concourse Area", units="ft^2")] = 5000
