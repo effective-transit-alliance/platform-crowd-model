@@ -159,9 +159,9 @@ def egress_crowd_los(w: float, plat_egress_rate: float) -> str:
         return "A"
     elif w * 5 / 60 < plat_egress_rate <= w * 7 / 60:
         return "B"
-    elif w * 7 / 60 < plat_egress_rate <= w * 9.5 / 60:
+    elif w * 7 / 60 < plat_egress_rate <= w * 10 / 60:
         return "C"
-    elif w * 9.5 / 60 < plat_egress_rate <= w * 13 / 60:
+    elif w * 10 / 60 < plat_egress_rate <= w * 13 / 60:
         return "D"
     elif w * 13 / 60 < plat_egress_rate <= w * 17 / 60:
         return "E"

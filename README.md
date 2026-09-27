@@ -79,6 +79,8 @@ Each second:
 Space per passenger is the usable platform area (75% of the platform's area)
 divided by everyone on the platform,
 graded with Fruin's walkway LOS (A > 35, B > 25, C > 15, D > 10, E > 5 sqft/pax, else F).
+The upward stair flow is graded with Fruin's stair LOS
+(A ≤ 5, B ≤ 7, C ≤ 10, D ≤ 13, E ≤ 17 pax/min/ft, else F).
 
 Every scenario has 200 departing passengers per train already on the platform
 and another 200 per train upstairs.
@@ -142,3 +144,5 @@ and each fix's effect is summarized here.
   instead of the ascending one, giving about 15% more downward flow.
   On platform 3, 379.0 of 400 departing passengers come down within 600 s instead of 368.9,
   and on platform 10, all now board, by 548 s.
+- **Put the stair LOS C/D boundary at 10 pax/min/ft, not 9.5,** per the TRB paper and the report.
+  No effect on results.
