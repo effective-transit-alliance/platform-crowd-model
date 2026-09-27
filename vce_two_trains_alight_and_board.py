@@ -11,9 +11,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
-import numpy as np
 import openpyxl
-from numpy.typing import NDArray
 from openpyxl.cell import Cell
 from openpyxl.chart import Reference, ScatterChart
 from openpyxl.chart.series_factory import SeriesFactory
@@ -277,9 +275,6 @@ class Params:
     total_vce_width: Annotated[float, Field(name="Total VCE Width", units="ft")]
     """Total width (in feet) of all of the VCEs (vertical circulation elements) going upstairs."""
 
-    vce_widths: NDArray[np.floating]
-    """Widths (in feet) of each VCE (vertical circulation element)."""
-
     train1_boarding_pax: Annotated[int, Field(name="Train 1 Boarding Passengers", units="pax")]
     """Number of passengers already on the platform at time 0 wanting to board train 1."""
 
@@ -394,10 +389,6 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     eff_area = (
         params.platform_width * params.platform_length * params.usable_platform_area_multiplier
     )
-
-    www = params.vce_widths[0, :]
-
-    print("www = ", www)
 
     # Initialize counters
     arrived_pax_waiting_on_plat: float = 0
@@ -747,27 +738,6 @@ def main() -> None:
         train2_arrival_time=120,
         queue_length=20,
         total_vce_width=42.5,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
     )
     params_p3300 = Params(
         filename_prefix="platform3",
@@ -787,27 +757,6 @@ def main() -> None:
         train2_arrival_time=300,
         queue_length=20,
         total_vce_width=42.5,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
     )
     params_p3recon120 = Params(
         filename_prefix="platform3_recon",
@@ -827,27 +776,6 @@ def main() -> None:
         train2_arrival_time=120,
         queue_length=20,
         total_vce_width=44.75,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
     )
     params_p3recon300 = Params(
         filename_prefix="platform3_recon",
@@ -867,27 +795,6 @@ def main() -> None:
         train2_arrival_time=300,
         queue_length=20,
         total_vce_width=44.75,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
     )
     params_p60 = Params(
         filename_prefix="platform6",
@@ -907,27 +814,6 @@ def main() -> None:
         train2_arrival_time=0,
         queue_length=20,
         total_vce_width=48.168,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
     )
     params_p10120 = Params(
         filename_prefix="platform10",
@@ -947,27 +833,6 @@ def main() -> None:
         train2_arrival_time=120,
         queue_length=20,
         total_vce_width=70.58,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
     )
     params_p11120 = Params(
         filename_prefix="platform11",
@@ -987,27 +852,6 @@ def main() -> None:
         train2_arrival_time=120,
         queue_length=20,
         total_vce_width=43.58,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
     )
     run_model(params_p3120)
     run_model(params_p3300)
