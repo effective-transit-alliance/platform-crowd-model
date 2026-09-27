@@ -103,6 +103,13 @@ class Assumptions:
     An LIRR car has more and better doors.
     """
 
+    car_length: Annotated[float, Field(name="Car Length", units="ft")] = 85
+    """
+    Length of each car, over which its doors are spread evenly.
+    An NJ Transit MultiLevel.
+    Only used on platforms with each VCE's position.
+    """
+
     door_flow_rate: Annotated[float, Field(name="Door Flow Rate", units="pax/s/door")] = 1.0
     """
     Alighting and boarding rate per single-door equivalent.
@@ -432,6 +439,40 @@ def platform_vces(platform: int) -> tuple[Vce, ...]:
         )
 
 
+def door_positions(params: Params) -> list[float]:
+    """
+    Where each of a train's doors is along the platform (ft),
+    spread evenly along a train stopped flush with the platform's east end.
+    """
+    assert params.platform_east_end is not None
+    assumptions = params.assumptions
+    train_west_end = params.platform_east_end - params.train_length
+    door_spacing = assumptions.car_length / assumptions.doors_per_car
+    return [train_west_end + (door + 0.5) * door_spacing for door in range(params.doors_per_train)]
+
+
+def distance_to(vce: Vce, position: float) -> float:
+    """Distance (ft) along the platform from `position` to the nearest end of `vce`."""
+    assert vce.west_end is not None and vce.east_end is not None
+    return max(0, vce.west_end - position, position - vce.east_end)
+
+
+def vce_shares(params: Params) -> list[float]:
+    """
+    Fraction of arriving passengers going to each VCE.
+    If the VCEs have positions, each door's passengers go to the nearest VCE,
+    or else they spread across the VCEs in proportion to their widths.
+    """
+    if params.platform_east_end is None:
+        return [vce.width / params.total_vce_width for vce in params.vces]
+    shares = [0.0 for _ in params.vces]
+    doors = door_positions(params)
+    for door in doors:
+        nearest = min(range(len(params.vces)), key=lambda i: distance_to(params.vces[i], door))
+        shares[nearest] += 1 / len(doors)
+    return shares
+
+
 def pooled_vces(total_width: float) -> tuple[Vce, ...]:
     """
     A single VCE standing in for all of a platform's VCEs, as one pooled queue.
@@ -470,6 +511,13 @@ class Params:
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
     """Trains arriving, alternating between the platform's two tracks."""
 
+    platform_east_end: float | None = None
+    """
+    Where the platform ends to the east (ft east of the Master Plan's plans' west edge),
+    where the trains stop, if `vces` have positions.
+    From `MASTER_PLAN_EAST_END_FT` in `scripts/estimate_vce_widths.py`.
+    """
+
     assumptions: Assumptions = dataclasses.field(default_factory=Assumptions)
     """What the model assumes, the same for every scenario unless overridden."""
 
@@ -505,6 +553,11 @@ class Params:
     def doors_per_train(self) -> Annotated[int, Field(name="Doors per Train", units="door")]:
         """Doors (single-door equivalents) on each train on the platform side."""
         return self.cars * self.assumptions.doors_per_car
+
+    @property
+    def train_length(self) -> Annotated[float, Field(name="Train Length", units="ft")]:
+        """Length of each train."""
+        return self.cars * self.assumptions.car_length
 
     @property
     def total_vce_width(self) -> Annotated[float, Field(name="Total VCE Width", units="ft")]:
@@ -659,6 +712,7 @@ def calc_workbook(
     arriving_pax_waiting_on_plat: float = 0
     vce_queues = [0.0 for _ in params.vces]
     """Arriving passengers queued at each VCE."""
+    shares = vce_shares(params)
     trains = range(params.trains)
     arrival_times: list[int | None] = [
         train * params.headway if train < 2 else None for train in trains
@@ -767,9 +821,8 @@ def calc_workbook(
             off_rates.append(off_rate)
         total_pax_on_platform += sum(off_rates)
         arriving_pax_waiting_on_plat += sum(off_rates)
-        # Arriving passengers spread across the VCEs in proportion to their widths.
-        for i, vce in enumerate(params.vces):
-            vce_queues[i] += sum(off_rates) * vce.width / params.total_vce_width
+        for i, share in enumerate(shares):
+            vce_queues[i] += sum(off_rates) * share
         vce_up_rates = [
             platform_clearance(queue, vce.width, assumptions)
             for vce, queue in zip(params.vces, vce_queues, strict=True)
@@ -1149,6 +1202,7 @@ def main(
         platform_max_cars=10,
         headway=CLOSE_HEADWAY,
         vces=platform_vces(3),
+        platform_east_end=719,
     )
     params_p3300 = Params(
         platform=3,
@@ -1157,6 +1211,7 @@ def main(
         platform_max_cars=10,
         headway=NORMAL_HEADWAY,
         vces=platform_vces(3),
+        platform_east_end=719,
     )
     params_p3recon120 = Params(
         platform=3,
@@ -1183,6 +1238,7 @@ def main(
         platform_max_cars=17,
         headway=0,
         vces=platform_vces(6),
+        platform_east_end=849,
     )
     params_p10120 = Params(
         platform=10,
