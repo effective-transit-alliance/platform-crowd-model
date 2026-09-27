@@ -268,7 +268,7 @@ class Params:
     train1_arrival_time: Annotated[int, Field(name="Train 1 Arrival Time", units="s")]
     """Time (in seconds) when train 1 arrives."""
 
-    train2_arrival_time: Annotated[int, Field(name="Train 1 Arrival Time", units="s")]
+    train2_arrival_time: Annotated[int, Field(name="Train 2 Arrival Time", units="s")]
     """Time (in seconds) when train 2 arrives."""
 
     queue_length: Annotated[int, Field(name="Stair Queue Length", units="ft")]
