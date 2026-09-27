@@ -32,9 +32,9 @@ SECONDS_PER_MINUTE = 60
 
 SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
 
-FRUIN_ASCENDING_STAIR_COEFFICIENTS = (111, 162)
+FRUIN_DESCENDING_STAIR_COEFFICIENTS = (128, 206)
 """
-`(a, b)` in Fruin's equation for ascending stair flow, `P = (aM - b)/M^2`,
+`(a, b)` in Fruin's equation for descending stair flow, `P = (aM - b)/M^2`,
 where `P` is the flow (pax/min per ft of stair width)
 and `M` is the space per passenger on the stair (ft^2/pax).
 Fruin, p. 9: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9
@@ -211,14 +211,14 @@ def stair_flow(rate: float, w: float) -> float:
     return rate * w / SECONDS_PER_MINUTE
 
 
-def fruin_ascending_stair_flow(m: float) -> float:
+def fruin_descending_stair_flow(m: float) -> float:
     """
-    Fruin's equation for ascending stair flow.
+    Fruin's equation for descending stair flow.
 
     :param m: space per passenger (ft^2/pax)
     :return: stair flow per foot of width (pax/min/ft)
     """
-    a, b = FRUIN_ASCENDING_STAIR_COEFFICIENTS
+    a, b = FRUIN_DESCENDING_STAIR_COEFFICIENTS
     return (a * m - b) / m**2
 
 
@@ -255,8 +255,7 @@ def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float
 
 def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumptions) -> float:
     """
-    Several bugs: Fruin's ascending equation is used for descending passengers,
-    and it's applied to a fixed concourse area.
+    A bug: Fruin's descending equation is applied to a fixed concourse area.
     See the README's "Known Bugs".
 
     :param kdep: number of departing passengers upstairs
@@ -272,7 +271,7 @@ def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumption
                 max(
                     0,
                     stair_flow(
-                        fruin_ascending_stair_flow(assumptions.concourse_area / max(1, kdep)), w
+                        fruin_descending_stair_flow(assumptions.concourse_area / max(1, kdep)), w
                     )
                     - r_up,
                 ),
