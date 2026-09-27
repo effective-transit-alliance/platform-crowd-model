@@ -74,7 +74,7 @@ Each second:
    in a 5,000 sqft concourse,
    split between the two trains in proportion to how many are still upstairs.
 4. **Boarding.** Departing passengers on the platform board a train that has arrived
-   with whatever door capacity isn't being used for alighting.
+   once every arriving passenger has alighted, at 1 pax/s per door.
 
 Space per passenger is the usable platform area (75% of the platform's area)
 divided by everyone on the platform,
@@ -108,13 +108,13 @@ and 12.04 pax/s for 32 s, tapering at 364 s, without it.
 
 | Platform | Headway | VCE width | Max up rate (pax/s) | Time at capacity | Taper time | Clear time | Boarded time | Max pax on platform | Min space/pax (sqft) |
 |---|---|---|---|---|---|---|---|---|---|
-| platform3 | 120 s | 42.5 ft | 12.04 | 269 s | 254 s | 269 s | never | 1522 | 8.0 (C) |
-| platform3 | 300 s | 42.5 ft | 12.04 | 268 s | 420 s | 435 s | never | 1522 | 8.0 (C) |
-| platform3_recon | 120 s | 44.75 ft | 12.68 | 255 s | 241 s | 256 s | never | 1496 | 8.1 (C) |
-| platform3_recon | 300 s | 44.75 ft | 12.68 | 254 s | 413 s | 428 s | never | 1496 | 8.1 (C) |
-| platform6 | 0 s | 48.168 ft | 13.65 | 237 s | 223 s | 238 s | never | 3058 | 4.0 (D) |
+| platform3 | 120 s | 42.5 ft | 12.04 | 269 s | 254 s | 269 s | never | 1530 | 7.9 (C) |
+| platform3 | 300 s | 42.5 ft | 12.04 | 268 s | 420 s | 435 s | never | 1530 | 7.9 (C) |
+| platform3_recon | 120 s | 44.75 ft | 12.68 | 255 s | 241 s | 256 s | never | 1504 | 8.1 (C) |
+| platform3_recon | 300 s | 44.75 ft | 12.68 | 254 s | 413 s | 428 s | never | 1504 | 8.1 (C) |
+| platform6 | 0 s | 48.168 ft | 13.65 | 237 s | 223 s | 238 s | never | 3084 | 4.0 (D) |
 | platform10 | 120 s | 70.58 ft | 20.00 | 162 s | 186 s | 201 s | 548 s | 1206 | 28.7 (A) |
-| platform11 | 120 s | 43.58 ft | 12.35 | 262 s | 248 s | 263 s | never | 1510 | 9.8 (C) |
+| platform11 | 120 s | 43.58 ft | 12.35 | 262 s | 248 s | 263 s | never | 1517 | 9.8 (C) |
 
 ### History
 
@@ -151,3 +151,6 @@ and each fix's effect is summarized here.
 - **Graded platform crowding with Fruin's queuing LOS instead of his walkway LOS,**
   since most passengers on a platform are standing and waiting.
   At its most crowded, platform 3 is now LOS C instead of E, and platform 6 is D instead of F.
+- **Stopped boarding until everyone has alighted,** per the report,
+  instead of boarding with the doors left over in the last second of alighting.
+  Boarding starts 1 s later, so the platform peaks at up to 26 more passengers.

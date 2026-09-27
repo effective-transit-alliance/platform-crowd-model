@@ -113,7 +113,8 @@ def board_rate(
     """
     :param vmax: maximum train deboard rate,
     pass train1_doors or train2_doors from params, since 1 door/sec
-    :param r_off: train alight rate, pass alight_rate_fn
+    :param r_off: train alight rate, pass alight_rate_fn;
+    nobody boards until everyone has alighted, i.e. the second after this is last nonzero
     :param sim_t: time in seconds, pass counter
     :param arr_t: train arrival time
     :param: dep_t: train departure time
@@ -121,8 +122,8 @@ def board_rate(
     pass departing_pax_on_plat
     :return: train ingress rate across all doors (pax/s)
     """
-    if arr_t < sim_t < dep_t:
-        return min(r_max - r_off, boarders)
+    if arr_t < sim_t < dep_t and r_off == 0:
+        return min(r_max, boarders)
     else:
         return 0
 
