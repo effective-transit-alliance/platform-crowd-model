@@ -5,9 +5,11 @@ This is a recursive peak-hour platform clearance calculator.
 model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 """
 
+import contextlib
 import csv
 import dataclasses
 import functools
+import io
 import itertools
 import typing
 from collections import defaultdict
@@ -496,11 +498,12 @@ def platform_vces(platform: int) -> tuple[Vce, ...]:
 def door_positions(params: Params) -> list[float]:
     """
     Where each of a train's doors is along the platform (ft),
-    spread evenly along a train stopped flush with the platform's east end.
+    spread evenly along a train stopped at `Params.train_east_end`.
     """
     assert params.platform_east_end is not None
     assumptions = params.assumptions
-    train_west_end = params.platform_east_end - params.train_length
+    train_east_end = params.train_east_end or params.platform_east_end
+    train_west_end = train_east_end - params.train_length
     door_spacing = assumptions.car_length / assumptions.doors_per_car
     return [train_west_end + (door + 0.5) * door_spacing for door in range(params.doors_per_train)]
 
@@ -696,8 +699,16 @@ class Params:
     platform_east_end: float | None = None
     """
     Where the platform ends to the east (ft east of the Master Plan's plans' west edge),
-    where the trains stop, if `vces` have positions.
+    if `vces` have positions.
     From `MASTER_PLAN_EAST_END_FT` in `scripts/estimate_vce_widths.py`.
+    """
+
+    train_east_end: Annotated[float | None, Field(name="Train East End", units="ft")] = None
+    """
+    Where the trains' east ends stop (ft east of the Master Plan's plans' west edge),
+    if `vces` have positions,
+    or else `platform_east_end`.
+    `best_stopping_position` finds the best one.
     """
 
     assumptions: Assumptions = dataclasses.field(default_factory=Assumptions)
@@ -1439,11 +1450,44 @@ def update_readme_results(table: str) -> None:
     README.write_text(f"{readme[:start]}\n{table}\n{readme[end:]}")
 
 
+STOPPING_POSITION_STEP = 5
+"""Distance (ft) between the stopping positions `best_stopping_position` tries."""
+
+
+def best_stopping_position(params: Params) -> Params:
+    """
+    `params` with the trains stopped where the arriving passengers clear the platform soonest,
+    or if tied, where the departing passengers finish boarding soonest,
+    of every position `STOPPING_POSITION_STEP` apart with the train on the platform.
+    """
+    if params.platform_east_end is None:
+        return params
+    platform_west_end = params.platform_east_end - params.platform_length
+    candidates: list[Params] = []
+    train_east_end = params.platform_east_end
+    while train_east_end - params.train_length >= platform_west_end:
+        candidates.append(dataclasses.replace(params, train_east_end=train_east_end))
+        train_east_end -= STOPPING_POSITION_STEP
+
+    def score(candidate: Params) -> tuple[float, float]:
+        # Only the summary matters, so hide the time series `calc_workbook` prints.
+        with contextlib.redirect_stdout(io.StringIO()):
+            _wb, summary = calc_workbook(candidate)
+        never = float("inf")
+        return (
+            never if summary.clear_time is None else summary.clear_time,
+            never if summary.boarded_time is None else summary.boarded_time,
+        )
+
+    return min(candidates, key=score)
+
+
 def run_model(params: Params, spreadsheets: bool) -> str:
     """
     Run the model, return its row of the results table,
     and with `spreadsheets`, print its time series and save its spreadsheet.
     """
+    params = best_stopping_position(params)
     wb, summary = calc_workbook(
         params=params, write_workbook=spreadsheets, print_time_series=spreadsheets
     )
