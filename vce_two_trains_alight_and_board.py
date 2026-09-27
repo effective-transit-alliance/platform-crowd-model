@@ -390,7 +390,33 @@ class Instant:
     """Egress LOS (level of service)."""
 
 
-def calc_workbook(params: Params) -> openpyxl.Workbook:
+@dataclass
+class Summary:
+    """Headline results of one model run, for the results table in the README."""
+
+    max_up_rate: float
+    """Highest upstairs rate (pax/s)."""
+
+    secs_at_capacity: int
+    """Seconds the upstairs rate is at the VCEs' LOS E capacity (17 pax/min/ft)."""
+
+    taper_time: int | None
+    """
+    Last second the arrived passengers on the platform exceed what fits in the stair queues,
+    i.e. when they start to taper off, or `None` if they never do.
+    """
+
+    clear_time: int | None
+    """First second after the last arrival when all arrived passengers have left the platform."""
+
+    max_pax_on_platform: float
+    """Most passengers on the platform at once."""
+
+    min_space_per_pax: float
+    """Least platform space per passenger (sqft)."""
+
+
+def calc_workbook(params: Params) -> tuple[openpyxl.Workbook, Summary]:
     eff_area = (
         params.platform_width * params.platform_length * params.usable_platform_area_multiplier
     )
@@ -426,6 +452,18 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     # The parameters take up columns 1 (A) and 2 (B), so the time series starts after them.
     FIRST_DATA_COLUMN = 3
 
+    qmax = params.total_vce_width * params.queue_length / 5
+    capacity = params.total_vce_width * 17 / 60
+    last_arrival_time = max(params.train1_arrival_time, params.train2_arrival_time)
+    summary = Summary(
+        max_up_rate=0,
+        secs_at_capacity=0,
+        taper_time=None,
+        clear_time=None,
+        max_pax_on_platform=total_pax_on_platform,
+        min_space_per_pax=space_per_pax(total_pax_on_platform, eff_area),
+    )
+
     print("Elapsed_Time", "Train_1_Pax", "Train_2_Pax")
 
     def get_column_for(attr_name: str) -> int:
@@ -459,7 +497,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             arrived_pax_waiting_on_plat,
             eff_area,
             params.total_vce_width,
-            params.total_vce_width * params.queue_length / 5,
+            qmax,
         )
         arrived_pax_waiting_on_plat -= plat_egress_rate
         if arrived_pax_waiting_on_plat < 0:
@@ -556,6 +594,19 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             + " pax are upstairs"
         )
         """
+        summary.max_up_rate = max(summary.max_up_rate, plat_egress_rate)
+        if plat_egress_rate >= capacity - 1e-9:
+            summary.secs_at_capacity += 1
+        if arrived_pax_waiting_on_plat > qmax:
+            summary.taper_time = time_after
+        if (
+            summary.clear_time is None
+            and time_after > last_arrival_time
+            and arrived_pax_waiting_on_plat < 1
+        ):
+            summary.clear_time = time_after
+        summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
+        summary.min_space_per_pax = min(summary.min_space_per_pax, inst_crowding)
 
         instant = Instant(
             time=time_after,
@@ -710,11 +761,26 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         f"LOS F egress rate is {params.los_f_egress_rate} pax/s. "
         f"Emergency egress time is {params.emergency_egress_time} seconds."
     )
-    return wb
+    return wb, summary
 
 
-def run_model(params: Params) -> None:
-    wb = calc_workbook(params=params)
+RESULTS_COLUMNS = [
+    "Platform",
+    "Headway",
+    "VCE width",
+    "Max up rate (pax/s)",
+    "Time at capacity",
+    "Taper time",
+    "Clear time",
+    "Max pax on platform",
+    "Min space/pax (sqft)",
+]
+RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
+
+
+def run_model(params: Params) -> str:
+    """Run the model, save its spreadsheet, and return its row of the results table."""
+    wb, summary = calc_workbook(params=params)
 
     headway = params.train2_arrival_time - params.train1_arrival_time
     wb.save(
@@ -724,6 +790,17 @@ def run_model(params: Params) -> None:
         f"_{headway}s.xlsx"
     )
     wb.close()
+
+    def fmt_time(t: int | None) -> str:
+        return "never" if t is None else f"{t} s"
+
+    return (
+        f"| {params.filename_prefix} | {headway} s | {params.total_vce_width} ft"
+        f" | {summary.max_up_rate:.2f} | {summary.secs_at_capacity} s"
+        f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
+        f" | {summary.max_pax_on_platform:.0f} | {summary.min_space_per_pax:.1f}"
+        f" ({platform_crowd_los(summary.min_space_per_pax)}) |"
+    )
 
 
 def main() -> None:
@@ -1009,13 +1086,22 @@ def main() -> None:
             )
         ),
     )
-    run_model(params_p3120)
-    run_model(params_p3300)
-    run_model(params_p3recon120)
-    run_model(params_p3recon300)
-    run_model(params_p60)
-    run_model(params_p10120)
-    run_model(params_p11120)
+    rows = [
+        run_model(params)
+        for params in [
+            params_p3120,
+            params_p3300,
+            params_p3recon120,
+            params_p3recon300,
+            params_p60,
+            params_p10120,
+            params_p11120,
+        ]
+    ]
+    print()
+    print(RESULTS_HEADER)
+    for row in rows:
+        print(row)
 
 
 if __name__ == "__main__":
