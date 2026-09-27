@@ -167,19 +167,18 @@ class Assumptions:
     """
 
     platform_los_min_space: tuple[tuple[str, float], ...] = (
-        ("A", 35),
-        ("B", 25),
-        ("C", 15),
-        ("D", 10),
-        ("E", 5),
+        ("A", 13),
+        ("B", 10),
+        ("C", 7),
+        ("D", 3),
+        ("E", 2),
     )
     """
-    Fruin's LOS for walkways:
+    Fruin's LOS for queuing and waiting areas:
     each grade needs more than this space per passenger (ft^2/pax), or else F.
-    Fruin, p. 7: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=7
-    A bug: most passengers on a platform are standing and waiting, not walking,
-    so the TCQSM grades platforms with Fruin's LOS for queuing and waiting areas.
-    See `README.md#platform-crowding-is-graded-as-a-walkway`.
+    Most passengers on a platform are standing and waiting, not walking,
+    so the TCQSM grades platforms with these, not Fruin's LOS for walkways.
+    TCQSM, Exhibit 10-32, p. 10-55: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59
     """
 
     stair_los_max_flow: tuple[tuple[str, float], ...] = (
