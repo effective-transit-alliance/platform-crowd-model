@@ -256,14 +256,13 @@ def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float
 
 def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumptions) -> float:
     """
-    Several bugs: the whole upward flow is subtracted from each train's share of the stairs,
-    Fruin's ascending equation is used for descending passengers,
+    Several bugs: Fruin's ascending equation is used for descending passengers,
     and it's applied to a fixed concourse area.
     See the README's "Known Bugs".
 
     :param kdep: number of departing passengers upstairs
     :param w: this train's share of the total width of vertical circulation elements (ft)
-    :param r_up: upward stair flow (pax/s)
+    :param r_up: upward stair flow on this train's share of the stairs (pax/s)
     :return: platform ingress rate on stairs (pax/s)
     """
     if kdep > 0:
@@ -724,12 +723,16 @@ def calc_workbook(
         if arriving_pax_waiting_on_plat < 0:
             arriving_pax_waiting_on_plat = 0
         total_pax_on_platform -= plat_egress_rate
+        # Each train's boarders get a share of the stairs,
+        # and so a share of the upward flow on them.
+        boarder_fracs = [
+            boarder_fraction(boarders_upstairs[train], boarders_upstairs) for train in trains
+        ]
         plat_ingress_rates = [
             platform_ingress(
                 boarders_upstairs[train],
-                params.total_vce_width
-                * boarder_fraction(boarders_upstairs[train], boarders_upstairs),
-                plat_egress_rate,
+                params.total_vce_width * boarder_fracs[train],
+                plat_egress_rate * boarder_fracs[train],
                 assumptions,
             )
             for train in trains
