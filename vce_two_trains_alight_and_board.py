@@ -90,6 +90,57 @@ Fruin, pp. 12-14: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 SECONDS_PER_MINUTE = 60
 
 
+# Scenario assumptions.
+# These are the same in every scenario in `main`.
+
+SIMULATION_TIME = 600
+"""Time to simulate (s), counted from the first train's arrival."""
+
+USABLE_PLATFORM_AREA_MULTIPLIER = 0.75
+"""
+Fraction of the platform's area usable by passengers,
+leaving the rest for columns, stairwells, and other obstructions.
+From the ETA report.
+Likely optimistic: the TCQSM's 18 in. edge buffers alone take about 17% of an 18 ft platform.
+"""
+
+ARRIVING_PAX_PER_TRAIN = 1620
+"""
+Passengers arriving on each train (pax), all of whom alight.
+A crush-loaded 10-car or seated 12-car NJ Transit MultiLevel, from the ETA report.
+"""
+
+DOORS_PER_TRAIN = 40
+"""
+Doors (single-door equivalents) on each train on the platform side.
+A 10-car NJ Transit MultiLevel with 4 per car, the worst case.
+A 12-car LIRR train has more and better doors.
+"""
+
+DEPARTING_PAX_PER_TRAIN = 400
+"""Passengers boarding each train (pax), from the ETA report."""
+
+DEPARTING_PAX_ON_PLATFORM_PER_TRAIN = 200
+"""
+Of `DEPARTING_PAX_PER_TRAIN`, those already on the platform at the start (pax).
+The rest start upstairs, all at once, with none arriving during the simulation (optimistic).
+From the ETA report.
+"""
+
+STAIR_QUEUE_LENGTH = 20
+"""
+Length of the queue in front of each stair (ft),
+used to report when the arrived passengers start to taper off.
+From the ETA report.
+"""
+
+CLOSE_HEADWAY = 120
+"""Time between two trains' arrivals in the closely spaced scenarios (s), from the ETA report."""
+
+NORMAL_HEADWAY = 300
+"""Time between two trains' arrivals in the normal scenarios (s), from the ETA report."""
+
+
 def stair_flow(rate: float, w: float) -> float:
     """
     :param rate: stair flow per foot of width (pax/min/ft)
@@ -341,7 +392,11 @@ class Params:
     """
 
     total_vce_width: Annotated[float, Field(name="Total VCE Width", units="ft")]
-    """Total width (in feet) of all of the VCEs (vertical circulation elements) going upstairs."""
+    """
+    Total width (in feet) of all of the VCEs (vertical circulation elements) going upstairs.
+    Per the ETA report, this excludes one VCE per platform,
+    e.g. an escalator running the other way (pessimistic).
+    """
 
     train1_boarding_pax: Annotated[int, Field(name="Train 1 Boarding Passengers", units="pax")]
     """Number of passengers already on the platform at time 0 wanting to board train 1."""
@@ -877,135 +932,135 @@ def main() -> None:
     # recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
         filename_prefix="platform3",
-        simulation_length=600,
+        simulation_length=SIMULATION_TIME,
         platform_width=18,
         platform_length=900,
-        usable_platform_area_multiplier=0.75,
-        train1_arriving_pax=1620,
-        train2_arriving_pax=1620,
-        train1_departing_pax=400,
-        train2_departing_pax=400,
-        train1_boarding_pax=200,
-        train2_boarding_pax=200,
-        train1_doors=40,
-        train2_doors=40,
+        usable_platform_area_multiplier=USABLE_PLATFORM_AREA_MULTIPLIER,
+        train1_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train2_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train1_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train2_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train1_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train2_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train1_doors=DOORS_PER_TRAIN,
+        train2_doors=DOORS_PER_TRAIN,
         train1_arrival_time=0,
-        train2_arrival_time=120,
-        queue_length=20,
+        train2_arrival_time=CLOSE_HEADWAY,
+        queue_length=STAIR_QUEUE_LENGTH,
         total_vce_width=42.5,
     )
     params_p3300 = Params(
         filename_prefix="platform3",
-        simulation_length=600,
+        simulation_length=SIMULATION_TIME,
         platform_width=18,
         platform_length=900,
-        usable_platform_area_multiplier=0.75,
-        train1_arriving_pax=1620,
-        train2_arriving_pax=1620,
-        train1_departing_pax=400,
-        train2_departing_pax=400,
-        train1_boarding_pax=200,
-        train2_boarding_pax=200,
-        train1_doors=40,
-        train2_doors=40,
+        usable_platform_area_multiplier=USABLE_PLATFORM_AREA_MULTIPLIER,
+        train1_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train2_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train1_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train2_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train1_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train2_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train1_doors=DOORS_PER_TRAIN,
+        train2_doors=DOORS_PER_TRAIN,
         train1_arrival_time=0,
-        train2_arrival_time=300,
-        queue_length=20,
+        train2_arrival_time=NORMAL_HEADWAY,
+        queue_length=STAIR_QUEUE_LENGTH,
         total_vce_width=42.5,
     )
     params_p3recon120 = Params(
         filename_prefix="platform3_recon",
-        simulation_length=600,
+        simulation_length=SIMULATION_TIME,
         platform_width=18,
         platform_length=900,
-        usable_platform_area_multiplier=0.75,
-        train1_arriving_pax=1620,
-        train2_arriving_pax=1620,
-        train1_departing_pax=400,
-        train2_departing_pax=400,
-        train1_boarding_pax=200,
-        train2_boarding_pax=200,
-        train1_doors=40,
-        train2_doors=40,
+        usable_platform_area_multiplier=USABLE_PLATFORM_AREA_MULTIPLIER,
+        train1_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train2_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train1_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train2_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train1_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train2_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train1_doors=DOORS_PER_TRAIN,
+        train2_doors=DOORS_PER_TRAIN,
         train1_arrival_time=0,
-        train2_arrival_time=120,
-        queue_length=20,
+        train2_arrival_time=CLOSE_HEADWAY,
+        queue_length=STAIR_QUEUE_LENGTH,
         total_vce_width=44.75,
     )
     params_p3recon300 = Params(
         filename_prefix="platform3_recon",
-        simulation_length=600,
+        simulation_length=SIMULATION_TIME,
         platform_width=18,
         platform_length=900,
-        usable_platform_area_multiplier=0.75,
-        train1_arriving_pax=1620,
-        train2_arriving_pax=1620,
-        train1_departing_pax=400,
-        train2_departing_pax=400,
-        train1_boarding_pax=200,
-        train2_boarding_pax=200,
-        train1_doors=40,
-        train2_doors=40,
+        usable_platform_area_multiplier=USABLE_PLATFORM_AREA_MULTIPLIER,
+        train1_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train2_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train1_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train2_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train1_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train2_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train1_doors=DOORS_PER_TRAIN,
+        train2_doors=DOORS_PER_TRAIN,
         train1_arrival_time=0,
-        train2_arrival_time=300,
-        queue_length=20,
+        train2_arrival_time=NORMAL_HEADWAY,
+        queue_length=STAIR_QUEUE_LENGTH,
         total_vce_width=44.75,
     )
     params_p60 = Params(
         filename_prefix="platform6",
-        simulation_length=600,
+        simulation_length=SIMULATION_TIME,
         platform_width=15,
         platform_length=1100,
-        usable_platform_area_multiplier=0.75,
-        train1_arriving_pax=1620,
-        train2_arriving_pax=1620,
-        train1_departing_pax=400,
-        train2_departing_pax=400,
-        train1_boarding_pax=200,
-        train2_boarding_pax=200,
-        train1_doors=40,
-        train2_doors=40,
+        usable_platform_area_multiplier=USABLE_PLATFORM_AREA_MULTIPLIER,
+        train1_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train2_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train1_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train2_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train1_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train2_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train1_doors=DOORS_PER_TRAIN,
+        train2_doors=DOORS_PER_TRAIN,
         train1_arrival_time=0,
         train2_arrival_time=0,
-        queue_length=20,
+        queue_length=STAIR_QUEUE_LENGTH,
         total_vce_width=48.168,
     )
     params_p10120 = Params(
         filename_prefix="platform10",
-        simulation_length=600,
+        simulation_length=SIMULATION_TIME,
         platform_width=42,
         platform_length=1100,
-        usable_platform_area_multiplier=0.75,
-        train1_arriving_pax=1620,
-        train2_arriving_pax=1620,
-        train1_departing_pax=400,
-        train2_departing_pax=400,
-        train1_boarding_pax=200,
-        train2_boarding_pax=200,
-        train1_doors=40,
-        train2_doors=40,
+        usable_platform_area_multiplier=USABLE_PLATFORM_AREA_MULTIPLIER,
+        train1_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train2_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train1_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train2_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train1_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train2_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train1_doors=DOORS_PER_TRAIN,
+        train2_doors=DOORS_PER_TRAIN,
         train1_arrival_time=0,
-        train2_arrival_time=120,
-        queue_length=20,
+        train2_arrival_time=CLOSE_HEADWAY,
+        queue_length=STAIR_QUEUE_LENGTH,
         total_vce_width=70.58,
     )
     params_p11120 = Params(
         filename_prefix="platform11",
-        simulation_length=600,
+        simulation_length=SIMULATION_TIME,
         platform_width=18,
         platform_length=1100,
-        usable_platform_area_multiplier=0.75,
-        train1_arriving_pax=1620,
-        train2_arriving_pax=1620,
-        train1_departing_pax=400,
-        train2_departing_pax=400,
-        train1_boarding_pax=200,
-        train2_boarding_pax=200,
-        train1_doors=40,
-        train2_doors=40,
+        usable_platform_area_multiplier=USABLE_PLATFORM_AREA_MULTIPLIER,
+        train1_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train2_arriving_pax=ARRIVING_PAX_PER_TRAIN,
+        train1_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train2_departing_pax=DEPARTING_PAX_PER_TRAIN,
+        train1_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train2_boarding_pax=DEPARTING_PAX_ON_PLATFORM_PER_TRAIN,
+        train1_doors=DOORS_PER_TRAIN,
+        train2_doors=DOORS_PER_TRAIN,
         train1_arrival_time=0,
-        train2_arrival_time=120,
-        queue_length=20,
+        train2_arrival_time=CLOSE_HEADWAY,
+        queue_length=STAIR_QUEUE_LENGTH,
         total_vce_width=43.58,
     )
     rows = [
