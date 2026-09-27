@@ -193,6 +193,31 @@ like those typically used in detailed station planning,
 and several of its simplifications overstate platform capacity.
 Treat its results as optimistic until these are addressed.
 
+### Comparison With the FRA's Pedestrian Simulation
+
+The FRA's [New York Penn Station Service Optimization Study, Phase I Report](https://railroads.dot.gov/elibrary/new-york-penn-station-service-optimization-study-phase-i-report-final-june-2026)
+(June 2026) simulated passengers alighting and boarding at Penn Station
+with a pedestrian simulation, using VCE widths, platform widths, and obstructions
+measured on site ([p. 3-28](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=39)).
+Its stress test is close to this model's platform 3 scenario with trains 2 minutes apart:
+trains alighting and boarding on both tracks of the same platform, 2.5 minutes apart,
+with up to 1,600 passengers per commuter train ([p. 4-40](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=51)).
+
+For NJ Transit trains that only alight ("drop and go"),
+its baseline, i.e. today's VCEs,
+needed up to 7.9 minutes of passenger service time,
+the time for passengers to alight, cross the platform, and reach the VCEs
+([Table 2, p. 4-43](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=54)).
+This model clears platform 3's arrived passengers in 4.5 minutes (269 s),
+so it's likely substantially optimistic,
+though the two aren't exactly comparable:
+7.9 minutes is the worst case across all platforms and simulation runs.
+
+The FRA attributes long clearance times to the same things this model leaves out
+([p. 3-33](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=44)):
+queues at the base of VCEs, uneven use of VCEs, and platform clutter
+reducing the usable width.
+
 ### Stairs Are One Pooled Queue
 
 The model treats all of the VCEs as one queue that discharges at full capacity
