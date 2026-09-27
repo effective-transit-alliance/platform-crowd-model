@@ -91,58 +91,76 @@ and tracks four groups of passengers:
 - Departing passengers on the platform waiting to board each train
 - Departing passengers still upstairs on the concourse
 
-Each second:
+Each second, four things happen in order,
+each using the passenger counts left by the one before.
 
-1. **Alighting.** Once a train arrives, its passengers step off at 1 pax/s per single-door equivalent.
-   Every scenario uses 1,620 passengers,
-   a crush-loaded 10-car or seated 12-car NJ Transit MultiLevel,
-   on 40 doors, a 10-car's, the worst case.
-   (A 12-car LIRR train has more doors, and LIRR platforms are generally wider.)
-2. **Going upstairs.** Arriving passengers leave via the vertical circulation elements (VCEs),
-   i.e. the stairs and escalators, all treated as stairs,
-   with one VCE per platform excluded.
-   The upward flow comes from Fruin's ascending stair equation,
-   `P = (111M − 162)/M²` ([Fruin, p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)),
-   where `M` is the platform's usable area per arriving passenger on it,
-   capped at LOS E capacity, 17 pax/min per foot of VCE width
-   ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)).
-   While more arriving passengers are on the platform than fit in the stair queues,
-   20 ft of queue in front of the total VCE width at 5 sq ft/pax
-   (the TCQSM's stair queuing space, [p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)),
-   the flow is at least the LOS C/D boundary, 10 pax/min/ft.
-   Once they fit, the flow tapers off as the platform empties.
-3. **Coming downstairs.** Each train's departing passengers upstairs come down
-   on a share of the VCE width in proportion to how many of each train's are still upstairs.
-   Their flow is the lesser of
-   the capacity the upward flow leaves out of 12 pax/min/ft,
-   and Fruin's ascending stair equation applied to a 5,000 sq ft concourse
-   minus the upward flow.
-4. **Boarding.** Departing passengers on the platform board a train that has arrived
-   with whatever door capacity alighting leaves that second.
+1. **Alighting.**
+   Once a train arrives, its passengers step off onto the platform
+   at 1 pax/s per single-door equivalent.
+   - Every train carries 1,620 passengers,
+     a seated 12-car NJ Transit train at 135 seats per car,
+     from the Moynihan Station environmental assessment
+     ([Table 4.4-10, p. 4.4-22](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22);
+     [Table 4.4-19, p. 4.4-47](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=47)).
+   - It has 40 doors, as a 10-car train does, the worst case.
+     (A 12-car LIRR train has more doors, and LIRR platforms are generally wider.)
+2. **Going upstairs.**
+   Arriving passengers leave the platform
+   via the vertical circulation elements (VCEs), i.e. the stairs and escalators.
+   - All VCEs are treated as stairs, except one per platform, which is excluded.
+   - The flow up comes from Fruin's ascending stair equation
+     ([Fruin, p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)):
+     `P = (111M − 162)/M²` pax/min per foot of VCE width,
+     where `M` is the platform's usable area per arriving passenger on it.
+   - It's capped at LOS E capacity, 17 pax/min/ft
+     ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)).
+   - While the stair queues are full, it's at least the LOS C/D boundary, 10 pax/min/ft.
+     The stair queues hold 20 ft of queue in front of the VCEs at 5 sq ft/pax
+     (the TCQSM's stair queuing space, [p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
+   - Once the remaining arriving passengers fit in the stair queues,
+     the flow tapers off as the platform empties.
+3. **Coming downstairs.**
+   Departing passengers upstairs come down to the platform.
+   - The two trains' passengers split the VCE width
+     in proportion to how many of each are still upstairs.
+   - Stairs carry at most 12 pax/min/ft in both directions combined,
+     so passengers come down with whatever the upward flow leaves of that.
+   - Their flow is also limited by Fruin's ascending stair equation,
+     applied to a 5,000 sq ft concourse, minus the upward flow.
+4. **Boarding.**
+   Departing passengers on the platform board a train once it has arrived,
+   using whatever door capacity alighting leaves that second.
 
-Space per passenger is the usable platform area (75% of the platform's area)
-divided by everyone on the platform,
-graded with Fruin's walkway LOS
-(A > 35, B > 25, C > 15, D > 10, E > 5 sq ft/pax, or else F;
-[Fruin, p. 7](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=7)).
-The upward stair flow is graded with Fruin's stair LOS
-(A ≤ 5, B ≤ 7, C ≤ 9.5, D ≤ 13, E ≤ 17 pax/min/ft, or else F;
-[Fruin, pp. 12–14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12)).
+### Crowding
 
-Every scenario has 200 departing passengers per train already on the platform
-and another 200 per train upstairs.
-The second train arrives 2 minutes (120 s) or 5 minutes (300 s) after the first,
-except on platform 6, where both trains arrive at once.
+- **On the platform**, the space per passenger is the usable platform area
+  (75% of the platform's area) divided by everyone on the platform.
+  It's graded with Fruin's walkway LOS
+  (A > 35, B > 25, C > 15, D > 10, E > 5 sq ft/pax, or else F;
+  [Fruin, p. 7](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=7)).
+- **On the stairs**, the upward flow is graded with Fruin's stair LOS
+  (A ≤ 5, B ≤ 7, C ≤ 9.5, D ≤ 13, E ≤ 17 pax/min/ft, or else F;
+  [Fruin, pp. 12–14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12)).
+
+### Scenarios
+
+- Each train has 400 departing passengers:
+  200 already on the platform and 200 upstairs.
+- The second train arrives 2 minutes (120 s) or 5 minutes (300 s) after the first,
+  except on platform 6, where both trains arrive at once.
+
+### Emergency Egress Time
 
 The model also computes an "emergency egress time":
-the time for everyone on both trains to go upstairs at 19 pax/min/ft,
-the maximum ascending stair flow in Fruin's paper
-(18.9 pax/min/ft, [p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)),
-reached at about 3 sq ft/pax, the edge of LOS F.
-This is more than the 17 pax/min/ft LOS E capacity,
-and more than NFPA 130's 1.41 pax/in/min, i.e. 16.9 pax/min/ft,
-for evacuating up stairs ([TCQSM p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)),
-and it ignores walking time, so it's a lower bound.
+the time for everyone on both trains to go upstairs at 19 pax/min/ft.
+
+- That's Fruin's maximum ascending stair flow, 18.9 pax/min/ft
+  ([p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)),
+  reached at about 3 sq ft/pax, the edge of LOS F.
+- It's more than the 17 pax/min/ft LOS E capacity,
+  and more than NFPA 130's 1.41 pax/in/min, i.e. 16.9 pax/min/ft,
+  for evacuating up stairs ([TCQSM p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)).
+- It ignores walking time, so it's a lower bound.
 
 ## Assumptions
 
