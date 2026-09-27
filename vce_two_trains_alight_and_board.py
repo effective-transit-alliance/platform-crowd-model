@@ -270,7 +270,12 @@ class Params:
     """Number of passengers departing on train 2."""
 
     train1_doors: Annotated[int, Field(name="Train 1 Doors", units="door")]
-    """Number of doors (single-door equivalents) on train 1."""
+    """
+    Number of doors (single-door equivalents) on train 1.
+
+    The scenarios use 40, a 10-car NJ Transit MultiLevel with 4 per car on the platform side,
+    the worst case. A 12-car LIRR train has more and better doors.
+    """
 
     train2_doors: Annotated[int, Field(name="Train 2 Doors", units="door")]
     """Number of doors (single-door equivalents) on train 2."""

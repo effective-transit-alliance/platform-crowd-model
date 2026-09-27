@@ -86,6 +86,16 @@ The upward stair flow is graded with Fruin's stair LOS
 
 Every scenario has 200 departing passengers per train already on the platform
 and another 200 per train upstairs.
+The second train arrives 2 minutes (120 s) or 5 minutes (300 s) after the first,
+except on platform 6, where both trains arrive at once.
+
+The model also prints an "emergency egress time":
+the time for everyone on both trains to go upstairs at 19 pax/min/ft,
+the maximum ascending stair flow in the cited TRB paper (18.9 pax/min/ft),
+reached at about 3 sqft/pax, the edge of LOS F.
+This is more than the 17 pax/min/ft LOS E capacity used everywhere else,
+and it ignores walking time and evacuation standards like NFPA 130,
+so it's a lower bound.
 
 ## Results
 
