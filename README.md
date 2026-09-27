@@ -179,6 +179,73 @@ it's marked as optimistic (less crowding than reality) or pessimistic (more).
   not the departing passengers,
   and ignores walking time (optimistic).
 
+## Limitations
+
+The model is much simpler than a pedestrian microsimulation,
+like those typically used in detailed station planning,
+and several of its simplifications overstate platform capacity.
+Treat its results as optimistic until these are addressed.
+
+### Stairs Are One Pooled Queue
+
+The model treats all of the VCEs as one queue that discharges at full capacity
+until the last arrived passenger leaves.
+This follows the TCQSM's stair queuing procedure ([p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55))
+and NFPA 130's evacuation check ([p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)),
+which size stairs for a given demand, but it's optimistic for a whole platform:
+
+- **Stairs empty unevenly.**
+  Stairs near the ends of the platform, or far from the busiest doors,
+  run out of queue while others still have one,
+  so the total flow drops below capacity before the platform clears.
+  This is likely the largest optimistic bias in the model.
+- **Passengers prefer some exits**, e.g. toward 7th Avenue, as the ETA report notes,
+  concentrating queues at fewer stairs.
+- **Walking from the doors to the stairs takes no time.**
+  This only shifts the results by a few seconds, but also ignores
+  passengers crossing through crowds of waiting passengers.
+
+Modeling each VCE's own queue with walking distances would fix these,
+but needs each VCE's position and width on each platform.
+Until then, running at a reduced effective stair capacity, e.g. 80–90%,
+would give a rough bound.
+
+### Platform Crowding Is Graded Against the Whole Platform
+
+The model grades all passengers on the platform with Fruin's LOS for queuing areas
+(TCQSM [Exhibit 10-32, p. 10-55](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59)).
+But the TCQSM's platform sizing procedure ([p. 10-56](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=60))
+only applies that to passengers *waiting* to board, and adds separate areas for:
+
+- walkway width for arriving passengers, graded as a walkway,
+- queue storage at the stairs, and
+- an 18 in. buffer along each platform edge.
+
+The model lumps everyone into one area, so its crowding grades are optimistic,
+especially while arriving passengers are walking to the stairs.
+With Fruin's walkway LOS ([p. 7](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=7)), which the model originally used,
+platform 3's most crowded moment is LOS E instead of C.
+
+### Usable Platform Area
+
+The model uses 75% of the platform's area,
+leaving 25% for columns, stairwells, and other obstructions.
+But the TCQSM's 18 in. edge buffers alone take 3 ft of an 18 ft platform, about 17%,
+leaving only 8% for everything else, which is likely too little on a narrow platform
+with stairwells in it.
+So the usable area, and the space per passenger, are likely overstated.
+
+### The ETA Report's Results Aren't a Reliable Baseline
+
+The original model reproduced the report's results,
+but only because two bugs partly canceled out:
+its stair flow was about 1.4x too high from a units error,
+but also tapered off as the platform emptied,
+from applying Fruin's stair equation to the platform's density.
+Fixing only the units made the results much worse (see the history below),
+and neither version modeled the stairs correctly,
+so the report's results shouldn't be read as either conservative or optimistic.
+
 ## Results
 
 Each run writes a spreadsheet per scenario with the full time series and charts,
