@@ -170,7 +170,7 @@ and each fix's effect is summarized here.
   departing passengers upstairs come down with whatever stair capacity the upward flow leaves,
   instead of slowing as a fixed 5,000 sqft concourse empties.
   Every scenario now finishes boarding: platform 3 with 2-minute headways by 325 s
-  (309 s with Penn Reconstruction), where most never boarded before.
+  (309 s with Penn Reconstruction), where about 20 of 400 never boarded before.
 - **Let passengers come down at up to LOS E capacity, 17 pax/min/ft, when few are going up,**
   since the report's 10 pax/min/ft rule only applies to flow in both directions.
   Platform 3 with 2-minute headways finishes boarding by 302 s instead of 325 s
