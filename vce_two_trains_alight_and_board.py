@@ -590,7 +590,6 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             writable_cell(sheet, row=1, column=column).value = field.description
             writable_cell(sheet, row=instant.time + 2, column=column).value = value
 
-    # Time gets exported to column 3, see line 264.
     def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
         chart.title = title
@@ -602,7 +601,9 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         chart.legend = None
 
         max_row = params.simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
+        xvalues = Reference(
+            sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
+        )
         values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
         series = SeriesFactory(values, xvalues, title_from_data=True)
@@ -624,7 +625,9 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         chart.legend = None
 
         max_row = params.simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
+        xvalues = Reference(
+            sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
+        )
         values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
         series = SeriesFactory(values, xvalues, title_from_data=True)
@@ -643,7 +646,9 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         chart.legend.position = "b"
 
         max_row = params.simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
+        xvalues = Reference(
+            sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
+        )
         values1 = Reference(sheet, min_col=col1, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         values2 = Reference(sheet, min_col=col2, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
