@@ -147,62 +147,65 @@ and it ignores walking time, so it's a lower bound.
 ## Assumptions
 
 Beyond the numbers above, which are all in `Assumptions`, the model assumes the following.
-Where it's clear which way an assumption biases the results,
-it's marked as optimistic (less crowding than reality) or pessimistic (more).
+Each is marked by which way it biases the results:
+**optimistic** (less crowding than reality), **pessimistic** (more),
+**neutral** (neither, e.g. it only simplifies the bookkeeping),
+or **unclear** (it could go either way).
 The [known bugs](#known-bugs) are listed separately.
 
 ### Platform
 
-- The platform is a single island platform serving two tracks.
-- 75% of its area is usable, the rest taken by columns, stairs, and other obstructions.
-- Passengers are spread evenly over the whole usable area,
-  so local crowding, e.g. at the foot of the stairs or at the doors, isn't modeled (optimistic).
-- Space per passenger counts everyone on the platform:
+- **Neutral:** The platform is a single island platform serving two tracks.
+- **Optimistic:** 75% of its area is usable, the rest taken by columns, stairs, and other obstructions
+  (see [Usable Platform Area](#usable-platform-area)).
+- **Optimistic:** Passengers are spread evenly over the whole usable area,
+  so local crowding, e.g. at the foot of the stairs or at the doors, isn't modeled.
+- **Neutral:** Space per passenger counts everyone on the platform:
   arriving passengers heading up and departing passengers waiting to board.
 
 ### Stairs and Escalators
 
-- All VCEs are treated as stairs, even escalators, which have higher capacities (pessimistic).
-- One VCE per platform is excluded, e.g. an escalator running the other way (pessimistic).
-- All VCEs act as one pooled stair:
+- **Pessimistic:** All VCEs are treated as stairs, even escalators, which have higher capacities.
+- **Pessimistic:** One VCE per platform is excluded, e.g. an escalator running the other way.
+- **Optimistic:** All VCEs act as one pooled stair:
   passengers spread across them in proportion to their widths,
-  with no preference for any exit, e.g. toward 7th Avenue (optimistic).
-- Stair capacity is linear in width,
+  with no preference for any exit, e.g. toward 7th Avenue.
+- **Unclear:** Stair capacity is linear in width,
   though the TCQSM notes capacity is really stepped by the number of pedestrian lanes
   ([p. 10-49](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=53)).
-- Stair capacity doesn't depend on the stair's rise,
-  though long climbs slow people down ([p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)) (optimistic),
-  or on luggage, strollers, or wheelchairs (optimistic).
-- Walking from the doors to the stairs takes no time;
-  passengers can go upstairs the same second they alight (optimistic, by a few seconds).
-- The concourse upstairs never backs up, so the stairs always discharge (optimistic).
+- **Optimistic:** Stair capacity doesn't depend on the stair's rise,
+  though long climbs slow people down ([p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)),
+  or on luggage, strollers, or wheelchairs.
+- **Optimistic, by a few seconds:** Walking from the doors to the stairs takes no time;
+  passengers can go upstairs the same second they alight.
+- **Optimistic:** The concourse upstairs never backs up, so the stairs always discharge.
 
 ### Trains
 
-- Every arriving passenger alights; nobody stays on a through train (pessimistic).
-- Passengers alight and board at 1 pax/s per single-door equivalent,
-  starting the second after the train arrives, with no delay for the doors to open (optimistic).
-- Trains don't depart within the 600 s simulated,
+- **Pessimistic:** Every arriving passenger alights; nobody stays on a through train.
+- **Optimistic:** Passengers alight and board at 1 pax/s per single-door equivalent,
+  starting the second after the train arrives, with no delay for the doors to open.
+- **Neutral:** Trains don't depart within the 600 s simulated,
   so nobody misses a train, and the dwell is only reported.
   This has no source; the original model passed the simulation's length as the departure time.
 
 ### Departing Passengers
 
-- Each train has 400 departing passengers, all present at the start:
+- **Optimistic:** Each train has 400 departing passengers, all present at the start:
   200 on the platform and 200 upstairs.
-  None arrive during the simulation, even with 5-minute headways (optimistic).
-- Departing passengers come downstairs even before their train arrives,
+  None arrive during the simulation, even with 5-minute headways.
+- **Pessimistic:** Departing passengers come downstairs even before their train arrives,
   and wait for it on the platform, adding to the crowding.
 
 ### Simulation
 
-- It steps through time 1 s at a time, with fractional passengers.
-- Each second, passengers alight, then go upstairs, then come downstairs, then board,
+- **Neutral:** It steps through time 1 s at a time, with fractional passengers.
+- **Neutral:** Each second, passengers alight, then go upstairs, then come downstairs, then board,
   each using the counts left by the previous step.
-- The stair LOS grades only the upward flow, not the downward flow.
-- The emergency egress time only counts the passengers on both trains,
+- **Neutral:** The stair LOS grades only the upward flow, not the downward flow.
+- **Optimistic:** The emergency egress time only counts the passengers on both trains,
   not the departing passengers,
-  and ignores walking time (optimistic).
+  and ignores walking time.
 
 ## Known Bugs
 
