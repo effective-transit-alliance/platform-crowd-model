@@ -205,34 +205,38 @@ def alight_rate(k: float, t: float, t0: float | None, u: float) -> float:
 
 def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float:
     """
-    Arriving passengers queue at the stairs,
-    which discharge them at `Assumptions.stair_capacity` as long as anyone is queued.
+    Arriving passengers queue at each stair,
+    which discharges them at `Assumptions.stair_capacity` as long as anyone is queued.
 
     Fruin's stair equation relates flow to the space per passenger *on the stair*,
     which a queued stair holds near its critical density,
     so it doesn't apply to the space per passenger on the platform.
-    The few seconds of walking from the doors to the stairs are ignored.
 
-    :param karr: number of arriving passengers on the platform (pax)
-    :param w: total width of vertical circulation elements (ft)
-    :return: platform egress rate on stairs (pax/s)
+    :param karr: number of arriving passengers queued at this VCE (pax)
+    :param w: this VCE's width (ft)
+    :return: this VCE's upward flow (pax/s)
     """
     return min(karr, stair_flow(assumptions.stair_capacity, w))
 
 
-def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumptions) -> float:
+def platform_ingress(
+    kdep: float, vces: tuple[Vce, ...], up_rates: list[float], assumptions: Assumptions
+) -> float:
     """
-    Departing passengers queue upstairs and come down with whatever stair capacity
-    the upward flow leaves, unless it exceeds `Assumptions.bidirectional_stair_flow_limit`.
+    Departing passengers queue upstairs and come down each VCE with whatever capacity
+    its upward flow leaves, unless that exceeds `Assumptions.bidirectional_stair_flow_limit`.
 
     :param kdep: number of departing passengers upstairs (pax)
-    :param w: this train's share of the total width of vertical circulation elements (ft)
-    :param r_up: upward stair flow on this train's share of the stairs (pax/s)
+    :param vces: this train's share of each VCE
+    :param up_rates: upward flow on this train's share of each VCE (pax/s)
     :return: platform ingress rate on stairs (pax/s)
     """
-    if r_up > stair_flow(assumptions.bidirectional_stair_flow_limit, w):
-        return 0
-    return min(kdep, stair_flow(assumptions.stair_capacity, w) - r_up)
+    available = sum(
+        stair_flow(assumptions.stair_capacity, vce.width) - r_up
+        for vce, r_up in zip(vces, up_rates, strict=True)
+        if r_up <= stair_flow(assumptions.bidirectional_stair_flow_limit, vce.width)
+    )
+    return min(kdep, available)
 
 
 def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
@@ -297,14 +301,22 @@ def platform_crowd_los(inst_crowding: float, assumptions: Assumptions) -> str:
 
 def egress_crowd_los(w: float, plat_egress_rate: float, assumptions: Assumptions) -> str:
     """
-    :param w: total width of vertical circulation elements (ft)
-    :param plat_egress_rate: upward stair flow (pax/s)
+    :param w: VCE width (ft)
+    :param plat_egress_rate: upward flow on it (pax/s)
     :return: its LOS, per `Assumptions.stair_los_max_flow` and `stair_capacity`
     """
     for grade, max_flow in (*assumptions.stair_los_max_flow, ("E", assumptions.stair_capacity)):
         if plat_egress_rate <= stair_flow(max_flow, w):
             return grade
     return "F"
+
+
+def worst_egress_los(vces: tuple[Vce, ...], up_rates: list[float], assumptions: Assumptions) -> str:
+    """The worst of each VCE's `egress_crowd_los`."""
+    return max(
+        egress_crowd_los(vce.width, r_up, assumptions)
+        for vce, r_up in zip(vces, up_rates, strict=True)
+    )
 
 
 @dataclass
@@ -585,6 +597,8 @@ def calc_workbook(
 
     # Initialize counters
     arriving_pax_waiting_on_plat: float = 0
+    vce_queues = [0.0 for _ in params.vces]
+    """Arriving passengers queued at each VCE."""
     trains = range(params.trains)
     arrival_times: list[int | None] = [
         train * params.headway if train < 2 else None for train in trains
@@ -693,23 +707,33 @@ def calc_workbook(
             off_rates.append(off_rate)
         total_pax_on_platform += sum(off_rates)
         arriving_pax_waiting_on_plat += sum(off_rates)
-        plat_egress_rate = platform_clearance(
-            arriving_pax_waiting_on_plat, params.total_vce_width, assumptions
-        )
+        # Arriving passengers spread across the VCEs in proportion to their widths.
+        for i, vce in enumerate(params.vces):
+            vce_queues[i] += sum(off_rates) * vce.width / params.total_vce_width
+        vce_up_rates = [
+            platform_clearance(queue, vce.width, assumptions)
+            for vce, queue in zip(params.vces, vce_queues, strict=True)
+        ]
+        for i, r_up in enumerate(vce_up_rates):
+            vce_queues[i] = max(0, vce_queues[i] - r_up)
+        plat_egress_rate = sum(vce_up_rates)
         arriving_pax_waiting_on_plat -= plat_egress_rate
         if arriving_pax_waiting_on_plat < 0:
             arriving_pax_waiting_on_plat = 0
         total_pax_on_platform -= plat_egress_rate
-        # Each train's boarders get a share of the stairs,
-        # and so a share of the upward flow on them.
+        # Each train's boarders get a share of each VCE,
+        # and so a share of the upward flow on it.
         boarder_fracs = [
             boarder_fraction(boarders_upstairs[train], boarders_upstairs) for train in trains
         ]
         plat_ingress_rates = [
             platform_ingress(
                 boarders_upstairs[train],
-                params.total_vce_width * boarder_fracs[train],
-                plat_egress_rate * boarder_fracs[train],
+                tuple(
+                    dataclasses.replace(vce, width=vce.width * boarder_fracs[train])
+                    for vce in params.vces
+                ),
+                [r_up * boarder_fracs[train] for r_up in vce_up_rates],
                 assumptions,
             )
             for train in trains
@@ -806,7 +830,7 @@ def calc_workbook(
                 up_rate=plat_egress_rate,
                 net_pax_flow_rate=net_pax_flow_rate,
                 platform_crowd_los=platform_crowd_los(inst_crowding, assumptions),
-                egress_los=egress_crowd_los(params.total_vce_width, plat_egress_rate, assumptions),
+                egress_los=worst_egress_los(params.vces, vce_up_rates, assumptions),
             )
 
             for train in trains:
