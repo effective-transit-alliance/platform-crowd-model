@@ -357,8 +357,8 @@ This data can't yet replace `total_vce_width`:
   But the Master Plan probably doesn't include the West End Concourse's VCEs,
   and the EA's data predates Moynihan Train Hall,
   so platform 3's total width today is probably more than 19.4 ft.
-  With the West End Concourse's 2 stairs' [estimated widths](#estimated-widths),
-  it's about 464 in. (38.7 ft), a little less than the model's 42.5 ft.
+  With the VCEs on NJ Transit's scaled PCIP Phase 2 plan, whose widths are mostly
+  [estimated](#estimated-widths), it's about 550 in. (45.8 ft), a little more than the model's 42.5 ft.
   Either way, a single total overstates how quickly a platform clears
   if some of that width is at its far west end, far from most of the train's doors.
 - **Positions are approximate.**
@@ -411,47 +411,72 @@ So these counts are a check on the other sources, not a replacement for the FRA'
 
 ### Estimated Widths
 
-Until the VCEs are measured, some widths no source lists can be estimated from a scaled drawing.
+Until the VCEs are measured, widths no source lists can be estimated from a scaled drawing.
 NJ Transit's PCIP Phase 2 drawings include an
 [existing concourse-level plan](https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf#page=45)
-(sheet A-001, November 2020), a vector drawing at 1" = 40' showing platforms 1 to 8
-and each stair's treads, so a tread's length is roughly its stair's width.
+(sheet A-001, November 2020), a vector drawing at 1" = 40' of platforms 1 to 8,
+including the West End Concourse, with each stair's and escalator's treads drawn as lines.
+No such drawing of platforms 9 to 11 was found.
 [`scripts/estimate_vce_widths.py`](./scripts/estimate_vce_widths.py)
-measures them into [`data/estimated_vce_widths.csv`](./data/estimated_vce_widths.csv),
-with every width marked `estimated`.
+finds every run of treads on the platforms, merges a stair's flights,
+and measures each VCE's width and position into
+[`data/estimated_vce_widths.csv`](./data/estimated_vce_widths.csv):
 
-So far, it estimates the 2 stairs from the West End Concourse down to platform 3,
-the ones the Master Plan's tables don't include:
+- Positions are in the Master Plan's frame, feet east of its plans' west edge.
+  The two drawings register to within about 1.4 ft:
+  the platforms' east ends on them are all the same distance apart.
+- VCEs matching a Master Plan VCE of the same type within 15 ft
+  have `width_status` `master plan`, with the Master Plan's width.
+  The rest, 46 of 61, are `estimated`, with only the sheet's width.
+- For the 10 matched stairs, the sheet's widths differ from the Master Plan's by up to 14 in.
+  (a median of 4 in.), and for the 5 matched escalators, within 3 in.
+- Escalators' treads are their steps, narrower than their balustrades.
+- The platforms' labels hide what's under them,
+  including an escalator the Master Plan has about 230 ft along each of platforms 3 to 8.
 
-| Stair | Estimated width | Position (ft west of platform 3's east end) |
-|---|---|---|
-| West End Concourse, west side | 109 in. | 780 to 802 |
-| West End Concourse, east side | 122 in. | 715 to 726 |
+| Platform | Stairs on the sheet | Escalators on the sheet | Their total width | Of which estimated | Master Plan VCEs not matched on the sheet |
+|---|---|---|---|---|---|
+| 1 | 6 | 2 | 411 in. (34.2 ft) | 235 in. | 46 in. escalator at 688 ft; 44/57 in. stair at 689 ft; 46 in. escalator at 774 ft; 52 in. stair at 776 ft |
+| 2 | 5 | 4 | 431 in. (35.9 ft) | 276 in. | 52 in. stair at 775 ft; 46 in. escalator at 774 ft |
+| 3 | 6 | 2 | 516 in. (43.0 ft) | 430 in. | 34 in. escalator at 230 ft; 69 in. stair at 278 ft; 44 in. stair at 684 ft |
+| 4 | 5 | 2 | 441 in. (36.8 ft) | 369 in. | 34 in. escalator at 230 ft; 34 in. escalator at 404 ft; 44 in. stair at 683 ft |
+| 5 | 4 | 4 | 438 in. (36.5 ft) | 404 in. | 34 in. escalator at 230 ft; 44 in. stair at 683 ft |
+| 6 | 3 | 4 | 370 in. (30.8 ft) | 286 in. | 34 in. escalator at 230 ft |
+| 7 | 4 | 3 | 393 in. (32.8 ft) | 301 in. | 34 in. escalator at 230 ft |
+| 8 | 5 | 2 | 435 in. (36.2 ft) | 377 in. | 34 in. escalator at 230 ft; 34 in. escalator at 404 ft |
 
-The east side's is T-shaped, splitting into two 60 in. flights east and west along the platform.
-With the Master Plan's 5, platform 3's VCEs total about 464 in. (38.7 ft).
+The unmatched Master Plan VCEs are a mix:
+the escalators at 230 ft are hidden under the sheet's labels, so they should be added;
+others, like platform 3's 44 in. stair at 684 ft,
+are probably the same VCEs as similar ones on the sheet 15 to 25 ft away;
+and some disagree on the type, like platform 3's 69 in. stair at 278 ft,
+where the sheet has a 37 in. escalator.
+So platform 3's VCEs total about 550 in. (45.8 ft) with its hidden escalator,
+a little more than the model's 42.5 ft,
+including the 2 West End Concourse stairs (107 and 120 in.) and the Exit Concourse's 2 (61 and 60 in.).
 
 These are only estimates:
 
-- On the same sheet, the stairs that seem to match the Master Plan's measure within about 6 in.
-  of its widths (e.g. 66 vs. 69 in. and 44 vs. 44 in.),
-  but a drawn tread isn't necessarily the clear width between handrails.
-- The sheet also shows more stairs over platform 3 than the Master Plan lists.
-  Some are probably stairs between the upper and lower concourses drawn over the platform,
-  but the sheet doesn't label them, so they aren't included.
-- The escalators among the Master Plan's 5 are still counted by width,
-  not by an escalator's capacity.
+- A drawn tread isn't necessarily the clear width between handrails.
+- The sheet's existing stairs aren't labeled,
+  so some may be stairs between the upper and lower concourses drawn over a platform,
+  though every platform's matches the directory's pattern,
+  e.g. 2 stairs each for the West End and Exit Concourses.
+- The sheet predates NJ Transit's replacement of an escalator on tracks 7/8 (platform 4)
+  with stairs in about 2021.
+- Escalators are still counted by width, not by an escalator's capacity.
 
 ### Field Survey
 
 Since no public source has every VCE's width,
 [`data/field_survey.csv`](./data/field_survey.csv) is a sheet for measuring them in person,
 made by [`scripts/make_field_survey.py`](./scripts/make_field_survey.py).
-It lists each platform's VCEs expected from both the 2022 directory and the Master Plan,
-each sorted west to east, since the two can't be aligned reliably,
+It lists each platform's VCEs expected from the PCIP Phase 2 plan (platforms 1 to 8),
+the 2022 directory, and the Master Plan,
+each sorted west to east, since they can't all be aligned reliably,
 starting with platform 3, the ETA report's focus,
 then platform 11, which has no width data.
-Surveyors fill in the columns after `master_plan_mid_ft`:
+Surveyors fill in the columns after `position_ft`, feet east of the Master Plan's plans' west edge:
 
 - `found`: yes, no, or the `id` of another row it duplicates.
   Add rows for VCEs neither source lists.

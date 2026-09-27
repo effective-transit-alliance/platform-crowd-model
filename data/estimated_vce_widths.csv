@@ -1,3 +1,62 @@
-platform,vce,type,width_in,width_status,east_end_ft,west_end_ft,source,notes
-3,"West End Concourse, west side",stair,109,estimated,780,802,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","A straight stair with a mid-landing, running along the platform. Its treads are drawn in two halves split at the platform's edge line, so its width is their sum."
-3,"West End Concourse, east side",stair,122,estimated,715,726,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","A T-shaped stair: one flight down from the concourse to a landing, then two 60 in. flights east and west along the platform. Its width is the upper flight's, whose treads are drawn in two halves, which matches the two lower flights' combined width."
+platform,vce,type,west_end_ft,east_end_ft,sheet_width_in,master_plan_width_in,width_status,source,notes
+1,P1-S1,stair,261,283,58,60,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+1,P1-S2,stair,368,377,57,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+1,P1-S3,stair,405,415,63,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+1,P1-S4,stair,478,486,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+1,P1-S5,stair,542,555,57,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+1,P1-S6,escalator,667,678,37,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+1,P1-S7,escalator,789,804,33,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+1,P1-S8,stair,837,844,49,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+2,P2-S1,stair,261,269,58,64,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+2,P2-S2,stair,356,365,60,57,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+2,P2-S3,escalator,382,397,36,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+2,P2-S4,stair,477,486,60,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+2,P2-S5,stair,542,554,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+2,P2-S6,escalator,660,675,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+2,P2-S7,escalator,694,702,36,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+2,P2-S8,escalator,790,805,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+2,P2-S9,stair,827,834,51,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+3,P3-S1,stair,-83,-61,107,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+3,P3-S2,stair,-17,17,120,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+3,P3-S3,escalator,265,283,37,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","The Master Plan has a 69 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades."
+3,P3-S4,stair,356,365,66,52,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+3,P3-S5,escalator,381,396,37,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+3,P3-S6,stair,477,489,61,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+3,P3-S7,stair,541,555,60,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+3,P3-S8,stair,659,666,45,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+4,P4-S1,stair,-17,17,121,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S2,escalator,265,282,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021."
+4,P4-S3,stair,354,371,58,72,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S4,stair,406,423,60,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",The Master Plan has a 34 in. escalator here instead. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S5,stair,483,491,57,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S6,stair,541,555,61,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S7,escalator,661,676,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","The Master Plan has a 44 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021."
+5,P5-S1,stair,-17,17,120,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+5,P5-S2,escalator,265,282,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+5,P5-S3,stair,371,388,63,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+5,P5-S4,escalator,405,419,34,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+5,P5-S5,stair,483,499,61,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+5,P5-S6,stair,564,580,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+5,P5-S7,escalator,661,676,33,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","The Master Plan has a 44 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades."
+5,P5-S8,escalator,753,762,33,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+6,P6-S1,stair,-17,17,120,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+6,P6-S2,escalator,265,282,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+6,P6-S3,stair,367,384,59,50,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+6,P6-S4,escalator,405,415,33,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+6,P6-S5,stair,462,477,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+6,P6-S6,escalator,673,688,33,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+6,P6-S7,escalator,774,780,39,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+7,P7-S1,stair,-17,17,121,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+7,P7-S2,escalator,257,273,39,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+7,P7-S3,stair,364,381,60,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+7,P7-S4,escalator,404,418,34,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+7,P7-S5,stair,537,547,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+7,P7-S6,escalator,631,646,22,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+7,P7-S7,stair,646,658,60,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+8,P8-S1,stair,-17,17,121,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+8,P8-S2,escalator,257,273,38,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+8,P8-S3,stair,357,374,59,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+8,P8-S4,stair,404,421,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",The Master Plan has a 34 in. escalator here instead.
+8,P8-S5,stair,542,552,51,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+8,P8-S6,escalator,627,640,38,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+8,P8-S7,stair,649,661,70,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
