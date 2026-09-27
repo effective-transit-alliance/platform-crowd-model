@@ -5,6 +5,7 @@ This is a recursive peak-hour platform clearance calculator.
 model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 """
 
+import csv
 import dataclasses
 import functools
 import itertools
@@ -393,6 +394,37 @@ class Vce:
 
     width: float
     """Its width (in feet)."""
+
+    type: str = "stair"
+    """`stair` or `escalator`."""
+
+    west_end: float | None = None
+    """Where it starts along the platform (ft east of the Master Plan's plans' west edge)."""
+
+    east_end: float | None = None
+    """Where it ends along the platform (ft east of the Master Plan's plans' west edge)."""
+
+
+VCE_DATA = Path(__file__).parent / "data" / "estimated_vce_widths.csv"
+
+
+def platform_vces(platform: int) -> tuple[Vce, ...]:
+    """
+    Every VCE on `platform`, from `data/estimated_vce_widths.csv`,
+    with the Master Plan's width where it has one, or else the estimated width.
+    """
+    with VCE_DATA.open() as f:
+        return tuple(
+            Vce(
+                name=row["vce"],
+                width=float(row["master_plan_width_in"] or row["sheet_width_in"]) / 12,
+                type=row["type"],
+                west_end=float(row["west_end_ft"]),
+                east_end=float(row["east_end_ft"]),
+            )
+            for row in csv.DictReader(f)
+            if int(row["platform"]) == platform
+        )
 
 
 def pooled_vces(total_width: float) -> tuple[Vce, ...]:
@@ -1057,7 +1089,7 @@ def run_model(params: Params, spreadsheets: bool) -> str:
         return f"{minutes}:{seconds:02}"
 
     return (
-        f"| {params.name} | {fmt_time(headway)} | {params.total_vce_width} ft"
+        f"| {params.name} | {fmt_time(headway)} | {params.total_vce_width:.4g} ft"
         f" | {', '.join(fmt_time(arrival) for arrival in summary.arrival_times)}"
         f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
@@ -1087,14 +1119,14 @@ def main(
         platform_width=18,
         platform_length=900,
         headway=CLOSE_HEADWAY,
-        vces=pooled_vces(42.5),
+        vces=platform_vces(3),
     )
     params_p3300 = Params(
         platform=3,
         platform_width=18,
         platform_length=900,
         headway=NORMAL_HEADWAY,
-        vces=pooled_vces(42.5),
+        vces=platform_vces(3),
     )
     params_p3recon120 = Params(
         platform=3,
@@ -1117,7 +1149,7 @@ def main(
         platform_width=15,
         platform_length=1100,
         headway=0,
-        vces=pooled_vces(48.168),
+        vces=platform_vces(6),
     )
     params_p10120 = Params(
         platform=10,
