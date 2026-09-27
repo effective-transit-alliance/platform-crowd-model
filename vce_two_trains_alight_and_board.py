@@ -20,6 +20,85 @@ from openpyxl.worksheet.worksheet import Worksheet
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
+# Model constants.
+# These are assumptions shared by every scenario;
+# per-scenario inputs are in `Params`.
+#
+# Sources:
+# - Fruin, "Designing for Pedestrians: A Level-of-Service Concept" (1971):
+#   https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
+#   Page numbers are of the PDF.
+# - TCQSM, 3rd edition, chapter 10:
+#   https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf
+#   Page numbers are the manual's, and the PDF pages are in the links.
+
+DOOR_FLOW_RATE = 1.0
+"""
+Alighting and boarding rate per single-door equivalent (pax/s/door).
+Assumes no delay for the doors to open, and the same rate both ways.
+From the ETA report.
+"""
+
+STAIR_CAPACITY = 17
+"""
+Stair capacity, the LOS E/F boundary (pax/min per ft of width).
+Applied to all VCEs, even escalators, which are faster (pessimistic),
+and regardless of stair rise, which slows people down on long climbs (optimistic).
+Fruin, p. 14: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14
+"""
+
+BIDIRECTIONAL_STAIR_FLOW_LIMIT = 10
+"""
+Upward stair flow (pax/min per ft of width) above which nobody can come down,
+the LOS C/D boundary.
+Below it, both directions share `STAIR_CAPACITY`.
+From the ETA report: "There is no bidirectional flow on stairwells if LOS is worse than C".
+"""
+
+EMERGENCY_STAIR_FLOW = 19
+"""
+Stair flow (pax/min per ft of width) used only for the printed emergency egress time.
+Fruin's maximum ascending stair flow is 18.9 (p. 9: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9),
+more than both `STAIR_CAPACITY` and NFPA 130's 16.9
+(TCQSM p. 10-79: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83),
+so the emergency egress time is a lower bound.
+"""
+
+STAIR_QUEUE_SPACE = 5
+"""
+Space per passenger queued at the stairs (ft^2/pax).
+Only used to report when the arrived passengers fit in the stair queues (the taper time).
+TCQSM p. 10-51: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
+"""
+
+PLATFORM_LOS_MIN_SPACE = {"A": 13, "B": 10, "C": 7, "D": 3, "E": 2}
+"""
+Fruin's LOS for queuing and waiting areas:
+each grade needs more than this space per passenger (ft^2/pax), else F.
+The TCQSM only applies these to passengers waiting to board, not to everyone on the platform,
+so grading everyone with them is optimistic.
+TCQSM Exhibit 10-32, p. 10-55: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59
+"""
+
+STAIR_LOS_MAX_FLOW = {"A": 5, "B": 7, "C": 10, "D": 13, "E": STAIR_CAPACITY}
+"""
+Fruin's LOS for stairs:
+each grade allows at most this flow (pax/min per ft of width), else F.
+Fruin, pp. 12-14: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12
+"""
+
+SECONDS_PER_MINUTE = 60
+
+
+def stair_flow(rate: float, w: float) -> float:
+    """
+    :param rate: stair flow per foot of width (pax/min/ft)
+    :param w: stair width (ft)
+    :return: stair flow across the whole width (pax/s)
+    """
+    return rate * w / SECONDS_PER_MINUTE
+
+
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
 
@@ -30,7 +109,7 @@ def alight_rate(k: float, t: float, t0: float, u: float) -> float:
     :param k: number of people waiting to get off train
     :param t: time pass counter (s)
     :param t0: train arrival time
-    :param u: train(x)doors*rate (1 pax/door/s)
+    :param u: doors * `DOOR_FLOW_RATE` (pax/s)
     :return: egress rate from train to platform across all doors (pax/s)
     """
     if t > t0:
@@ -41,8 +120,8 @@ def alight_rate(k: float, t: float, t0: float, u: float) -> float:
 
 def platform_clearance(karr: float, w: float) -> float:
     """
-    Arrived passengers queue at the stairs, which discharge them at LOS E capacity,
-    17 pax/min per foot of width, as long as anyone is queued.
+    Arrived passengers queue at the stairs, which discharge them at `STAIR_CAPACITY`
+    as long as anyone is queued.
     See the TCQSM's stair queuing procedure: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
 
     Fruin's stair equation relates flow to the space per passenger *on the stair*,
@@ -54,7 +133,7 @@ def platform_clearance(karr: float, w: float) -> float:
     :param w: total width of vertical circulation elements (ft)
     :return: platform egress rate on stairs (pax/s)
     """
-    return min(karr, 17 * w / 60)
+    return min(karr, stair_flow(STAIR_CAPACITY, w))
 
 
 def platform_ingress(kdep: float, w: float, r_up: float) -> float:
@@ -67,11 +146,9 @@ def platform_ingress(kdep: float, w: float, r_up: float) -> float:
     :param: r_up: upstairs flow on those same vertical circulation elements (pax/s)
     :return: platform ingress rate on stairs (pax/s)
     """
-    # No flow in both directions past the LOS C/D boundary, 10 pax/min/ft.
-    if r_up > 10 * w / 60:
+    if r_up > stair_flow(BIDIRECTIONAL_STAIR_FLOW_LIMIT, w):
         return 0
-    # Otherwise, both directions share LOS E capacity, 17 pax/min/ft.
-    return min(kdep, 17 * w / 60 - r_up)
+    return min(kdep, stair_flow(STAIR_CAPACITY, w) - r_up)
 
 
 def boarder_fraction(trainA_boarders: float, trainB_boarders: float) -> float:
@@ -90,8 +167,7 @@ def board_rate(
     boarders: float,
 ) -> float:
     """
-    :param vmax: maximum train deboard rate,
-    pass train1_doors or train2_doors from params, since 1 door/sec
+    :param r_max: maximum train board rate, doors * `DOOR_FLOW_RATE` (pax/s)
     :param r_off: train alight rate, pass alight_rate_fn;
     nobody boards until everyone has alighted, i.e. the second after this is last nonzero
     :param sim_t: time in seconds, pass counter
@@ -126,18 +202,10 @@ def platform_crowd_los(inst_crowding: float) -> str:
 
     :param inst_crowding: space per passenger (ft^2/pax)
     """
-    if inst_crowding > 13:
-        return "A"
-    elif 10 < inst_crowding <= 13:
-        return "B"
-    elif 7 < inst_crowding <= 10:
-        return "C"
-    elif 3 < inst_crowding <= 7:
-        return "D"
-    elif 2 < inst_crowding <= 3:
-        return "E"
-    else:
-        return "F"
+    for grade, min_space in PLATFORM_LOS_MIN_SPACE.items():
+        if inst_crowding > min_space:
+            return grade
+    return "F"
 
 
 def egress_crowd_los(w: float, plat_egress_rate: float) -> str:
@@ -147,18 +215,10 @@ def egress_crowd_los(w: float, plat_egress_rate: float) -> str:
     :param w: total width of vertical circulation elements (ft)
     :param plat_egress_rate: upward stair flow (pax/s)
     """
-    if plat_egress_rate <= w * 5 / 60:
-        return "A"
-    elif w * 5 / 60 < plat_egress_rate <= w * 7 / 60:
-        return "B"
-    elif w * 7 / 60 < plat_egress_rate <= w * 10 / 60:
-        return "C"
-    elif w * 10 / 60 < plat_egress_rate <= w * 13 / 60:
-        return "D"
-    elif w * 13 / 60 < plat_egress_rate <= w * 17 / 60:
-        return "E"
-    else:
-        return "F"
+    for grade, max_flow in STAIR_LOS_MAX_FLOW.items():
+        if plat_egress_rate <= stair_flow(max_flow, w):
+            return grade
+    return "F"
 
 
 @dataclass
@@ -294,7 +354,7 @@ class Params:
         self,
     ) -> Annotated[float, Field(name="LOS F Egress Rate", units="pax/s")]:
         """LOS (level of service) F egress rate (in pax/s)."""
-        return self.total_vce_width * 19 / 60
+        return stair_flow(EMERGENCY_STAIR_FLOW, self.total_vce_width)
 
     # TODO is LOS F emergency?
     @property
@@ -401,7 +461,7 @@ class Summary:
     """Highest upstairs rate (pax/s)."""
 
     secs_at_capacity: int
-    """Seconds the upstairs rate is at the VCEs' LOS E capacity (17 pax/min/ft)."""
+    """Seconds the upstairs rate is at the VCEs' `STAIR_CAPACITY`."""
 
     taper_time: int | None
     """
@@ -454,8 +514,8 @@ def calc_workbook(params: Params) -> tuple[openpyxl.Workbook, Summary]:
     # The parameters take up columns 1 (A) and 2 (B), so the time series starts after them.
     FIRST_DATA_COLUMN = 3
 
-    qmax = params.total_vce_width * params.queue_length / 5
-    capacity = params.total_vce_width * 17 / 60
+    qmax = params.total_vce_width * params.queue_length / STAIR_QUEUE_SPACE
+    capacity = stair_flow(STAIR_CAPACITY, params.total_vce_width)
     last_arrival_time = max(params.train1_arrival_time, params.train2_arrival_time)
     summary = Summary(
         max_up_rate=0,
@@ -480,7 +540,7 @@ def calc_workbook(params: Params) -> tuple[openpyxl.Workbook, Summary]:
             train1_remaining_arrivals,
             time_after,
             params.train1_arrival_time,
-            params.train1_doors,
+            params.train1_doors * DOOR_FLOW_RATE,
         )
         train1_remaining_arrivals -= train1_off_rate
         if train1_remaining_arrivals < 0:
@@ -489,7 +549,7 @@ def calc_workbook(params: Params) -> tuple[openpyxl.Workbook, Summary]:
             train2_remaining_arrivals,
             time_after,
             params.train2_arrival_time,
-            params.train2_doors,
+            params.train2_doors * DOOR_FLOW_RATE,
         )
         train2_remaining_arrivals -= train2_off_rate
         if train2_remaining_arrivals < 0:
@@ -521,7 +581,7 @@ def calc_workbook(params: Params) -> tuple[openpyxl.Workbook, Summary]:
         total_pax_on_platform += plat_ingress_rate_1
         total_pax_on_platform += plat_ingress_rate_2
         train1_on_rate = board_rate(
-            params.train1_doors,
+            params.train1_doors * DOOR_FLOW_RATE,
             train1_off_rate,
             time_after,
             params.train1_arrival_time,
@@ -529,7 +589,7 @@ def calc_workbook(params: Params) -> tuple[openpyxl.Workbook, Summary]:
             train1_boarders_on_plat,
         )
         train2_on_rate = board_rate(
-            params.train2_doors,
+            params.train2_doors * DOOR_FLOW_RATE,
             train2_off_rate,
             time_after,
             params.train2_arrival_time,
