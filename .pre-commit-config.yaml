@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.2
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+        args: [--check]
+
+  - repo: https://github.com/astral-sh/ty-pre-commit
+    rev: v0.0.69
+    hooks:
+      - id: ty
+
+  - repo: https://github.com/facebook/pyrefly-pre-commit
+    rev: "1.2.0"
+    hooks:
+      - id: pyrefly-check
+        additional_dependencies:
+          ["numpy>=2.2.1", "openpyxl>=3.1.5", "types-openpyxl>=3.1.5.20260827"]

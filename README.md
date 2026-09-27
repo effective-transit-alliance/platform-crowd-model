@@ -34,3 +34,10 @@ uv run ruff check # lint
 uv run ty check # type check
 uv run pyrefly check # type check
 ```
+
+These same checks also run as `pre-commit` hooks.
+To install them, run
+
+```sh
+uv run pre-commit install
+```
