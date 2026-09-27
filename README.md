@@ -111,25 +111,38 @@ each using the passenger counts left by the one before.
 2. **Going upstairs.**
    Arriving passengers leave the platform
    via the vertical circulation elements (VCEs), i.e. the stairs and escalators.
-   - All VCEs are treated as stairs, except one per platform, which is excluded.
-   - They queue at the stairs, which discharge them at LOS E capacity,
-     17 pax/min per foot of VCE width
+   - All VCEs are treated as stairs.
+   - Each VCE has its own queue, which it discharges at LOS E capacity,
+     17 pax/min per foot of its width
      ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)),
      as long as anyone is queued
      ([TCQSM, p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
-   - So there's no gradual taper: the stairs stay at capacity until the platform is clear.
+   - On platforms 3 and 6, each VCE's width and position are from
+     [`data/estimated_vce_widths.csv`](./data/estimated_vce_widths.csv)
+     (see [Estimated Widths](#estimated-widths)).
+     - The train's doors are spread evenly along it,
+       and it stops flush with the platform's east end.
+     - Each second, each door's alighting passengers walk to the quickest VCE:
+       the one with the least walking time plus waiting time
+       for everyone already queued or walking there.
+     - They walk to the VCE's nearest end at 250 ft/min,
+       the TCQSM's design walking speed
+       ([p. 10-20](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=24)).
+   - Elsewhere, only each platform's total VCE width is known, from the ETA report.
+     - It's treated as one VCE, excluding one VCE per platform, as the ETA report did.
+     - Arriving passengers queue at it as soon as they alight.
+     - So there's no gradual taper: the stairs stay at capacity until the platform is clear.
    - The report's "taper time" is when the remaining arriving passengers fit in the stair queues,
      20 ft of queue in front of the VCEs at 5 sq ft/pax
      (the TCQSM's stair queuing space).
-     It's now always about 15 s before the clear time,
+     With one pooled VCE, it's always about 15 s before the clear time,
      but it's kept in the results table to compare with the report.
-   - The few seconds of walking from the doors to the stairs are ignored.
 3. **Coming downstairs.**
    Departing passengers queue upstairs and come down to the platform.
-   - The trains' passengers split the VCE width
+   - The trains' passengers split each VCE's width
      in proportion to how many of each are still upstairs,
-     and each train's share of the stairs carries the same share of the upward flow.
-   - Nobody comes down while the upward flow is worse than LOS C, 10 pax/min/ft.
+     and each train's share of a VCE carries the same share of its upward flow.
+   - Nobody comes down a VCE while its upward flow is worse than LOS C, 10 pax/min/ft.
    - Otherwise, both directions share LOS E capacity, 17 pax/min/ft,
      so passengers come down with whatever their share of the upward flow leaves of that.
 4. **Boarding.**
@@ -145,7 +158,7 @@ each using the passenger counts left by the one before.
   (A > 13, B > 10, C > 7, D > 3, E > 2 sq ft/pax, or else F;
   [TCQSM, Exhibit 10-32, p. 10-55](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59)),
   since most passengers on the platform are waiting, either to board or in the stair queues.
-- **On the stairs**, the upward flow is graded with Fruin's stair LOS
+- **On the stairs**, the upward flow on the most crowded VCE is graded with Fruin's stair LOS
   (A ≤ 5, B ≤ 7, C ≤ 10, D ≤ 13, E ≤ 17 pax/min/ft, or else F;
   [Fruin, pp. 12–14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12)).
 
@@ -193,18 +206,29 @@ or **unclear** (it could go either way).
 ### Stairs and Escalators
 
 - **Pessimistic:** All VCEs are treated as stairs, even escalators, which have higher capacities.
-- **Pessimistic:** One VCE per platform is excluded, e.g. an escalator running the other way.
-- **Optimistic:** All VCEs act as one pooled queue:
-  passengers spread across them in proportion to their widths,
+- **Unclear:** On platforms 3 and 6, every VCE is included,
+  since which escalators run which way isn't known,
+  so it's optimistic if some run down.
+  Elsewhere, one VCE per platform is excluded (pessimistic), as the ETA report did.
+- **Optimistic:** On platforms other than 3 and 6, all VCEs act as one pooled queue
+  (see [Stairs Are One Pooled Queue](#stairs-are-one-pooled-queue)).
+- **Unclear:** Most of platforms 3 and 6's VCE widths are estimated from a drawing
+  (see [Estimated Widths](#estimated-widths)).
+- **Optimistic:** Arriving passengers know which VCE is quickest,
   with no preference for any exit, e.g. toward 7th Avenue.
+- **Unclear:** Trains stop flush with the platform's east end,
+  with their doors spread evenly along their length.
 - **Unclear:** Stair capacity is linear in width,
   though the TCQSM notes capacity is really stepped by the number of pedestrian lanes
   ([p. 10-49](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=53)).
 - **Optimistic:** Stair capacity doesn't depend on the stair's rise,
   though long climbs slow people down ([p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)),
   or on luggage, strollers, or wheelchairs.
-- **Optimistic, by a few seconds:** Walking from the doors to the stairs takes no time;
-  passengers can go upstairs the same second they alight.
+- **Optimistic:** Arriving passengers walk to the VCEs at 250 ft/min,
+  though the TCQSM notes people walk slower in crowds with less than 25 sq ft/pax
+  ([Exhibit 10-10, p. 10-21](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=25)).
+  On platforms without each VCE's position, walking takes no time.
+- **Optimistic:** Departing passengers take no time to walk from the stairs to their doors.
 - **Optimistic:** The concourse upstairs never backs up, so the stairs always discharge.
 
 ### Trains
@@ -255,19 +279,21 @@ its baseline, i.e. today's VCEs,
 needed up to 7.9 minutes of passenger service time,
 the time for passengers to alight, cross the platform, and reach the VCEs
 ([Table 2, p. 4-43](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=54)).
-This model clears platform 3's arriving passengers in 4:29,
-so it's likely substantially optimistic,
+This model clears platform 3's arriving passengers in 5:10,
+so it's likely still optimistic,
 though the two aren't exactly comparable:
 7.9 minutes is the worst case across all platforms and simulation runs.
 
-The FRA attributes long clearance times to things this model leaves out
-([p. 3-33](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=44)):
+The FRA attributes long clearance times to
 queues at the base of VCEs, uneven use of VCEs, and platform clutter
-reducing the usable width.
+reducing the usable width
+([p. 3-33](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=44)).
+This model only captures the first two, and only on platforms 3 and 6.
 
 ### Stairs Are One Pooled Queue
 
-Like the TCQSM and NFPA 130 for platform clearance
+Except on platforms 3 and 6,
+like the TCQSM and NFPA 130 for platform clearance
 ([TCQSM, p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)),
 the model treats all of the VCEs as one queue discharging at capacity until it's empty.
 This is optimistic for a whole platform:
@@ -283,8 +309,11 @@ This is optimistic for a whole platform:
   This only shifts the results by a few seconds, but also ignores
   passengers crossing through crowds of waiting passengers.
 
-Modeling each VCE's own queue with walking distances would fix these,
-but needs each VCE's position and width on each platform.
+Platforms 3 and 6 model each VCE's own queue with walking distances,
+which fixes the first and last.
+With 2-minute headways, platform 3 clears 44 s later than as one pooled queue,
+and platform 6 98 s later.
+The other platforms need each VCE's position and width.
 
 ### Platform Crowding Is Graded Against the Whole Platform
 
@@ -311,7 +340,8 @@ So the usable area, and the space per passenger, are likely overstated (optimist
 
 ### Total VCE Width
 
-Each platform's `total_vce_width` comes from the ETA report, and its source is unknown.
+Except on platforms 3 and 6,
+each platform's `total_vce_width` comes from the ETA report, and its source is unknown.
 Platforms 10 and 11's match the
 [Moynihan Station EA's](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22)
 2008 per-platform stair capacities divided by 17 pax/min/ft,
@@ -399,7 +429,8 @@ This data can't yet replace `total_vce_width`:
   and the EA's data predates Moynihan Train Hall,
   so platform 3's total width today is probably more than 19.4 ft.
   With the VCEs on NJ Transit's scaled PCIP Phase 2 plan, whose widths are mostly
-  [estimated](#estimated-widths), it's about 550 in. (45.8 ft), a little more than the model's 42.5 ft.
+  [estimated](#estimated-widths), it's about 550 in. (45.8 ft), a little more than the ETA report's 42.5 ft,
+  or 516 in. (43 ft) with the Master Plan's widths where it has them, as the model now uses.
   Either way, a single total overstates how quickly a platform clears
   if some of that width is at its far west end, far from most of the train's doors.
 - **Positions are approximate.**
@@ -621,7 +652,12 @@ and 12.04 pax/s for 0:32, tapering at 6:04, without it.
 
 ### Current Results
 
-This table is generated by `./vce_two_trains_alight_and_board.py --update-readme`:
+This table is generated by `./vce_two_trains_alight_and_board.py --update-readme`.
+Only platforms 3 and 6 model each VCE's queue,
+so `platform3` and `platform3_recon` aren't comparable:
+Penn Reconstruction's VCEs are still one pooled queue,
+which clears sooner (see [Stairs Are One Pooled Queue](#stairs-are-one-pooled-queue)).
+
 
 <!-- results-table:start -->
 | Platform | Headway | VCE width | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max up rate (pax/s) | Max pax on platform | Max density (pax/m²) |
