@@ -15,10 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
-import numpy as np
 import openpyxl
 import typer
-from numpy.typing import NDArray
 from openpyxl.cell import Cell
 from openpyxl.chart import Reference, ScatterChart
 from openpyxl.chart.series_factory import SeriesFactory
@@ -374,6 +372,26 @@ def annotated_field_values(
         yield attr, getattr(obj, attr), field
 
 
+@dataclass(frozen=True)
+class Vce:
+    """A VCE (vertical circulation element), i.e. a stair or escalator going upstairs."""
+
+    name: str
+    """Its name, e.g. `P3-S4`."""
+
+    width: float
+    """Its width (in feet)."""
+
+
+def pooled_vces(total_width: float) -> tuple[Vce, ...]:
+    """
+    A single VCE standing in for all of a platform's VCEs, as one pooled queue.
+    Per the ETA report, `total_width` excludes one VCE per platform,
+    e.g. an escalator running the other way.
+    """
+    return (Vce(name="All VCEs", width=total_width),)
+
+
 @dataclass
 class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
@@ -391,15 +409,8 @@ class Params:
     The first arrives at 0 s, on one track, and the second on the other.
     """
 
-    total_vce_width: Annotated[float, Field(name="Total VCE Width", units="ft")]
-    """
-    Total width (in feet) of all of the VCEs (vertical circulation elements) going upstairs.
-    Per the ETA report, this excludes one VCE per platform,
-    e.g. an escalator running the other way.
-    """
-
-    vce_widths: NDArray[np.floating]
-    """Widths (in feet) of each VCE (vertical circulation element)."""
+    vces: tuple[Vce, ...]
+    """The VCEs (vertical circulation elements) going upstairs."""
 
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
     """Trains arriving, alternating between the platform's two tracks."""
@@ -422,6 +433,11 @@ class Params:
     def filename_prefix(self) -> str:
         """Prefix of the filename to save the spreadsheet in, e.g. `platform3_recon`."""
         return f"platform{self.platform}" + (f"_{self.modifier}" if self.modifier else "")
+
+    @property
+    def total_vce_width(self) -> Annotated[float, Field(name="Total VCE Width", units="ft")]:
+        """Total width (in feet) of all of the VCEs."""
+        return sum(vce.width for vce in self.vces)
 
     @property
     def los_f_egress_rate(
@@ -566,11 +582,6 @@ def calc_workbook(
         params.platform_width * params.platform_length * assumptions.usable_platform_area_multiplier
     )
     door_rate = assumptions.doors_per_train * assumptions.door_flow_rate
-
-    www = params.vce_widths[0, :]
-
-    if print_time_series:
-        print("www = ", www)
 
     # Initialize counters
     arriving_pax_waiting_on_plat: float = 0
@@ -1052,56 +1063,14 @@ def main(
         platform_width=18,
         platform_length=900,
         headway=CLOSE_HEADWAY,
-        total_vce_width=42.5,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vces=pooled_vces(42.5),
     )
     params_p3300 = Params(
         platform=3,
         platform_width=18,
         platform_length=900,
         headway=NORMAL_HEADWAY,
-        total_vce_width=42.5,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vces=pooled_vces(42.5),
     )
     params_p3recon120 = Params(
         platform=3,
@@ -1109,28 +1078,7 @@ def main(
         platform_width=18,
         platform_length=900,
         headway=CLOSE_HEADWAY,
-        total_vce_width=44.75,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vces=pooled_vces(44.75),
     )
     params_p3recon300 = Params(
         platform=3,
@@ -1138,112 +1086,28 @@ def main(
         platform_width=18,
         platform_length=900,
         headway=NORMAL_HEADWAY,
-        total_vce_width=44.75,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vces=pooled_vces(44.75),
     )
     params_p60 = Params(
         platform=6,
         platform_width=15,
         platform_length=1100,
         headway=0,
-        total_vce_width=48.168,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vces=pooled_vces(48.168),
     )
     params_p10120 = Params(
         platform=10,
         platform_width=42,
         platform_length=1100,
         headway=CLOSE_HEADWAY,
-        total_vce_width=70.58,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vces=pooled_vces(70.58),
     )
     params_p11120 = Params(
         platform=11,
         platform_width=18,
         platform_length=1100,
         headway=CLOSE_HEADWAY,
-        total_vce_width=43.58,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vces=pooled_vces(43.58),
     )
     params_p30 = dataclasses.replace(params_p3120, headway=0)
     params_p3recon0 = dataclasses.replace(params_p3recon120, headway=0)
