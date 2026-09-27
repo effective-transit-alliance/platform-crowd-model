@@ -11,8 +11,12 @@ from the platform-level plans in the NY Penn Station Master Plan's Alternatives 
 
 The plans are vector drawings, with each VCE drawn as a rectangle filled with one of four colors:
 new or existing, stair or escalator.
-Each platform's width table lists its VCEs in the same east-to-west order as the plan,
-so the `n`th rectangle on a platform, from east to west, is its `n`th VCE in the table.
+Each platform's width table lists its VCEs in the same west-to-east order as the plan,
+so the `n`th rectangle on a platform, from west to east, is its `n`th VCE in the table.
+The plans have west on the left:
+the platforms' east ends on the plans match those on an existing-conditions plan in NJ Transit's
+PCIP Phase 2 drawings (November 2020) to within about 4 ft,
+and the gray wedges on the right are the 7th Ave subway.
 The draft's plans and tables don't always agree, though.
 Where they list the same sequence of stairs and escalators, they're matched,
 keeping both their statuses (new or existing), which sometimes differ.
@@ -62,10 +66,10 @@ FILLS = {
 PDF_UNITS_PER_FOOT = (259.57 - 175.01) / 100
 """From the plan's scale bar, whose 0' and 100' ticks are at these x coordinates."""
 
-EAST_EDGE_X = 166
+WEST_EDGE_X = 166
 """
-x coordinate of the east end of the platforms in the plan,
-where every platform's outline starts; positions are measured west from here.
+x coordinate of the plan's west edge, under the West End Concourse,
+where every platform's outline starts; positions are measured east from here.
 """
 
 SAME_VCE_TOLERANCE_FT = 15
@@ -140,8 +144,8 @@ def platform_rows(rects: list[Rect]) -> dict[int, list[Rect]]:
     return {11 - i: row for i, row in enumerate(rows)}
 
 
-def east_to_west(row: list[Rect]) -> list[Rect]:
-    """Sort VCEs east to west, with escalators before stairs beside them."""
+def west_to_east(row: list[Rect]) -> list[Rect]:
+    """Sort VCEs west to east, with escalators before stairs beside them."""
     row = sorted(row, key=lambda r: r.x)
     groups: list[list[Rect]] = []
     for r in row:
@@ -165,7 +169,7 @@ def main() -> None:
                 (w for w in widths if w["source"] == source and int(w["platform"]) == platform),
                 key=lambda w: int(w["vce"]),
             )
-            drawn = east_to_west(row)
+            drawn = west_to_east(row)
             drawn_types = [r.type for r in drawn]
             table_types = [w["type"] for w in table]
             if drawn_types != table_types:
@@ -187,8 +191,8 @@ def main() -> None:
                         "type": w["type"],
                         "table_status": w["status"],
                         "plan_status": r.status,
-                        "east_end_ft": round((r.x0 - EAST_EDGE_X) / PDF_UNITS_PER_FOOT),
-                        "west_end_ft": round((r.x1 - EAST_EDGE_X) / PDF_UNITS_PER_FOOT),
+                        "west_end_ft": round((r.x0 - WEST_EDGE_X) / PDF_UNITS_PER_FOOT),
+                        "east_end_ft": round((r.x1 - WEST_EDGE_X) / PDF_UNITS_PER_FOOT),
                     }
                 )
     with POSITIONS_CSV.open("w", newline="") as f:
@@ -206,8 +210,8 @@ def write_existing(vces: list[dict[str, int | str]]) -> None:
     """
     existing = [v for v in vces if "existing" in (v["table_status"], v["plan_status"])]
     combined: list[dict[str, int | str]] = []
-    for v in sorted(existing, key=lambda v: (-int(v["platform"]), int(v["east_end_ft"]))):
-        mid = (int(v["east_end_ft"]) + int(v["west_end_ft"])) / 2
+    for v in sorted(existing, key=lambda v: (-int(v["platform"]), int(v["west_end_ft"]))):
+        mid = (int(v["west_end_ft"]) + int(v["east_end_ft"])) / 2
         for c in combined:
             if (
                 c["platform"] == v["platform"]

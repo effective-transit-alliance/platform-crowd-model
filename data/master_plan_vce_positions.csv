@@ -1,4 +1,4 @@
-alternative,platform,vce,width_in,type,table_status,plan_status,east_end_ft,west_end_ft
+alternative,platform,vce,width_in,type,table_status,plan_status,west_end_ft,east_end_ft
 1,10,1,38,escalator,existing,existing,258,282
 1,10,2,92,stair,existing,existing,254,280
 1,10,3,108,stair,existing,existing,351,376

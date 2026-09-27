@@ -10,7 +10,7 @@ prefilled with the VCEs expected from NJ Transit's January 2022 station director
 (`data/njt_directory_vces.csv`) and the Master Plan (`data/master_plan_existing_vces.csv`).
 
 The two sources don't reconcile and can't be aligned reliably,
-so each platform lists both sources' VCEs, each sorted east to west,
+so each platform lists both sources' VCEs, each sorted west to east,
 and surveyors mark which ones they find and add rows for any that neither lists.
 Platforms are ordered by priority:
 platform 3 first, as the ETA report's focus, then platform 11, which has no width data,
@@ -73,12 +73,12 @@ def main() -> None:
         master_plan = list(csv.DictReader(f))
     rows = []
     for platform in PLATFORM_ORDER:
-        # The directory's map has east on the right, so east to west is descending x.
+        # The directory's map has west on the left, so west to east is ascending x.
         on_map = sorted(
             (v for v in directory if int(v["platform"]) == platform),
-            key=lambda v: (v["level"], -int(v["map_x"])),
+            key=lambda v: (v["level"], int(v["map_x"])),
         )
-        # The Master Plan's positions are feet west of the platforms' east end.
+        # The Master Plan's positions are feet east of its plans' west edge.
         in_plan = sorted(
             (v for v in master_plan if int(v["platform"]) == platform),
             key=lambda v: int(v["mid_ft"]),

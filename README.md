@@ -331,7 +331,7 @@ transcribed in [`data/master_plan_vce_widths.csv`](./data/master_plan_vce_widths
   as reproduced in the Empire Station Complex Q&A.
 
 Each VCE is marked as a stair or escalator, and as new or existing.
-Widths are in inches, listed in the tables' order, which is east to west along the platform.
+Widths are in inches, listed in the tables' order, which is west to east along the platform.
 
 [`scripts/extract_vce_positions.py`](./scripts/extract_vce_positions.py)
 extracts each VCE's approximate position from the draft's platform-level plans
@@ -339,10 +339,15 @@ extracts each VCE's approximate position from the draft's platform-level plans
 [p. 41](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=47), and [p. 53](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=59)).
 They're vector drawings with each VCE drawn as a rectangle color-coded by type and status,
 and a scale bar to convert to feet.
-The script matches the `n`th VCE from the east on each platform to the `n`th VCE in its table,
+The script matches the `n`th VCE from the west on each platform to the `n`th VCE in its table,
 since the plans are too small to measure widths from,
 and writes [`data/master_plan_vce_positions.csv`](./data/master_plan_vce_positions.csv),
-with positions in feet west of the plans' east end of the platforms.
+with positions in feet east of the plans' west edge,
+which cuts across every platform at the same place, under the West End Concourse.
+The plans have west on the left:
+the platforms' east ends on them match those on a scaled existing-conditions plan
+in NJ Transit's PCIP Phase 2 drawings to within about 4 ft
+(see [Estimated Widths](#estimated-widths)).
 The draft's plans and tables don't always agree:
 often, they disagree on whether a VCE is new or existing, so both are recorded,
 and on 16 of the 44 platforms, they list different stairs and escalators, so those are skipped.
@@ -357,10 +362,9 @@ but only some of the other platforms' (none of platform 11's).
 Those 5 may not be all of platform 3's VCEs, though.
 The January 2022 NJ Transit station directory shows 8 stairs and escalators to platform 3,
 including 2 stairs down from the West End Concourse, under Moynihan Train Hall, west of 8th Ave.
-The Master Plan's platform plans seem to stop short of there:
-their platforms end 720 to 960 ft from their east end,
-while the columns drawn along the tracks continue further west.
-So the Master Plan probably doesn't include the West End Concourse's VCEs,
+The Master Plan's platform plans cut every platform off under the West End Concourse,
+and show none of its stairs,
+so the Master Plan probably doesn't include the West End Concourse's VCEs,
 though it's also possible that the directory, a schematic wayfinding map,
 shows some stairs more than once
 (see [Sources and Their Dates](#sources-and-their-dates)).
@@ -482,7 +486,7 @@ Since no public source has every VCE's width,
 [`data/field_survey.csv`](./data/field_survey.csv) is a sheet for measuring them in person,
 made by [`scripts/make_field_survey.py`](./scripts/make_field_survey.py).
 It lists each platform's VCEs expected from both the 2022 directory and the Master Plan,
-each sorted east to west, since the two can't be aligned reliably,
+each sorted west to east, since the two can't be aligned reliably,
 starting with platform 3, the ETA report's focus,
 then platform 11, which has no width data.
 Surveyors fill in the columns after `master_plan_mid_ft`:
