@@ -121,7 +121,7 @@ each using the passenger counts left by the one before.
      [`data/estimated_vce_widths.csv`](./data/estimated_vce_widths.csv)
      (see [Estimated Widths](#estimated-widths)).
      - The train's doors are spread evenly along it,
-       and it stops wherever on the platform the arriving passengers clear soonest,
+       and it stops wherever on the platform the longest of the trains' dwells is shortest,
        trying every position a car length (85 ft) apart,
        then every position 5 ft apart within a car length of the best of those.
      - Each second, each door's alighting passengers walk to the quickest VCE:
@@ -232,7 +232,7 @@ or **unclear** (it could go either way).
   (see [Estimated Widths](#estimated-widths)).
 - **Optimistic:** Arriving passengers know which VCE is quickest,
   with no preference for any exit, e.g. toward 7th Avenue.
-- **Optimistic:** Trains stop at the best position on the platform for clearing it,
+- **Optimistic:** Trains stop at the best position on the platform for their dwells,
   with their doors spread evenly along their length.
 - **Unclear:** Stair capacity is linear in width,
   though the TCQSM notes capacity is really stepped by the number of pedestrian lanes
@@ -682,19 +682,19 @@ which clears sooner (see [Stairs Are One Pooled Queue](#stairs-are-one-pooled-qu
 <!-- results-table:start -->
 | Platform | Headway | VCE width | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max up rate (pax/s) | Max pax on platform | Max density (pax/m²) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 3 | 0:00 | 43 ft | 0:00, 0:00, 3:51, 3:51 | 3:51, 3:51, 0:56, 0:56 | 7:44 | 8:22 | 4:47 | 7:30 | 11.31 | 3725 | 3.30 (D) |
+| 3 | 0:00 | 43 ft | 0:00, 0:00, 3:36, 3:36 | 3:36, 3:36, 0:56, 0:56 | 7:59 | 8:50 | 4:32 | 7:04 | 11.31 | 3736 | 3.31 (D) |
 | 3 (recon) | 0:00 | 44.75 ft | 0:00, 0:00, 3:38, 3:38 | 3:38, 3:38, 0:44, 0:44 | 6:56 | 7:11 | 7:12 | 7:04 | 12.68 | 3803 | 3.37 (D) |
-| 6 | 0:00 | 30.83 ft | 0:00, 0:00, 7:31, 7:31 | 7:31, 7:31, 1:04, 1:04 | 14:05 | 14:27 | 8:35 | 13:18 | 7.91 | 3946 | 3.43 (D) |
+| 6 | 0:00 | 30.83 ft | 0:00, 0:00, 7:25, 7:25 | 7:25, 7:25, 1:05, 1:05 | 14:01 | 15:02 | 8:30 | 13:00 | 7.91 | 3948 | 3.43 (D) |
 | 10 | 0:00 | 70.58 ft | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 5:09 | 5:24 | 1:26 | 5:24 | 20.00 | 5740 | 1.78 (D) |
 | 11 | 0:00 | 43.58 ft | 0:00, 0:00, 4:31, 4:31 | 4:31, 4:31, 0:43, 0:43 | 8:39 | 8:54 | 5:14 | 8:44 | 12.35 | 4314 | 3.13 (D) |
-| 3 | 2:00 | 43 ft | 0:00, 2:00, 4:00, 7:14 | 0:59, 5:14, 3:15, 1:01 | 9:01 | 9:37 | 8:15 | 6:05 | 11.31 | 1431 | 1.27 (C) |
+| 3 | 2:00 | 43 ft | 0:00, 2:00, 4:00, 7:14 | 0:59, 5:14, 3:15, 1:00 | 9:00 | 9:39 | 8:14 | 6:21 | 11.31 | 1424 | 1.26 (C) |
 | 3 (recon) | 2:00 | 44.75 ft | 0:00, 2:00, 4:00, 6:53 | 0:44, 4:53, 2:53, 0:44 | 8:25 | 8:40 | 7:37 | 7:04 | 12.68 | 1332 | 1.18 (C) |
-| 6 | 2:00 | 30.83 ft | 0:00, 2:00, 4:00, 11:50 | 1:05, 9:50, 7:49, 1:05 | 15:00 | 15:23 | 12:55 | 13:11 | 7.91 | 2783 | 2.42 (D) |
+| 6 | 2:00 | 30.83 ft | 0:00, 2:00, 4:00, 11:40 | 1:05, 9:40, 7:41, 1:05 | 14:50 | 15:27 | 12:45 | 13:04 | 7.91 | 2780 | 2.42 (D) |
 | 10 | 2:00 | 70.58 ft | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 7:06 | 7:21 | 6:43 | 5:24 | 20.00 | 1360 | 0.42 (A) |
 | 11 | 2:00 | 43.58 ft | 0:00, 2:00, 4:00, 8:10 | 0:43, 6:10, 4:10, 0:43 | 10:07 | 10:22 | 10:22 | 8:44 | 12.35 | 1613 | 1.17 (C) |
-| 3 | 5:00 | 43 ft | 0:00, 5:00, 10:00, 15:00 | 0:59, 0:59, 0:59, 0:59 | 16:47 | 17:23 | 15:59 | 5:36 | 11.31 | 1380 | 1.22 (C) |
+| 3 | 5:00 | 43 ft | 0:00, 5:00, 10:00, 15:00 | 0:59, 0:59, 0:59, 0:59 | 16:48 | 17:24 | 15:59 | 4:56 | 11.31 | 1380 | 1.22 (C) |
 | 3 (recon) | 5:00 | 44.75 ft | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:32 | 16:47 | 15:44 | 7:04 | 12.68 | 1319 | 1.17 (C) |
-| 6 | 5:00 | 30.83 ft | 0:00, 5:00, 10:00, 15:00 | 1:05, 1:05, 1:05, 1:05 | 18:10 | 18:33 | 16:05 | 12:44 | 7.91 | 1760 | 1.53 (C) |
+| 6 | 5:00 | 30.83 ft | 0:00, 5:00, 10:00, 15:00 | 1:05, 1:00, 1:00, 1:00 | 18:10 | 18:40 | 16:00 | 11:56 | 7.91 | 1762 | 1.53 (C) |
 | 10 | 5:00 | 70.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:06 | 16:21 | 15:43 | 5:24 | 20.00 | 1340 | 0.42 (A) |
 | 11 | 5:00 | 43.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:57 | 17:12 | 15:43 | 8:44 | 12.35 | 1600 | 1.16 (C) |
 <!-- results-table:end -->
@@ -825,3 +825,10 @@ and each fix's effect is summarized here.
   with its trains' east ends 45 ft west of the platform's
   (5 ft with 5-minute headways),
   and platform 6 at 416 s instead of 453 s, 45 ft west too.
+- **Stopped trains where the longer of their dwells is shortest,**
+  instead of where the arriving passengers clear the platform soonest.
+  Platform 3 with 2-minute headways has dwells of 251 s and 131 s instead of 256 s and 136 s,
+  with its trains flush with the platform's east end,
+  but clears at 270 s instead of 267 s.
+  Platform 6's trains also stop flush with its east end,
+  with dwells of 411 s instead of 420 s, but clearing at 453 s instead of 416 s.

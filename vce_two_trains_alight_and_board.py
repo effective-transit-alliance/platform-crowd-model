@@ -1486,8 +1486,8 @@ a car's length, before trying every `STOPPING_POSITION_STEP` around the best of 
 
 def best_stopping_position(params: Params) -> Params:
     """
-    `params` with the trains stopped where the arriving passengers clear the platform soonest,
-    or if tied, where the departing passengers finish boarding soonest,
+    `params` with the trains stopped where the longest of their dwells is shortest,
+    or if tied, where their total dwell is shortest,
     of every position `STOPPING_POSITION_STEP` apart with the train on the platform.
     """
     if params.platform_east_end is None:
@@ -1502,11 +1502,8 @@ def best_stopping_position(params: Params) -> Params:
     def score(candidate: Params) -> tuple[float, float]:
         # Only the summary matters.
         _wb, summary = calc_workbook(candidate, write_workbook=False, print_time_series=False)
-        never = float("inf")
-        return (
-            never if summary.clear_time is None else summary.clear_time,
-            never if summary.boarded_time is None else summary.boarded_time,
-        )
+        dwells = [float("inf") if dwell is None else dwell for dwell in summary.dwells]
+        return max(dwells), sum(dwells)
 
     scores: dict[float, tuple[float, float]] = {}
 
