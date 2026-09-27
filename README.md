@@ -278,6 +278,47 @@ Fixing only the units made the results much worse (see the history below),
 and neither version modeled the stairs correctly,
 so the report's results shouldn't be read as either conservative or optimistic.
 
+## VCE Width Data
+
+A stair-by-stair model needs each VCE's width and position on each platform.
+The best public source of widths found so far is the NY Penn Station Master Plan's
+tables of VCE widths for each platform under each reconstruction alternative,
+transcribed in [`data/master_plan_vce_widths.csv`](./data/master_plan_vce_widths.csv):
+
+- Alternatives 1 and 2 from the [August 2020 draft Alternatives Report](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf)
+  ([p. 16](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=22) and [p. 28](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=34)).
+  Its tables for Alternatives 3 and 4 ([p. 40](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=46) and [p. 52](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=58)) are identical.
+- Alternative 3 from the April 2021 final report ([p. 117](https://esd.ny.gov/sites/default/files/CACWG-Meetings-8-9-Q-A-09-08-21.pdf#page=7)),
+  as reproduced in the Empire Station Complex Q&A.
+
+Each VCE is marked as a stair or escalator, and as new or existing.
+Widths are in inches, listed in the tables' order,
+which is probably, but not verifiably, their order along the platform.
+
+This data can't yet replace `total_vce_width`:
+
+- **It doesn't describe the station today.**
+  Each alternative replaces most existing VCEs,
+  and the tables only list the ones each alternative keeps.
+  E.g. the final Alternative 3's table says platform 6 has 7 VCEs today,
+  but keeps none of them.
+- **The tables' printed totals are inconsistent.**
+  Most exclude one escalator from the sum of the widths,
+  like the ETA report's exclusion of one VCE per platform,
+  but platforms 4 to 8 exclude nothing,
+  and Alternative 2's platforms 2 and 3 exclude a stair.
+- **It doesn't match `total_vce_width`.**
+  E.g. platform 3's VCEs sum to 412 to 458 in. across the alternatives, even with their new VCEs,
+  but the model uses 42.5 ft (510 in.) today,
+  and platform 6's sum to 437 to 458 in., but the model uses 48.168 ft (578 in.).
+  The source of the model's widths is unknown.
+- **It has no positions.**
+  Those are only in the Master Plan's and NJ Transit's drawings,
+  and would have to be measured from them.
+
+The FRA's Service Optimization Study measured today's VCEs on site,
+but didn't publish the measurements.
+
 ## Results
 
 Each run writes a spreadsheet per scenario with the full time series and charts,
