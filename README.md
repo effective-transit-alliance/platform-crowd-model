@@ -132,3 +132,6 @@ and each fix's effect is summarized here.
   Platform 3 with 2-minute headways is at capacity for 269 s (255 s with Penn Reconstruction),
   tapers at 254 s (241 s), and clears at 269 s (256 s), where it never cleared before.
   The platform peaks at 1521 passengers (1496) instead of 2274 (2219).
+- **Stopped double counting the upward flow against downward flow:**
+  each train's share of the stairs had the whole upward flow subtracted from it.
+  This barely matters: 0.1 more departing passengers come down on platform 3.

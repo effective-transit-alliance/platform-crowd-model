@@ -72,8 +72,8 @@ def platform_ingress(kdep: float, a: float, w: float, r_up: float) -> float:
     """
     :param kdep: number of people waiting to get onto a stairwell
     :param a: usable concourse area
-    :param w: total width of vertical circulation elements
-    :param: r_up: upstairs flow, passed from plat_egress_fn
+    :param w: width of vertical circulation elements available to these passengers
+    :param: r_up: upstairs flow on those same vertical circulation elements
     :return: platform ingress rate on stairs
     """
     # 1st question, how much downstairs flow demand exists?
@@ -511,20 +511,22 @@ def calc_workbook(params: Params) -> tuple[openpyxl.Workbook, Summary]:
         if arrived_pax_waiting_on_plat < 0:
             arrived_pax_waiting_on_plat = 0
         total_pax_on_platform -= plat_egress_rate
+        # Each train's boarders get a share of the stairs,
+        # and so a share of the upward flow on them.
+        train1_boarder_frac = boarder_fraction(train1_boarders_upstairs, train2_boarders_upstairs)
+        train2_boarder_frac = boarder_fraction(train2_boarders_upstairs, train1_boarders_upstairs)
         plat_ingress_rate_1 = platform_ingress(
             train1_boarders_upstairs,
             5000,
-            params.total_vce_width
-            * boarder_fraction(train1_boarders_upstairs, train2_boarders_upstairs),
-            plat_egress_rate,
+            params.total_vce_width * train1_boarder_frac,
+            plat_egress_rate * train1_boarder_frac,
         )
 
         plat_ingress_rate_2 = platform_ingress(
             train2_boarders_upstairs,
             5000,
-            params.total_vce_width
-            * boarder_fraction(train2_boarders_upstairs, train1_boarders_upstairs),
-            plat_egress_rate,
+            params.total_vce_width * train2_boarder_frac,
+            plat_egress_rate * train2_boarder_frac,
         )
         train1_boarders_on_plat += plat_ingress_rate_1
         train2_boarders_on_plat += plat_ingress_rate_2
