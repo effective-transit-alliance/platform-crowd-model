@@ -6,15 +6,14 @@ model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 """
 
 from dataclasses import dataclass
-from typing import Any
+
 import numpy as np
 import openpyxl
-from openpyxl.cell import Cell, MergedCell
-from openpyxl.chart import Reference
+from numpy.typing import NDArray
+from openpyxl.cell import Cell
+from openpyxl.chart import Reference, ScatterChart
 from openpyxl.chart.series_factory import SeriesFactory
 from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.chart import ScatterChart
-from numpy.typing import NDArray
 
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
@@ -75,10 +74,7 @@ def plat_ingress_fn(kdep: float, a: float, w: float, r_up: float) -> float:
                 # Max of downstairs LOS C/D boundary flow rate
                 max(
                     0,
-                    (
-                        (111 * (a / max(1, kdep)) - 162) / ((a / max(1, kdep)) ** 2)
-                        - r_up
-                    ),
+                    ((111 * (a / max(1, kdep)) - 162) / ((a / max(1, kdep)) ** 2) - r_up),
                 ),
             ),
         )
@@ -220,11 +216,33 @@ class Params:
     """Number of passengers already on the platform at time 0 wanting to board train 2."""
 
 
+def writable_cell(sheet: Worksheet, row: int, column: int) -> Cell:
+    """
+    Like `sheet.cell`, but not a `MergedCell`, whose `value` is read-only.
+    We never merge cells, so this always holds.
+    """
+    cell = sheet.cell(row=row, column=column)
+    assert isinstance(cell, Cell)
+    return cell
+
+
+def active_worksheet(wb: openpyxl.Workbook) -> Worksheet:
+    """
+    `wb.active`, as a plain `Worksheet`.
+
+    The stubs type `wb.active` as a fake subclass of both `Chartsheet` and `Worksheet`.
+    Narrowing it with `type(active) is Worksheet` makes type checkers treat everything after as
+    unreachable, and narrowing with `isinstance` resolves methods like `add_chart` to
+    `Chartsheet`'s. Returning it as `Worksheet` avoids both.
+    """
+    active = wb.active
+    assert isinstance(active, Worksheet)
+    return active
+
+
 def calc_workbook(params: Params) -> openpyxl.Workbook:
     eff_area = (
-        params.platform_width
-        * params.platform_length
-        * params.usable_platform_area_multiplier
+        params.platform_width * params.platform_length * params.usable_platform_area_multiplier
     )
 
     www = params.vce_widths[0, :]
@@ -237,27 +255,22 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     train2_remaining_arrivals = float(params.train2_arriving_pax)
     train1_new_pax: float = 0
     train2_new_pax: float = 0
-    train1_boarders_upstairs = float(
-        params.train1_departing_pax - params.train1_boarding_pax
-    )
-    train2_boarders_upstairs = float(
-        params.train2_departing_pax - params.train2_boarding_pax
-    )
+    train1_boarders_upstairs = float(params.train1_departing_pax - params.train1_boarding_pax)
+    train2_boarders_upstairs = float(params.train2_departing_pax - params.train2_boarding_pax)
     train1_boarders_on_plat = float(params.train1_boarding_pax)
     train2_boarders_on_plat = float(params.train2_boarding_pax)
     total_pax_on_platform = train1_boarders_on_plat + train2_boarders_on_plat
     wb = openpyxl.Workbook()
 
-    assert type(wb.active) is Worksheet
-    sheet: Worksheet = wb.active
+    sheet = active_worksheet(wb)
 
     rownum = 0
 
-    def make_row(value: Any, description: str) -> None:
+    def make_row(value: str | float, description: str) -> None:
         nonlocal rownum
         rownum = rownum + 1
-        sheet.cell(column=1, row=rownum).value = description
-        sheet.cell(column=2, row=rownum).value = value
+        writable_cell(sheet, row=rownum, column=1).value = description
+        writable_cell(sheet, row=rownum, column=2).value = value
 
     make_row("Value", "Parameter")
     make_row(params.platform_width, "Platform width (ft)")
@@ -307,7 +320,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     def make_column_num(description: str) -> int:
         nonlocal colnum
         colnum = colnum + 1
-        sheet.cell(row=1, column=colnum).value = description
+        writable_cell(sheet, row=1, column=colnum).value = description
         return colnum
 
     columns = Columns(
@@ -320,12 +333,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         train2_on_rate=make_column_num("Train 2 Board Rate (pax/s),"),
         down_rate=make_column_num("Downstairs Rate (pax/s),"),
         up_rate=make_column_num("Upstairs Rate (pax/s),"),
-        departing_pax_on_plat_1=make_column_num(
-            "Train 1 Departing Passengers on Platform"
-        ),
-        departing_pax_on_plat_2=make_column_num(
-            "Train 2 Departing Passengers on Platform"
-        ),
+        departing_pax_on_plat_1=make_column_num("Train 1 Departing Passengers on Platform"),
+        departing_pax_on_plat_2=make_column_num("Train 2 Departing Passengers on Platform"),
         arrived_pax_waiting_on_plat=make_column_num("Arrived Passengers on Platform"),
         total_pax_on_platform=make_column_num("Total Passengers on Platform"),
         inst_crowding=make_column_num("Platform Space per Passanger (sqft),"),
@@ -464,15 +473,13 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         """
         row = time_after + FIRST_DATA_ROW
 
-        def get_cell(column: int) -> Cell | MergedCell:
-            return sheet.cell(row=row, column=column)
+        def get_cell(column: int, row: int = row) -> Cell:
+            return writable_cell(sheet, row=row, column=column)
 
         get_cell(columns.time_after).value = time_after
         get_cell(columns.train1_pax).value = train1_remaining_arrivals + train1_new_pax
         get_cell(columns.train2_pax).value = train2_remaining_arrivals + train2_new_pax
-        get_cell(
-            columns.arrived_pax_waiting_on_plat
-        ).value = arrived_pax_waiting_on_plat
+        get_cell(columns.arrived_pax_waiting_on_plat).value = arrived_pax_waiting_on_plat
         get_cell(columns.train1_off_rate).value = train1_off_rate
         get_cell(columns.train2_off_rate).value = train2_off_rate
         get_cell(columns.train1_on_rate).value = train1_on_rate
@@ -500,9 +507,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         )
 
     # Time gets exported to column 3, see line 264.
-    def make_chart(
-        title: str, min_col: int, x_title: str, y_title: str
-    ) -> ScatterChart:
+    def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
         chart.title = title
         chart.style = 13
@@ -514,9 +519,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
         max_row = params.simulation_time + FIRST_DATA_ROW - 1
         xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
-        values = Reference(
-            sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row
-        )
+        values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
         series = SeriesFactory(values, xvalues, title_from_data=True)
         chart.series.append(series)
@@ -538,17 +541,13 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
         max_row = params.simulation_time + FIRST_DATA_ROW - 1
         xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
-        values = Reference(
-            sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row
-        )
+        values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
         series = SeriesFactory(values, xvalues, title_from_data=True)
         chart.series.append(series)
         return chart
 
-    def make_chart_2(
-        title: str, col1: int, col2: int, x_title: str, y_title: str
-    ) -> ScatterChart:
+    def make_chart_2(title: str, col1: int, col2: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
         chart.title = title
         chart.style = 13
@@ -561,12 +560,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
         max_row = params.simulation_time + FIRST_DATA_ROW - 1
         xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
-        values1 = Reference(
-            sheet, min_col=col1, min_row=FIRST_DATA_ROW - 1, max_row=max_row
-        )
-        values2 = Reference(
-            sheet, min_col=col2, min_row=FIRST_DATA_ROW - 1, max_row=max_row
-        )
+        values1 = Reference(sheet, min_col=col1, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
+        values2 = Reference(sheet, min_col=col2, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
         series1 = SeriesFactory(values1, xvalues, title_from_data=True)
         chart.series.append(series1)
@@ -638,14 +633,19 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 def run_model(params: Params) -> None:
     wb = calc_workbook(params=params)
 
+    headway = params.train2_arrival_time - params.train1_arrival_time
     wb.save(
-        f"{params.filename_prefix}_{params.train1_arriving_pax}_{params.train2_arriving_pax}_{params.train2_arrival_time - params.train1_arrival_time}s.xlsx"
+        f"{params.filename_prefix}"
+        f"_{params.train1_arriving_pax}"
+        f"_{params.train2_arriving_pax}"
+        f"_{headway}s.xlsx"
     )
     wb.close()
 
 
 def main() -> None:
-    # params are labeled  with p<platform number><time in seconds> recon indicates that a platform was modelled accounting for penn reconstruction plans
+    # params are labeled  with p<platform number><time in seconds>
+    # recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
         filename_prefix="platform3",
         simulation_time=600,
