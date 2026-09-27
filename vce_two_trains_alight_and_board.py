@@ -251,8 +251,7 @@ def platform_clearance(
     karr: float, area: float, w: float, max_pax_in_stair_queues: float, assumptions: Assumptions
 ) -> float:
     """
-    Two bugs: Fruin's equation is used as if it gives pax/s across all of the stairs,
-    not pax/min per ft of width, and with the platform's space per passenger,
+    A bug: Fruin's equation is applied with the platform's space per passenger,
     not the stair's.
     See the README's "Known Bugs".
 
@@ -264,7 +263,7 @@ def platform_clearance(
     """
     flow = min(
         stair_flow(assumptions.stair_capacity, w),
-        fruin_ascending_stair_flow(area / max(1, karr)),
+        stair_flow(fruin_ascending_stair_flow(area / max(1, karr)), w),
     )
     if karr <= max_pax_in_stair_queues:
         return min(karr, flow)
@@ -275,8 +274,7 @@ def platform_clearance(
 def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumptions) -> float:
     """
     Several bugs: the whole upward flow is subtracted from each train's share of the stairs,
-    Fruin's ascending equation is used for descending passengers
-    with the same units bug as `platform_clearance`,
+    Fruin's ascending equation is used for descending passengers,
     and it's applied to a fixed concourse area.
     See the README's "Known Bugs".
 
@@ -291,7 +289,11 @@ def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumption
             min(
                 max(0, stair_flow(assumptions.bidirectional_stair_flow_limit, w) - r_up),
                 max(
-                    0, fruin_ascending_stair_flow(assumptions.concourse_area / max(1, kdep)) - r_up
+                    0,
+                    stair_flow(
+                        fruin_ascending_stair_flow(assumptions.concourse_area / max(1, kdep)), w
+                    )
+                    - r_up,
                 ),
             ),
         )
