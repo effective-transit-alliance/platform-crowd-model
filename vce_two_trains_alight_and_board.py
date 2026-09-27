@@ -39,16 +39,6 @@ def alight_rate(k: float, t: float, t0: float, u: float) -> float:
         return 0
 
 
-def fruin_stair_flow_down(m: float) -> float:
-    """
-    Fruin's descending stair flow equation, P = (128M - 206)/M^2.
-
-    :param m: space per passenger (ft^2/pax)
-    :return: stair flow per foot of stair width (pax/min/ft), not per second or across all stairs
-    """
-    return (128 * m - 206) / m**2
-
-
 def platform_clearance(karr: float, w: float) -> float:
     """
     Arrived passengers queue at the stairs, which discharge them at LOS E capacity,
@@ -66,31 +56,18 @@ def platform_clearance(karr: float, w: float) -> float:
     return min(karr, 17 * w / 60)
 
 
-def platform_ingress(kdep: float, a: float, w: float, r_up: float) -> float:
+def platform_ingress(kdep: float, w: float, r_up: float) -> float:
     """
-    :param kdep: number of people waiting to get onto a stairwell
-    :param a: usable concourse area
-    :param w: width of vertical circulation elements available to these passengers
-    :param: r_up: upstairs flow on those same vertical circulation elements
-    :return: platform ingress rate on stairs
+    Departing passengers queue upstairs and come down with whatever stair capacity
+    the upward flow leaves.
+
+    :param kdep: number of departing passengers upstairs (pax)
+    :param w: width of vertical circulation elements available to these passengers (ft)
+    :param: r_up: upstairs flow on those same vertical circulation elements (pax/s)
+    :return: platform ingress rate on stairs (pax/s)
     """
-    # 1st question, how much downstairs flow demand exists?
-    # 2nd question, how much stair capacity does upstairs flow take?
-    if kdep > 0:
-        return min(
-            kdep,
-            min(
-                # No flow in both directions past the LOS C/D boundary, 10 pax/min/ft.
-                max(0, 10 * w / 60 - r_up),
-                # Fruin's descending stair equation, with M the space per passenger upstairs.
-                max(
-                    0,
-                    fruin_stair_flow_down(a / max(1, kdep)) * w / 60 - r_up,
-                ),
-            ),
-        )
-    else:
-        return 0
+    # No flow in both directions past the LOS C/D boundary, 10 pax/min/ft.
+    return min(kdep, max(0, 10 * w / 60 - r_up))
 
 
 def boarder_fraction(trainA_boarders: float, trainB_boarders: float) -> float:
@@ -519,14 +496,12 @@ def calc_workbook(params: Params) -> tuple[openpyxl.Workbook, Summary]:
         train2_boarder_frac = boarder_fraction(train2_boarders_upstairs, train1_boarders_upstairs)
         plat_ingress_rate_1 = platform_ingress(
             train1_boarders_upstairs,
-            5000,
             params.total_vce_width * train1_boarder_frac,
             plat_egress_rate * train1_boarder_frac,
         )
 
         plat_ingress_rate_2 = platform_ingress(
             train2_boarders_upstairs,
-            5000,
             params.total_vce_width * train2_boarder_frac,
             plat_egress_rate * train2_boarder_frac,
         )
