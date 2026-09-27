@@ -362,6 +362,48 @@ This data can't yet replace `total_vce_width`:
 The FRA's Service Optimization Study measured today's VCEs on site,
 but didn't publish the measurements.
 
+### Counts from NJ Transit's Station Directory
+
+NJ Transit's [January 2022 station directory](https://content.njtransit.com/sites/default/files/NY%20Penn%20Station%20Directory_011022.pdf),
+which the ETA report links to,
+is the only source found that shows every platform's VCEs after Moynihan Train Hall opened.
+It's a vector wayfinding map of both concourse levels,
+with an icon for each stair, escalator, and elevator to a platform,
+labeled with the platform's tracks.
+[`scripts/extract_directory_vces.py`](./scripts/extract_directory_vces.py)
+extracts and classifies these icons into
+[`data/njt_directory_vces.csv`](./data/njt_directory_vces.csv),
+matching each of the map's 104 track labels to a distinct icon.
+Compared with the Master Plan final report's counts of existing VCEs:
+
+| Platform | Tracks | Stairs | Escalators | Elevators | Stairs and escalators | Master Plan's existing VCEs |
+|---|---|---|---|---|---|---|
+| 1 | 1/2 | 6 | 0 | 2 | 6 | 8 |
+| 2 | 3/4 | 7 | 1 | 2 | 8 | 8 |
+| 3 | 5/6 | 6 | 2 | 2 | 8 | 5 |
+| 4 | 7/8 | 6 | 1 | 3 | 7 | 5 |
+| 5 | 9/10 | 8 | 1 | 3 | 9 | 6 |
+| 6 | 11/12 | 6 | 1 | 3 | 7 | 7 |
+| 7 | 13/14 | 6 | 1 | 2 | 7 | 7 |
+| 8 | 15/16 | 6 | 1 | 2 | 7 | 7 |
+| 9 | 17 | 6 | 1 | 2 | 7 | 7 |
+| 10 | 18/19 | 6 | 1 | 2 | 7 | 8 |
+| 11 | 20/21 | 5 | 1 | 2 | 6 | 7 |
+
+The two don't reconcile, in either direction:
+the directory shows more on platforms 3 to 5, including the West End Concourse's,
+but fewer on platforms 1, 10, and 11.
+Neither is clearly complete:
+
+- The directory is schematic and not to scale,
+  so it has no widths, and its positions are only approximate.
+- It may show a VCE more than once,
+  e.g. a stair on each side of a concourse that crosses over a platform may be one stair or two,
+  and may leave out VCEs, e.g. ones it doesn't label with tracks.
+- It's unclear whether the Master Plan's counts include elevators.
+
+So these counts are a check on the other sources, not a replacement for the FRA's measurements.
+
 ### Sources and Their Dates
 
 Penn Station's VCEs have changed over time,
@@ -399,7 +441,8 @@ Notes:
   on both concourse levels.
   The ETA report links to it.
   It's a schematic wayfinding map, not to scale, so it has no widths,
-  and may show some VCEs more than once.
+  and may show some VCEs more than once
+  (see [Counts from NJ Transit's Station Directory](#counts-from-nj-transits-station-directory)).
 - **Amtrak's *Doubling Trans-Hudson Train Capacity* (October 2024).**
   Lists an "NJ Transit Track 7/8 Escalator Replacement with Stairs"
   among nearby projects, with an expected completion in 2021,
