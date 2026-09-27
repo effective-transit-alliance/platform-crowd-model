@@ -6,17 +6,22 @@
 
 """
 Make a blank field survey sheet for measuring every platform's VCEs in person,
-prefilled with the VCEs expected from NJ Transit's January 2022 station directory
-(`data/njt_directory_vces.csv`) and the Master Plan (`data/master_plan_existing_vces.csv`).
+prefilled with the VCEs expected from the PCIP Phase 2 existing plan
+(`data/estimated_vce_widths.csv`, platforms 1 to 8),
+NJ Transit's January 2022 station directory (`data/njt_directory_vces.csv`),
+and the Master Plan (`data/master_plan_existing_vces.csv`).
 
-The two sources don't reconcile and can't be aligned reliably,
-so each platform lists both sources' VCEs, each sorted west to east,
+The sources don't reconcile, and the directory can't be aligned with the others,
+so each platform lists every source's VCEs, each sorted west to east,
 and surveyors mark which ones they find and add rows for any that neither lists.
 Platforms are ordered by priority:
 platform 3 first, as the ETA report's focus, then platform 11, which has no width data,
 then the rest.
 
-Writes `data/field_survey.csv`; the columns after `master_plan_mid_ft` are for surveyors.
+`position_ft` is in the Master Plan's frame: feet east of its plans' west edge,
+which cuts across the platforms under the West End Concourse.
+
+Writes `data/field_survey.csv`; the columns after `position_ft` are for surveyors.
 """
 
 import csv
@@ -25,6 +30,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 DIRECTORY_CSV = REPO / "data" / "njt_directory_vces.csv"
 MASTER_PLAN_CSV = REPO / "data" / "master_plan_existing_vces.csv"
+SHEET_CSV = REPO / "data" / "estimated_vce_widths.csv"
 OUT_CSV = REPO / "data" / "field_survey.csv"
 
 PLATFORM_ORDER = [3, 11, 1, 2, 4, 5, 6, 7, 8, 9, 10]
@@ -71,8 +77,25 @@ def main() -> None:
         directory = list(csv.DictReader(f))
     with MASTER_PLAN_CSV.open() as f:
         master_plan = list(csv.DictReader(f))
+    with SHEET_CSV.open() as f:
+        sheet = list(csv.DictReader(f))
     rows = []
     for platform in PLATFORM_ORDER:
+        for v in (v for v in sheet if int(v["platform"]) == platform):
+            rows.append(
+                {
+                    "id": v["vce"],
+                    "platform": platform,
+                    "tracks": TRACKS[platform],
+                    "source": "PCIP Phase 2 existing plan",
+                    "expected_type": v["type"],
+                    "expected_width_in": v["master_plan_width_in"] or v["sheet_width_in"],
+                    "expected_width_status": v["width_status"],
+                    "directory_level": "",
+                    "directory_map_x": "",
+                    "position_ft": round((int(v["west_end_ft"]) + int(v["east_end_ft"])) / 2),
+                }
+            )
         # The directory's map has west on the left, so west to east is ascending x.
         on_map = sorted(
             (v for v in directory if int(v["platform"]) == platform),
@@ -92,9 +115,10 @@ def main() -> None:
                     "source": "2022 directory",
                     "expected_type": v["type"],
                     "expected_width_in": "",
+                    "expected_width_status": "",
                     "directory_level": v["level"],
                     "directory_map_x": v["map_x"],
-                    "master_plan_mid_ft": "",
+                    "position_ft": "",
                 }
             )
         for n, v in enumerate(in_plan, 1):
@@ -107,9 +131,10 @@ def main() -> None:
                     "expected_type": v["type"],
                     # Alternatives sometimes disagree, e.g. `44/48`.
                     "expected_width_in": v["width_in"],
+                    "expected_width_status": "master plan",
                     "directory_level": "",
                     "directory_map_x": "",
-                    "master_plan_mid_ft": v["mid_ft"],
+                    "position_ft": v["mid_ft"],
                 }
             )
     with OUT_CSV.open("w", newline="") as f:
