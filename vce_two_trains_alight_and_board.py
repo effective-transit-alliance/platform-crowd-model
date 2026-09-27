@@ -11,6 +11,7 @@ import typing
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
 import numpy as np
@@ -797,6 +798,19 @@ RESULTS_COLUMNS = [
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
+README = Path(__file__).parent / "README.md"
+RESULTS_START = "<!-- results-table:start -->"
+RESULTS_END = "<!-- results-table:end -->"
+"""The README's results table is between these markers, so `--update-readme` can replace it."""
+
+
+def update_readme_results(table: str) -> None:
+    """Replace the results table in the README with `table`."""
+    readme = README.read_text()
+    start = readme.index(RESULTS_START) + len(RESULTS_START)
+    end = readme.index(RESULTS_END)
+    README.write_text(f"{readme[:start]}\n{table}\n{readme[end:]}")
+
 
 def run_model(params: Params, spreadsheets: bool) -> str:
     """
@@ -830,6 +844,9 @@ def run_model(params: Params, spreadsheets: bool) -> str:
 
 
 def main(
+    update_readme: Annotated[
+        bool, Option(help="Replace the results table in the README with this run's.")
+    ] = False,
     spreadsheets: Annotated[
         bool,
         Option(help="Also print each scenario's time series and save its spreadsheet."),
@@ -1134,10 +1151,11 @@ def main(
                 ],
             )
         )
+    table = "\n".join([RESULTS_HEADER, *rows])
     print()
-    print(RESULTS_HEADER)
-    for row in rows:
-        print(row)
+    print(table)
+    if update_readme:
+        update_readme_results(table)
 
 
 if __name__ == "__main__":
