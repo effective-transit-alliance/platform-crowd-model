@@ -423,12 +423,15 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
     FIRST_DATA_ROW = 2
 
+    # The parameters take up columns 1 (A) and 2 (B), so the time series starts after them.
+    FIRST_DATA_COLUMN = 3
+
     print("Elapsed_Time", "Train_1_Pax", "Train_2_Pax")
 
     def get_column_for(attr_name: str) -> int:
         for i, (attr, _field) in enumerate(annotated_field_names(Instant)):
             if attr == attr_name:
-                return 2 + i
+                return FIRST_DATA_COLUMN + i
         raise AttributeError(Instant, attr_name)
 
     for time_after in range(0, params.simulation_length):
@@ -583,7 +586,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         )
 
         for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
-            column = 2 + i
+            column = FIRST_DATA_COLUMN + i
             writable_cell(sheet, row=1, column=column).value = field.description
             writable_cell(sheet, row=instant.time + 2, column=column).value = value
 
