@@ -32,14 +32,6 @@ SECONDS_PER_MINUTE = 60
 
 SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
 
-FRUIN_DESCENDING_STAIR_COEFFICIENTS = (128, 206)
-"""
-`(a, b)` in Fruin's equation for descending stair flow, `P = (aM - b)/M^2`,
-where `P` is the flow (pax/min per ft of stair width)
-and `M` is the space per passenger on the stair (ft^2/pax).
-Fruin, p. 9: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9
-"""
-
 CLOSE_HEADWAY = 120
 """Time between two trains' arrivals in the closely spaced scenarios (s), from the ETA report."""
 
@@ -146,14 +138,6 @@ class Assumptions:
     i.e. above the LOS C/D boundary, 10 pax/min/ft.
     """
 
-    concourse_area: Annotated[float, Field(name="Concourse Area", units="ft^2")] = 5000
-    """
-    Area of the concourse upstairs holding the departing passengers who haven't come down yet.
-    A bug: their flow down comes from Fruin's equation applied to this area,
-    so it slows as the concourse empties.
-    See `README.md#downward-flow-slows-as-a-fixed-concourse-empties`.
-    """
-
     emergency_stair_flow: Annotated[
         float, Field(name="Emergency Stair Flow", units="pax/min/ft")
     ] = 19
@@ -208,17 +192,6 @@ def stair_flow(rate: float, w: float) -> float:
     return rate * w / SECONDS_PER_MINUTE
 
 
-def fruin_descending_stair_flow(m: float) -> float:
-    """
-    Fruin's equation for descending stair flow.
-
-    :param m: space per passenger (ft^2/pax)
-    :return: stair flow per foot of width (pax/min/ft)
-    """
-    a, b = FRUIN_DESCENDING_STAIR_COEFFICIENTS
-    return (a * m - b) / m**2
-
-
 def alight_rate(k: float, t: float, t0: float | None, u: float) -> float:
     """
     :param k: number of people waiting to get off train
@@ -252,30 +225,15 @@ def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float
 
 def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumptions) -> float:
     """
-    A bug: Fruin's descending equation is applied to a fixed concourse area.
-    See the README's "Known Bugs".
+    Departing passengers queue upstairs and come down with whatever stair capacity
+    the upward flow leaves.
 
-    :param kdep: number of departing passengers upstairs
+    :param kdep: number of departing passengers upstairs (pax)
     :param w: this train's share of the total width of vertical circulation elements (ft)
     :param r_up: upward stair flow on this train's share of the stairs (pax/s)
     :return: platform ingress rate on stairs (pax/s)
     """
-    if kdep > 0:
-        return min(
-            kdep,
-            min(
-                max(0, stair_flow(assumptions.bidirectional_stair_flow_limit, w) - r_up),
-                max(
-                    0,
-                    stair_flow(
-                        fruin_descending_stair_flow(assumptions.concourse_area / max(1, kdep)), w
-                    )
-                    - r_up,
-                ),
-            ),
-        )
-    else:
-        return 0
+    return min(kdep, max(0, stair_flow(assumptions.bidirectional_stair_flow_limit, w) - r_up))
 
 
 def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
