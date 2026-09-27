@@ -256,7 +256,7 @@ def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float
 
 def platform_ingress(
     kdep: float, vces: tuple[Vce, ...], up_rates: list[float], assumptions: Assumptions
-) -> float:
+) -> list[float]:
     """
     Departing passengers queue upstairs and come down each VCE with whatever capacity
     its upward flow leaves, unless that exceeds `Assumptions.bidirectional_stair_flow_limit`.
@@ -264,14 +264,19 @@ def platform_ingress(
     :param kdep: number of departing passengers upstairs (pax)
     :param vces: this train's share of each VCE
     :param up_rates: upward flow on this train's share of each VCE (pax/s)
-    :return: platform ingress rate on stairs (pax/s)
+    :return: platform ingress rate down each VCE (pax/s)
     """
-    available = sum(
+    available = [
         stair_flow(assumptions.stair_capacity, vce.width) - r_up
-        for vce, r_up in zip(vces, up_rates, strict=True)
         if r_up <= stair_flow(assumptions.bidirectional_stair_flow_limit, vce.width)
-    )
-    return min(kdep, available)
+        else 0
+        for vce, r_up in zip(vces, up_rates, strict=True)
+    ]
+    total = sum(available)
+    if total <= 0:
+        return [0 for _ in available]
+    # If fewer are upstairs than can come down, they spread across the VCEs by capacity.
+    return [rate * min(1, kdep / total) for rate in available]
 
 
 def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
@@ -772,6 +777,8 @@ def calc_workbook(
     walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in params.vces])
     """Arriving passengers walking to each VCE, by the time they reach its queue."""
     trains = range(params.trains)
+    boarders_walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in trains])
+    """Each train's departing passengers walking to its doors, by the time they reach them."""
     arrival_times: list[int | None] = [
         train * params.headway if train < 2 else None for train in trains
     ]
@@ -858,6 +865,10 @@ def calc_workbook(
                 return FIRST_DATA_COLUMN + i
         raise AttributeError(Instant, attr_name)
 
+    def walking_to_train(train: int) -> float:
+        """Departing passengers walking to `train`'s doors."""
+        return sum(walking_to_doors[train] for walking_to_doors in boarders_walking.values())
+
     def row_for(time: int) -> int:
         """The spreadsheets' row for `time`."""
         return time - start_time + FIRST_DATA_ROW
@@ -919,7 +930,7 @@ def calc_workbook(
         boarder_fracs = [
             boarder_fraction(boarders_upstairs[train], boarders_upstairs) for train in trains
         ]
-        plat_ingress_rates = [
+        vce_ingress_rates = [
             platform_ingress(
                 boarders_upstairs[train],
                 tuple(
@@ -931,8 +942,17 @@ def calc_workbook(
             )
             for train in trains
         ]
+        plat_ingress_rates = [sum(rates) for rates in vce_ingress_rates]
+        # Departing passengers spread across the doors, walking to them from their VCE.
+        for door in doors:
+            for i, walking_time in enumerate(door.walking_times):
+                for train in trains:
+                    boarders_walking[time_after + walking_time][train] += (
+                        vce_ingress_rates[train][i] * door.share
+                    )
+        for train, reaching in enumerate(boarders_walking.pop(time_after, [0.0 for _ in trains])):
+            boarders_on_plat[train] += reaching
         for train in trains:
-            boarders_on_plat[train] += plat_ingress_rates[train]
             total_pax_on_platform += plat_ingress_rates[train]
         on_rates = [
             board_rate(
@@ -983,7 +1003,10 @@ def calc_workbook(
         if (
             summary.boarded_time is None
             and time_after >= max(release_times)
-            and sum(boarders_upstairs) + sum(boarders_on_plat) < 1
+            and sum(boarders_upstairs)
+            + sum(boarders_on_plat)
+            + sum(sum(walking_to_doors) for walking_to_doors in boarders_walking.values())
+            < 1
         ):
             summary.boarded_time = time_after
         for train in trains:
@@ -993,7 +1016,7 @@ def calc_workbook(
                 and arrival_time is not None
                 and time_after > arrival_time
                 and remaining_arrivals[train] < 1
-                and boarders_upstairs[train] + boarders_on_plat[train] < 1
+                and boarders_upstairs[train] + boarders_on_plat[train] + walking_to_train(train) < 1
             ):
                 summary.dwells[train] = time_after - arrival_time
                 # The next train on its track arrives once it's scheduled and this one departs.
@@ -1021,7 +1044,8 @@ def calc_workbook(
                 off_rate=sum(off_rates),
                 on_rate=sum(on_rates),
                 down_rate=sum(plat_ingress_rates),
-                departing_pax_on_platform=sum(boarders_on_plat),
+                departing_pax_on_platform=sum(boarders_on_plat)
+                + sum(walking_to_train(train) for train in trains),
                 total_pax_on_platform=total_pax_on_platform,
                 platform_crowding=inst_crowding,
                 up_rate=plat_egress_rate,
@@ -1036,7 +1060,7 @@ def calc_workbook(
                         remaining_arrivals[train] + new_pax[train],
                         off_rates[train],
                         on_rates[train],
-                        boarders_on_plat[train],
+                        boarders_on_plat[train] + walking_to_train(train),
                     )
                 ):
                     writable_cell(

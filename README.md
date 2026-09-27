@@ -143,6 +143,8 @@ each using the passenger counts left by the one before.
      in proportion to how many of each are still upstairs,
      and each train's share of a VCE carries the same share of its upward flow.
    - Nobody comes down a VCE while its upward flow is worse than LOS C, 10 pax/min/ft.
+   - On platforms 3 and 6, they spread evenly across their train's doors,
+     walking to them at 250 ft/min.
    - Otherwise, both directions share LOS E capacity, 17 pax/min/ft,
      so passengers come down with whatever their share of the upward flow leaves of that.
 4. **Boarding.**
@@ -228,7 +230,10 @@ or **unclear** (it could go either way).
   though the TCQSM notes people walk slower in crowds with less than 25 sq ft/pax
   ([Exhibit 10-10, p. 10-21](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=25)).
   On platforms without each VCE's position, walking takes no time.
-- **Optimistic:** Departing passengers take no time to walk from the stairs to their doors.
+- **Pessimistic:** On platforms 3 and 6, departing passengers coming downstairs
+  spread evenly across their train's doors, walking to them at 250 ft/min,
+  rather than boarding at the doors nearest their VCE.
+  On platforms without each VCE's position, walking takes no time.
 - **Optimistic:** The concourse upstairs never backs up, so the stairs always discharge.
 
 ### Trains
@@ -662,19 +667,19 @@ which clears sooner (see [Stairs Are One Pooled Queue](#stairs-are-one-pooled-qu
 <!-- results-table:start -->
 | Platform | Headway | VCE width | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max up rate (pax/s) | Max pax on platform | Max density (pax/m²) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 3 | 0:00 | 43 ft | 0:00, 0:00, 3:37, 3:37 | 3:37, 3:37, 0:44, 0:44 | 7:34 | 8:30 | 4:21 | 6:13 | 12.18 | 3774 | 3.34 (D) |
+| 3 | 0:00 | 43 ft | 0:00, 0:00, 6:20, 6:20 | 6:20, 6:20, 0:44, 0:44 | 9:58 | 10:47 | 7:04 | 6:00 | 12.18 | 3774 | 3.34 (D) |
 | 3 (recon) | 0:00 | 44.75 ft | 0:00, 0:00, 3:38, 3:38 | 3:38, 3:38, 0:44, 0:44 | 6:56 | 7:11 | 7:12 | 7:04 | 12.68 | 3803 | 3.37 (D) |
-| 6 | 0:00 | 30.83 ft | 0:00, 0:00, 7:13, 7:13 | 7:13, 7:13, 0:43, 0:43 | 13:14 | 14:20 | 13:04 | 11:38 | 8.74 | 4000 | 3.48 (D) |
+| 6 | 0:00 | 30.83 ft | 0:00, 0:00, 10:14, 10:14 | 10:14, 10:14, 0:43, 0:43 | 16:15 | 17:21 | 10:57 | 11:38 | 8.74 | 4000 | 3.48 (D) |
 | 10 | 0:00 | 70.58 ft | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 5:09 | 5:24 | 1:26 | 5:24 | 20.00 | 5740 | 1.78 (D) |
 | 11 | 0:00 | 43.58 ft | 0:00, 0:00, 4:31, 4:31 | 4:31, 4:31, 0:43, 0:43 | 8:39 | 8:54 | 5:14 | 8:44 | 12.35 | 4314 | 3.13 (D) |
-| 3 | 2:00 | 43 ft | 0:00, 2:00, 4:00, 7:12 | 0:44, 5:12, 3:12, 0:44 | 8:52 | 9:31 | 7:56 | 5:10 | 12.18 | 1367 | 1.21 (C) |
+| 3 | 2:00 | 43 ft | 0:00, 2:00, 4:00, 9:57 | 1:30, 7:57, 6:02, 0:44 | 11:37 | 12:16 | 10:41 | 5:10 | 12.18 | 1367 | 1.21 (C) |
 | 3 (recon) | 2:00 | 44.75 ft | 0:00, 2:00, 4:00, 6:53 | 0:44, 4:53, 2:53, 0:44 | 8:25 | 8:40 | 7:37 | 7:04 | 12.68 | 1332 | 1.18 (C) |
-| 6 | 2:00 | 30.83 ft | 0:00, 2:00, 4:00, 11:33 | 0:43, 9:33, 7:33, 0:43 | 14:25 | 15:13 | 14:21 | 11:34 | 8.74 | 2470 | 2.15 (D) |
+| 6 | 2:00 | 30.83 ft | 0:00, 2:00, 4:00, 14:45 | 2:09, 12:45, 10:45, 0:43 | 17:37 | 18:25 | 15:28 | 11:34 | 8.74 | 2470 | 2.15 (D) |
 | 10 | 2:00 | 70.58 ft | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 7:06 | 7:21 | 6:43 | 5:24 | 20.00 | 1360 | 0.42 (A) |
 | 11 | 2:00 | 43.58 ft | 0:00, 2:00, 4:00, 8:10 | 0:43, 6:10, 4:10, 0:43 | 10:07 | 10:22 | 10:22 | 8:44 | 12.35 | 1613 | 1.17 (C) |
-| 3 | 5:00 | 43 ft | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:40 | 17:19 | 15:44 | 5:08 | 12.18 | 1348 | 1.19 (C) |
+| 3 | 5:00 | 43 ft | 0:00, 5:00, 10:00, 15:00 | 1:30, 1:30, 1:30, 1:30 | 16:40 | 17:19 | 16:30 | 5:08 | 12.18 | 1348 | 1.19 (C) |
 | 3 (recon) | 5:00 | 44.75 ft | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:32 | 16:47 | 15:44 | 7:04 | 12.68 | 1319 | 1.17 (C) |
-| 6 | 5:00 | 30.83 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 17:52 | 18:40 | 15:43 | 10:48 | 8.74 | 1727 | 1.50 (C) |
+| 6 | 5:00 | 30.83 ft | 0:00, 5:00, 10:00, 15:00 | 2:09, 2:16, 2:16, 2:16 | 17:52 | 18:40 | 17:16 | 10:48 | 8.74 | 1727 | 1.50 (C) |
 | 10 | 5:00 | 70.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:06 | 16:21 | 15:43 | 5:24 | 20.00 | 1340 | 0.42 (A) |
 | 11 | 5:00 | 43.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:57 | 17:12 | 15:43 | 8:44 | 12.35 | 1600 | 1.16 (C) |
 <!-- results-table:end -->
@@ -774,3 +779,8 @@ and each fix's effect is summarized here.
   Platform 3 with 2-minute headways now clears at 310 s,
   44 s later than with its VCEs as one pooled queue, where it never cleared with the nearest VCE,
   and platform 6 clears at 469 s, 98 s later than as one pooled queue.
+- **Added the time departing passengers take to walk from the VCEs to their train's doors,**
+  on platforms 3 and 6, spreading evenly across the doors at 250 ft/min.
+  They walk about 50 to 100 s on average, depending on the VCE, and up to 197 s,
+  so platform 3 with 2-minute headways finishes boarding at 472 s instead of 298 s,
+  and platform 6 at 593 s instead of 406 s.
