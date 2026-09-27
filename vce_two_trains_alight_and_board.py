@@ -133,9 +133,10 @@ class Assumptions:
         float, Field(name="Bidirectional Stair Flow Limit", units="pax/min/ft")
     ] = 10
     """
-    Total stair flow in both directions, which the upward flow leaves for the downward flow.
+    Nobody comes down while the upward flow exceeds this.
     The ETA report says there's no bidirectional flow on stairs worse than LOS C,
     i.e. above the LOS C/D boundary, 10 pax/min/ft.
+    Otherwise, both directions share `stair_capacity`.
     """
 
     emergency_stair_flow: Annotated[
@@ -226,14 +227,16 @@ def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float
 def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumptions) -> float:
     """
     Departing passengers queue upstairs and come down with whatever stair capacity
-    the upward flow leaves.
+    the upward flow leaves, unless it exceeds `Assumptions.bidirectional_stair_flow_limit`.
 
     :param kdep: number of departing passengers upstairs (pax)
     :param w: this train's share of the total width of vertical circulation elements (ft)
     :param r_up: upward stair flow on this train's share of the stairs (pax/s)
     :return: platform ingress rate on stairs (pax/s)
     """
-    return min(kdep, max(0, stair_flow(assumptions.bidirectional_stair_flow_limit, w) - r_up))
+    if r_up > stair_flow(assumptions.bidirectional_stair_flow_limit, w):
+        return 0
+    return min(kdep, stair_flow(assumptions.stair_capacity, w) - r_up)
 
 
 def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
