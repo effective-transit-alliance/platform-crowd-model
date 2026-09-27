@@ -24,12 +24,20 @@ In doing so, `uv` will also install dependencies and set up a virtual environmen
 
 ## Checking
 
-We also use `ruff` for formatting and linting and `mypy` for type checking.
+We also use `ruff` for formatting and linting and `ty` and `pyrefly` for type checking.
 To run these, which are also checked in CI,
 you can run
 
 ```sh
 uv run ruff format # format
 uv run ruff check # lint
-uv run mypy . # type check
+uv run ty check # type check
+uv run pyrefly check # type check
+```
+
+These same checks also run as `pre-commit` hooks.
+To install them, run
+
+```sh
+uv run pre-commit install
 ```
