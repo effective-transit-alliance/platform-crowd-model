@@ -794,6 +794,14 @@ def calc_workbook(
     boarders_on_plat = [0.0 for _ in trains]
     total_pax_on_platform: float = 0
     wb = openpyxl.Workbook()
+    vce_sheet = wb.create_sheet("VCEs")
+    """Each VCE's queue and upward flow each second."""
+    writable_cell(vce_sheet, row=1, column=1).value = "Time (s)"
+    for i, vce in enumerate(params.vces):
+        writable_cell(vce_sheet, row=1, column=2 + 2 * i).value = f"{vce.name} Queue (pax)"
+        writable_cell(vce_sheet, row=1, column=3 + 2 * i).value = f"{vce.name} Up Rate (pax/s)"
+    vce_empty_times: list[int | None] = [None for _ in params.vces]
+    """When each VCE's queue last empties, i.e. its last passenger goes up."""
     trains_sheet = wb.create_sheet("Trains")
     """Each train's passengers, alighting, boarding, and departing passengers each second."""
     TRAIN_COLUMNS = [
@@ -864,6 +872,7 @@ def calc_workbook(
             if release_times[train] == time_after:
                 boarders_upstairs[train] = float(assumptions.departing_pax_per_train)
         if write_workbook:
+            writable_cell(vce_sheet, row=row_for(time_after), column=1).value = time_after
             writable_cell(trains_sheet, row=row_for(time_after), column=1).value = time_after
         off_rates: list[float] = []
         for train in trains:
@@ -993,6 +1002,10 @@ def calc_workbook(
         summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
         summary.min_space_per_pax = min(summary.min_space_per_pax, inst_crowding)
 
+        for i, (queue, r_up) in enumerate(zip(vce_queues, vce_up_rates, strict=True)):
+            if queue < 1e-9 and r_up > 0:
+                vce_empty_times[i] = time_after
+
         if write_workbook:
             net_pax_flow_rate: float = 0
             for rate in plat_ingress_rates:
@@ -1031,6 +1044,10 @@ def calc_workbook(
                         row=row_for(instant.time),
                         column=2 + len(TRAIN_COLUMNS) * train + j,
                     ).value = value
+
+            for i, (queue, r_up) in enumerate(zip(vce_queues, vce_up_rates, strict=True)):
+                writable_cell(vce_sheet, row=row_for(instant.time), column=2 + 2 * i).value = queue
+                writable_cell(vce_sheet, row=row_for(instant.time), column=3 + 2 * i).value = r_up
 
             for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
                 column = FIRST_DATA_COLUMN + i
@@ -1181,6 +1198,13 @@ def calc_workbook(
             f"LOS F egress rate is {params.los_f_egress_rate} pax/s. "
             f"Emergency egress time is {params.emergency_egress_time} seconds."
         )
+    vce_list = wb.create_sheet("VCE List")
+    vce_list.append(
+        ["VCE", "Type", "Width (ft)", "West End (ft)", "East End (ft)", "Queue Empty Time (s)"]
+    )
+    for vce, empty_time in zip(params.vces, vce_empty_times, strict=True):
+        vce_list.append([vce.name, vce.type, vce.width, vce.west_end, vce.east_end, empty_time])
+
     return wb, summary
 
 
