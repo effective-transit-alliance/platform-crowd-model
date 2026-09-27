@@ -7,14 +7,14 @@ model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 
 from dataclasses import dataclass
 from typing import Any
+
 import numpy as np
 import openpyxl
+from numpy.typing import NDArray
 from openpyxl.cell import Cell, MergedCell
-from openpyxl.chart import Reference
+from openpyxl.chart import Reference, ScatterChart
 from openpyxl.chart.series_factory import SeriesFactory
 from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.chart import ScatterChart
-from numpy.typing import NDArray
 
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
@@ -451,7 +451,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         """
         row = time_after + FIRST_DATA_ROW
 
-        def get_cell(column: int) -> Cell | MergedCell:
+        def get_cell(column: int, row: int = row) -> Cell | MergedCell:
             return sheet.cell(row=row, column=column)
 
         get_cell(columns.time_after).value = time_after
@@ -611,14 +611,19 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 def run_model(params: Params) -> None:
     wb = calc_workbook(params=params)
 
+    headway = params.train2_arrival_time - params.train1_arrival_time
     wb.save(
-        f"{params.filename_prefix}_{params.train1_arriving_pax}_{params.train2_arriving_pax}_{params.train2_arrival_time - params.train1_arrival_time}s.xlsx"
+        f"{params.filename_prefix}"
+        f"_{params.train1_arriving_pax}"
+        f"_{params.train2_arriving_pax}"
+        f"_{headway}s.xlsx"
     )
     wb.close()
 
 
 def main() -> None:
-    # params are labeled  with p<platform number><time in seconds> recon indicates that a platform was modelled accounting for penn reconstruction plans
+    # params are labeled  with p<platform number><time in seconds>
+    # recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
         filename_prefix="platform3",
         simulation_time=600,
