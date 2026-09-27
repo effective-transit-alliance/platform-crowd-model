@@ -64,8 +64,11 @@ Each second:
    with one VCE per platform excluded.
    They queue at the stairs, which discharge them at LOS E capacity,
    17 pax/min per foot of VCE width, as long as anyone is queued.
-   The stair queues hold 20 ft of queue in front of the total VCE width at 5 sqft/pax;
-   once the remaining arrived passengers fit in them, they taper off.
+   So there's no gradual taper: the stairs stay at capacity until the platform is clear.
+   The report's "taper time" is when the remaining arrived passengers fit in the stair queues,
+   20 ft of queue in front of the total VCE width at 5 sqft/pax,
+   which is now always a fixed ~15 s before the clear time,
+   but it's kept in the results table to compare with the report.
    The few seconds of walking from the doors to the stairs are ignored.
 3. **Coming downstairs.** Departing passengers come down with whatever stair capacity
    the upward flow leaves, up to the LOS C/D boundary, 10 pax/min/ft,
