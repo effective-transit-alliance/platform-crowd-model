@@ -394,13 +394,40 @@ class Instant:
     """Egress LOS (level of service)."""
 
 
+@dataclass
+class Summary:
+    """Headline results of one model run, for the results table in the README."""
+
+    max_up_rate: float
+    """Highest upstairs rate (pax/s)."""
+
+    secs_at_capacity: int
+    """Seconds the upstairs rate is at the VCEs' LOS E capacity (17 pax/min/ft)."""
+
+    taper_time: int | None
+    """
+    Last second the arriving passengers on the platform exceed what fits in the stair queues,
+    i.e. when they start to taper off, or `None` if they never do.
+    """
+
+    clear_time: int | None
+    """First second after the last arrival when all arriving passengers have left the platform."""
+
+    max_pax_on_platform: float
+    """Most passengers on the platform at once."""
+
+    min_space_per_pax: float
+    """Least platform space per passenger (sq ft)."""
+
+
 def calc_workbook(
     params: Params, write_workbook: bool = True, print_time_series: bool = True
-) -> openpyxl.Workbook:
+) -> tuple[openpyxl.Workbook, Summary]:
     """
-    Simulate `params`, returning its spreadsheet.
+    Simulate `params`, returning its spreadsheet and its results table's summary.
     Without `write_workbook`, the spreadsheet is left without its time series and charts,
-    and without `print_time_series`, nothing is printed.
+    and without `print_time_series`, nothing is printed,
+    e.g. when only the summary is needed.
     """
     eff_area = (
         params.platform_width * params.platform_length * params.usable_platform_area_multiplier
@@ -438,6 +465,18 @@ def calc_workbook(
     # The parameters take up columns 1 (A) and 2 (B), so the time series starts after them.
     FIRST_DATA_COLUMN = 3
 
+    max_pax_in_stair_queues = params.total_vce_width * params.queue_length / 5
+    capacity = params.total_vce_width * 17 / 60
+    last_arrival_time = max(params.train1_arrival_time, params.train2_arrival_time)
+    summary = Summary(
+        max_up_rate=0,
+        secs_at_capacity=0,
+        taper_time=None,
+        clear_time=None,
+        max_pax_on_platform=total_pax_on_platform,
+        min_space_per_pax=space_per_pax(total_pax_on_platform, eff_area),
+    )
+
     if print_time_series:
         print("Elapsed_Time", "Train_1_Pax", "Train_2_Pax")
 
@@ -472,7 +511,7 @@ def calc_workbook(
             arrived_pax_waiting_on_plat,
             eff_area,
             params.total_vce_width,
-            params.total_vce_width * params.queue_length / 5,
+            max_pax_in_stair_queues,
         )
         arrived_pax_waiting_on_plat -= plat_egress_rate
         if arrived_pax_waiting_on_plat < 0:
@@ -561,7 +600,7 @@ def calc_workbook(
             str(int(train1_boarders_on_plat + int(train2_boarders_on_plat)))
             + " boarding pax on platform;",
             str(int(total_pax_on_platform)) + " total pax on platform;",
-            str(int(inst_crowding)) + " sqft per pax;",
+            str(int(inst_crowding)) + " sq ft per pax;",
         )
         print(
             str(plat_egress_rate) + " pax/s up;",
@@ -570,6 +609,19 @@ def calc_workbook(
             + " pax are upstairs"
         )
         """
+        summary.max_up_rate = max(summary.max_up_rate, plat_egress_rate)
+        if plat_egress_rate >= capacity - 1e-9:
+            summary.secs_at_capacity += 1
+        if arrived_pax_waiting_on_plat > max_pax_in_stair_queues:
+            summary.taper_time = time_after
+        if (
+            summary.clear_time is None
+            and time_after > last_arrival_time
+            and arrived_pax_waiting_on_plat < 1
+        ):
+            summary.clear_time = time_after
+        summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
+        summary.min_space_per_pax = min(summary.min_space_per_pax, inst_crowding)
 
         if write_workbook:
             instant = Instant(
@@ -606,7 +658,7 @@ def calc_workbook(
                 writable_cell(sheet, row=instant.time + 2, column=column).value = value
 
     if not write_workbook:
-        return wb
+        return wb, summary
 
     def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
@@ -711,7 +763,7 @@ def calc_workbook(
             "Space per Passenger",
             get_column_for("platform_crowding"),
             "Time (s)",
-            "Space per passenger (sqft)",
+            "Space per passenger (sq ft)",
         ),
         "V49",
     )
@@ -729,12 +781,31 @@ def calc_workbook(
             f"LOS F egress rate is {params.los_f_egress_rate} pax/s. "
             f"Emergency egress time is {params.emergency_egress_time} seconds."
         )
-    return wb
+    return wb, summary
 
 
-def run_model(params: Params, spreadsheets: bool) -> None:
-    """Run the model, and with `spreadsheets`, print its time series and save its spreadsheet."""
-    wb = calc_workbook(params=params, write_workbook=spreadsheets, print_time_series=spreadsheets)
+RESULTS_COLUMNS = [
+    "Platform",
+    "Headway",
+    "VCE width",
+    "Max up rate (pax/s)",
+    "Time at capacity",
+    "Taper time",
+    "Clear time",
+    "Max pax on platform",
+    "Min space/pax (sq ft)",
+]
+RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
+
+
+def run_model(params: Params, spreadsheets: bool) -> str:
+    """
+    Run the model, return its row of the results table,
+    and with `spreadsheets`, print its time series and save its spreadsheet.
+    """
+    wb, summary = calc_workbook(
+        params=params, write_workbook=spreadsheets, print_time_series=spreadsheets
+    )
 
     headway = params.train2_arrival_time - params.train1_arrival_time
     if spreadsheets:
@@ -746,14 +817,25 @@ def run_model(params: Params, spreadsheets: bool) -> None:
         )
     wb.close()
 
+    def fmt_time(t: int | None) -> str:
+        return "never" if t is None else f"{t} s"
+
+    return (
+        f"| {params.filename_prefix} | {headway} s | {params.total_vce_width} ft"
+        f" | {summary.max_up_rate:.2f} | {summary.secs_at_capacity} s"
+        f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
+        f" | {summary.max_pax_on_platform:.0f} | {summary.min_space_per_pax:.1f}"
+        f" ({platform_crowd_los(summary.min_space_per_pax)}) |"
+    )
+
 
 def main(
     spreadsheets: Annotated[
         bool,
-        Option(help="Print each scenario's time series and save its spreadsheet."),
-    ] = True,
+        Option(help="Also print each scenario's time series and save its spreadsheet."),
+    ] = False,
 ) -> None:
-    """Run every scenario."""
+    """Run every scenario and print a table of their results."""
 
     # params are labeled  with p<platform number><time in seconds>
     # recon indicates that a platform was modelled accounting for penn reconstruction plans
@@ -1038,7 +1120,7 @@ def main(
         ),
     )
     with ProcessPoolExecutor() as executor:
-        list(
+        rows = list(
             executor.map(
                 functools.partial(run_model, spreadsheets=spreadsheets),
                 [
@@ -1052,6 +1134,10 @@ def main(
                 ],
             )
         )
+    print()
+    print(RESULTS_HEADER)
+    for row in rows:
+        print(row)
 
 
 if __name__ == "__main__":
