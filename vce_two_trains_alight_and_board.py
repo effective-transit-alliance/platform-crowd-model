@@ -122,6 +122,18 @@ class Assumptions:
     Only used on platforms with each VCE's position.
     """
 
+    escalator_reversal_threshold: Annotated[
+        float, Field(name="Escalator Reversal Threshold", units="fraction")
+    ] = 0.1
+    """
+    Extra escalators, i.e. beyond one going up and one going down,
+    go up while the platform is alighting,
+    and reverse to go down once fewer than this fraction of `Params.arriving_pax_per_train`
+    are still on the platform or aboard trains that have arrived,
+    i.e. the platform is nearly fully alighted.
+    Not from any source.
+    """
+
     vce_choice: Annotated[
         Literal["nearest", "quickest"], Field(name="VCE Choice", units="rule")
     ] = "quickest"
@@ -255,7 +267,11 @@ def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float
 
 
 def platform_ingress(
-    kdep: float, vces: tuple[Vce, ...], up_rates: list[float], assumptions: Assumptions
+    kdep: float,
+    vces: tuple[Vce, ...],
+    up_rates: list[float],
+    directions: list[Direction],
+    assumptions: Assumptions,
 ) -> list[float]:
     """
     Departing passengers queue upstairs and come down each VCE with whatever capacity
@@ -264,13 +280,15 @@ def platform_ingress(
     :param kdep: number of departing passengers upstairs (pax)
     :param vces: this train's share of each VCE
     :param up_rates: upward flow on this train's share of each VCE (pax/s)
+    :param directions: which way each VCE runs now
     :return: platform ingress rate down each VCE (pax/s)
     """
     available = [
-        stair_flow(assumptions.stair_capacity, vce.width) - r_up
-        if r_up <= stair_flow(assumptions.bidirectional_stair_flow_limit, vce.width)
-        else 0
-        for vce, r_up in zip(vces, up_rates, strict=True)
+        0
+        if direction == "up"
+        or r_up > stair_flow(assumptions.bidirectional_stair_flow_limit, vce.width)
+        else stair_flow(assumptions.stair_capacity, vce.width) - r_up
+        for vce, r_up, direction in zip(vces, up_rates, directions, strict=True)
     ]
     total = sum(available)
     if total <= 0:
@@ -516,13 +534,50 @@ def doors_to_vces(params: Params) -> list[Door]:
     ]
 
 
-def choose_vce(params: Params, door: Door, vce_queues: list[float], walking_to: list[float]) -> int:
+type Direction = Literal["both", "up", "down"]
+"""Which way a VCE runs: stairs go `both` ways, and escalators go `up` or `down`."""
+
+type Role = Literal["stair", "up", "down", "reversible"]
+"""What a VCE does: a stair, an escalator always going `up` or `down`, or one that reverses."""
+
+
+def vce_roles(vces: tuple[Vce, ...]) -> list[Role]:
     """
-    The VCE the passengers from `door` walk to, per `Assumptions.vce_choice`.
+    What each VCE does.
+    A platform's only escalator goes up.
+    With more, the westernmost goes up, the easternmost goes down,
+    and the rest are `reversible`, going up while the platform is alighting.
+    """
+    escalators = sorted(
+        (i for i, vce in enumerate(vces) if vce.type == "escalator"),
+        key=lambda i: vces[i].west_end or 0,
+    )
+    roles: list[Role] = ["stair" for _ in vces]
+    for i in escalators:
+        roles[i] = "reversible"
+    if escalators:
+        roles[escalators[0]] = "up"
+    if len(escalators) > 1:
+        roles[escalators[-1]] = "down"
+    return roles
+
+
+def choose_vce(
+    params: Params,
+    door: Door,
+    vce_queues: list[float],
+    walking_to: list[float],
+    directions: list[Direction],
+) -> int:
+    """
+    The VCE the passengers from `door` walk to, per `Assumptions.vce_choice`,
+    of those going up.
 
     :param vce_queues: arriving passengers queued at each VCE (pax)
     :param walking_to: arriving passengers walking to each VCE (pax)
+    :param directions: which way each VCE runs now
     """
+    going_up = [i for i, direction in enumerate(directions) if direction != "down"]
 
     def time_to_go_up(i: int) -> float:
         vce = params.vces[i]
@@ -530,8 +585,8 @@ def choose_vce(params: Params, door: Door, vce_queues: list[float], walking_to: 
         return door.walking_times[i] + (vce_queues[i] + walking_to[i]) / capacity
 
     if params.assumptions.vce_choice == "nearest":
-        return min(range(len(params.vces)), key=lambda i: door.walking_times[i])
-    return min(range(len(params.vces)), key=time_to_go_up)
+        return min(going_up, key=lambda i: door.walking_times[i])
+    return min(going_up, key=time_to_go_up)
 
 
 def pooled_vces(total_width: float) -> tuple[Vce, ...]:
@@ -722,7 +777,7 @@ class Summary:
     """Highest upstairs rate (pax/s)."""
 
     secs_at_capacity: int
-    """Seconds the upstairs rate is at the VCEs' LOS E capacity (17 pax/min/ft)."""
+    """Seconds the upstairs rate is at the LOS E capacity (17 pax/min/ft) of the VCEs going up."""
 
     taper_time: int | None
     """
@@ -774,6 +829,11 @@ def calc_workbook(
     vce_queues = [0.0 for _ in params.vces]
     """Arriving passengers queued at each VCE."""
     doors = doors_to_vces(params)
+    roles = vce_roles(params.vces)
+    directions: list[Direction] = [
+        "both" if role == "stair" else "down" if role == "down" else "up" for role in roles
+    ]
+    """Which way each VCE runs now."""
     walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in params.vces])
     """Arriving passengers walking to each VCE, by the time they reach its queue."""
     trains = range(params.trains)
@@ -843,7 +903,6 @@ def calc_workbook(
     max_pax_in_stair_queues = (
         params.total_vce_width * assumptions.stair_queue_length / assumptions.stair_queue_space
     )
-    capacity = stair_flow(assumptions.stair_capacity, params.total_vce_width)
     summary = Summary(
         max_up_rate=0,
         secs_at_capacity=0,
@@ -902,6 +961,21 @@ def calc_workbook(
         walking_to = [
             sum(reaching[i] for reaching in walking.values()) for i in range(len(params.vces))
         ]
+        still_alighting = arriving_pax_waiting_on_plat
+        for train in trains:
+            arrival_time = arrival_times[train]
+            if arrival_time is not None and time_after >= arrival_time:
+                still_alighting += remaining_arrivals[train]
+        nearly_alighted = (
+            still_alighting
+            < assumptions.escalator_reversal_threshold * params.arriving_pax_per_train
+        )
+        for i, role in enumerate(roles):
+            if role == "reversible" and (not nearly_alighted or vce_queues[i] + walking_to[i] > 0):
+                # Once reversed, nobody walks to it, so it stays down until more alight.
+                directions[i] = "up"
+            elif role == "reversible":
+                directions[i] = "down"
         for door in doors:
             alighting = sum(off_rates) * door.share
             if params.platform_east_end is None:
@@ -909,7 +983,7 @@ def calc_workbook(
                 for i, vce in enumerate(params.vces):
                     walking[time_after][i] += alighting * vce.width / params.total_vce_width
                 continue
-            i = choose_vce(params, door, vce_queues, walking_to)
+            i = choose_vce(params, door, vce_queues, walking_to, directions)
             walking[time_after + door.walking_times[i]][i] += alighting
             walking_to[i] += alighting
         for i, reaching in enumerate(walking.pop(time_after, [])):
@@ -938,6 +1012,7 @@ def calc_workbook(
                     for vce in params.vces
                 ),
                 [r_up * boarder_fracs[train] for r_up in vce_up_rates],
+                directions,
                 assumptions,
             )
             for train in trains
@@ -987,6 +1062,12 @@ def calc_workbook(
                 plat_egress_rate,
             )
         summary.max_up_rate = max(summary.max_up_rate, plat_egress_rate)
+        # Capacity of the VCEs going up now, not counting escalators going down.
+        capacity = sum(
+            stair_flow(assumptions.stair_capacity, vce.width)
+            for vce, direction in zip(params.vces, directions, strict=True)
+            if direction != "down"
+        )
         if plat_egress_rate >= capacity - 1e-9:
             summary.secs_at_capacity += 1
         if arriving_pax_waiting_on_plat > max_pax_in_stair_queues:
@@ -1224,10 +1305,20 @@ def calc_workbook(
         )
     vce_list = wb.create_sheet("VCE List")
     vce_list.append(
-        ["VCE", "Type", "Width (ft)", "West End (ft)", "East End (ft)", "Queue Empty Time (s)"]
+        [
+            "VCE",
+            "Type",
+            "Role",
+            "Width (ft)",
+            "West End (ft)",
+            "East End (ft)",
+            "Queue Empty Time (s)",
+        ]
     )
-    for vce, empty_time in zip(params.vces, vce_empty_times, strict=True):
-        vce_list.append([vce.name, vce.type, vce.width, vce.west_end, vce.east_end, empty_time])
+    for vce, role, empty_time in zip(params.vces, roles, vce_empty_times, strict=True):
+        vce_list.append(
+            [vce.name, vce.type, role, vce.width, vce.west_end, vce.east_end, empty_time]
+        )
 
     return wb, summary
 
