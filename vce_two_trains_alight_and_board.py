@@ -41,14 +41,14 @@ def alight_rate(k: float, t: float, t0: float, u: float) -> float:
         return 0
 
 
-def fruin_stair_flow(m: float) -> float:
+def fruin_stair_flow_down(m: float) -> float:
     """
-    Fruin's stair flow equation, P = (111M - 162)/M^2.
+    Fruin's descending stair flow equation, P = (128M - 206)/M^2.
 
     :param m: space per passenger (ft^2/pax)
     :return: stair flow per foot of stair width (pax/min/ft), not per second or across all stairs
     """
-    return (111 * m - 162) / m**2
+    return (128 * m - 206) / m**2
 
 
 def platform_clearance(karr: float, w: float) -> float:
@@ -78,17 +78,16 @@ def platform_ingress(kdep: float, a: float, w: float, r_up: float) -> float:
     """
     # 1st question, how much downstairs flow demand exists?
     # 2nd question, how much stair capacity does upstairs flow take?
-    # P = (111M - 162)/(M^2) is the upstairs flow eq per ft wide.
     if kdep > 0:
         return min(
             kdep,
             min(
                 # No flow in both directions past the LOS C/D boundary, 10 pax/min/ft.
                 max(0, 10 * w / 60 - r_up),
-                # Max of downstairs LOS C/D boundary flow rate
+                # Fruin's descending stair equation, with M the space per passenger upstairs.
                 max(
                     0,
-                    fruin_stair_flow(a / max(1, kdep)) * w / 60 - r_up,
+                    fruin_stair_flow_down(a / max(1, kdep)) * w / 60 - r_up,
                 ),
             ),
         )

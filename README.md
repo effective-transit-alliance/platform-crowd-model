@@ -69,7 +69,7 @@ Each second:
    The few seconds of walking from the doors to the stairs are ignored.
 3. **Coming downstairs.** Departing passengers come down with whatever stair capacity
    the upward flow leaves, up to the LOS C/D boundary, 10 pax/min/ft,
-   and also limited by Fruin's stair equation, P = (111M − 162)/M² pax/min/ft,
+   and also limited by Fruin's descending stair equation, P = (128M − 206)/M² pax/min/ft,
    with M the space per departing passenger
    in a 5,000 sqft concourse,
    split between the two trains in proportion to how many are still upstairs.
@@ -104,13 +104,13 @@ and 12.04 pax/s for 32 s, tapering at 364 s, without it.
 
 | Platform | Headway | VCE width | Max up rate (pax/s) | Time at capacity | Taper time | Clear time | Boarded time | Max pax on platform | Min space/pax (sqft) |
 |---|---|---|---|---|---|---|---|---|---|
-| platform3 | 120 s | 42.5 ft | 12.04 | 269 s | 254 s | 269 s | never | 1521 | 8.0 (E) |
-| platform3 | 300 s | 42.5 ft | 12.04 | 268 s | 420 s | 435 s | never | 1521 | 8.0 (E) |
+| platform3 | 120 s | 42.5 ft | 12.04 | 269 s | 254 s | 269 s | never | 1522 | 8.0 (E) |
+| platform3 | 300 s | 42.5 ft | 12.04 | 268 s | 420 s | 435 s | never | 1522 | 8.0 (E) |
 | platform3_recon | 120 s | 44.75 ft | 12.68 | 255 s | 241 s | 256 s | never | 1496 | 8.1 (E) |
 | platform3_recon | 300 s | 44.75 ft | 12.68 | 254 s | 413 s | 428 s | never | 1496 | 8.1 (E) |
-| platform6 | 0 s | 48.168 ft | 13.65 | 237 s | 223 s | 238 s | never | 3057 | 4.0 (F) |
-| platform10 | 120 s | 70.58 ft | 20.00 | 162 s | 186 s | 201 s | never | 1205 | 28.8 (B) |
-| platform11 | 120 s | 43.58 ft | 12.35 | 262 s | 248 s | 263 s | never | 1509 | 9.8 (E) |
+| platform6 | 0 s | 48.168 ft | 13.65 | 237 s | 223 s | 238 s | never | 3058 | 4.0 (F) |
+| platform10 | 120 s | 70.58 ft | 20.00 | 162 s | 186 s | 201 s | 548 s | 1206 | 28.7 (B) |
+| platform11 | 120 s | 43.58 ft | 12.35 | 262 s | 248 s | 263 s | never | 1510 | 9.8 (E) |
 
 ### History
 
@@ -138,3 +138,7 @@ and each fix's effect is summarized here.
 - **Stopped flow in both directions on stairs at 10 pax/min/ft, not 12,**
   per the report and the LOS C/D boundary.
   No effect yet, since the concourse-density limit on downward flow always binds first.
+- **Used Fruin's descending stair equation for passengers coming downstairs,**
+  instead of the ascending one, giving about 15% more downward flow.
+  On platform 3, 379.0 of 400 departing passengers come down within 600 s instead of 368.9,
+  and on platform 10, all now board, by 548 s.
