@@ -226,6 +226,20 @@ def writable_cell(sheet: Worksheet, row: int, column: int) -> Cell:
     return cell
 
 
+def active_worksheet(wb: openpyxl.Workbook) -> Worksheet:
+    """
+    `wb.active`, as a plain `Worksheet`.
+
+    The stubs type `wb.active` as a fake subclass of both `Chartsheet` and `Worksheet`.
+    Narrowing it with `type(active) is Worksheet` makes type checkers treat everything after as
+    unreachable, and narrowing with `isinstance` resolves methods like `add_chart` to
+    `Chartsheet`'s. Returning it as `Worksheet` avoids both.
+    """
+    active = wb.active
+    assert isinstance(active, Worksheet)
+    return active
+
+
 def calc_workbook(params: Params) -> openpyxl.Workbook:
     eff_area = (
         params.platform_width * params.platform_length * params.usable_platform_area_multiplier
@@ -248,8 +262,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     total_pax_on_platform = train1_boarders_on_plat + train2_boarders_on_plat
     wb = openpyxl.Workbook()
 
-    assert type(wb.active) is Worksheet
-    sheet: Worksheet = wb.active
+    sheet = active_worksheet(wb)
 
     rownum = 0
 
