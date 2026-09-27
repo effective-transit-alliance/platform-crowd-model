@@ -127,7 +127,7 @@ each using the passenger counts left by the one before.
    - The trains' passengers split the VCE width
      in proportion to how many of each are still upstairs,
      and each train's share of the stairs carries the same share of the upward flow.
-   - Stairs carry at most 12 pax/min/ft in both directions combined,
+   - Stairs carry at most the LOS C/D boundary, 10 pax/min/ft, in both directions combined,
      so passengers come down with whatever their share of the upward flow leaves of that.
    - Their flow is also limited by Fruin's ascending stair equation
      ([Fruin, p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)),
@@ -251,18 +251,11 @@ slower downward flow keeps departing passengers upstairs longer,
 so there's less crowding on the platform (optimistic),
 but they board later (pessimistic).
 
-### Bidirectional flow stops at 12 pax/min/ft, not 10
-
-The ETA report says there's no bidirectional flow on stairs worse than LOS C,
-i.e. above 10 pax/min/ft, the LOS C/D boundary,
-but the model lets passengers come down with whatever the upward flow leaves out of 12 pax/min/ft,
-speeding the downward flow (pessimistic for crowding, optimistic for boarding).
-
-### Downward flow is capped at 12 pax/min/ft even when nobody is going up
+### Downward flow is capped at 10 pax/min/ft even when nobody is going up
 
 Once the upward flow is light, the report's rule about flow in both directions no longer applies,
 so passengers should be able to come down at up to LOS E capacity, 17 pax/min/ft,
-but the model still caps them at 12 (optimistic for crowding, pessimistic for boarding).
+but the model still caps them at 10 (optimistic for crowding, pessimistic for boarding).
 
 ### Descending passengers use Fruin's ascending equation
 
@@ -481,3 +474,6 @@ and each fix's effect is summarized here.
 - **Stopped double counting the upward flow against downward flow:**
   each train's share of the stairs had the whole upward flow subtracted from it.
   This barely matters: 0.1 more departing passengers come down on platform 3.
+- **Stopped flow in both directions on stairs at 10 pax/min/ft, not 12,**
+  per the report and the LOS C/D boundary.
+  No effect yet, since the concourse-density limit on downward flow always binds first.
