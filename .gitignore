@@ -16,3 +16,6 @@ __pycache__
 # IDEs
 .idea/
 .vscode/
+
+# Downloaded source documents
+.cache/

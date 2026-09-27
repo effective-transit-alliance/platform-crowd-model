@@ -16,7 +16,7 @@ repos:
     hooks:
       - id: pyrefly-check
         additional_dependencies:
-          ["numpy==2.5.3", "openpyxl==3.1.5", "types-openpyxl==3.1.5.20260827", "typer==0.27.2"]
+          ["numpy==2.5.3", "openpyxl==3.1.5", "pymupdf==1.28.2", "types-openpyxl==3.1.5.20260827", "typer==0.27.2"]
 
   - repo: local
     hooks:

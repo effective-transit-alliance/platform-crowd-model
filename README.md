@@ -325,19 +325,42 @@ transcribed in [`data/master_plan_vce_widths.csv`](./data/master_plan_vce_widths
 
 - Alternatives 1 and 2 from the [August 2020 draft Alternatives Report](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf)
   ([p. 16](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=22) and [p. 28](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=34)).
-  Its tables for Alternatives 3 and 4 ([p. 40](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=46) and [p. 52](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=58)) are identical.
+    Its tables for Alternatives 3 and 4 ([p. 40](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=46) and [p. 52](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=58)) are identical.
+- Alternatives 3 and 4 from the same draft.
 - Alternative 3 from the April 2021 final report ([p. 117](https://esd.ny.gov/sites/default/files/CACWG-Meetings-8-9-Q-A-09-08-21.pdf#page=7)),
   as reproduced in the Empire Station Complex Q&A.
 
 Each VCE is marked as a stair or escalator, and as new or existing.
-Widths are in inches, listed in the tables' order,
-which is probably, but not verifiably, their order along the platform.
+Widths are in inches, listed in the tables' order, which is east to west along the platform.
+
+[`scripts/extract_vce_positions.py`](./scripts/extract_vce_positions.py)
+extracts each VCE's approximate position from the draft's platform-level plans
+([p. 17](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=23), [p. 29](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=35),
+[p. 41](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=47), and [p. 53](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=59)).
+They're vector drawings with each VCE drawn as a rectangle color-coded by type and status,
+and a scale bar to convert to feet.
+The script matches the `n`th VCE from the east on each platform to the `n`th VCE in its table,
+since the plans are too small to measure widths from,
+and writes [`data/master_plan_vce_positions.csv`](./data/master_plan_vce_positions.csv),
+with positions in feet west of the plans' east end of the platforms.
+The draft's plans and tables don't always agree:
+often, they disagree on whether a VCE is new or existing, so both are recorded,
+and on 16 of the 44 platforms, they list different stairs and escalators, so those are skipped.
+
+Since each alternative keeps a different subset of the existing VCEs,
+the script also combines the existing VCEs across alternatives by position into
+[`data/master_plan_existing_vces.csv`](./data/master_plan_existing_vces.csv).
+It finds all 5 of platform 3's existing VCEs,
+matching both the final report's count and the 2 escalators and 3 stairs in the
+[Moynihan Station EA's Table 4.4-10](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22),
+but only some of the other platforms' (none of platform 11's).
 
 This data can't yet replace `total_vce_width`:
 
-- **It doesn't describe the station today.**
+- **It doesn't fully describe the station today.**
   Each alternative replaces most existing VCEs,
-  and the tables only list the ones each alternative keeps.
+  and the tables only list the ones each alternative keeps,
+  so even combined, they're missing many existing VCEs.
   E.g. the final Alternative 3's table says platform 6 has 7 VCEs today,
   but keeps none of them.
 - **The tables' printed totals are inconsistent.**
@@ -350,9 +373,14 @@ This data can't yet replace `total_vce_width`:
   but the model uses 42.5 ft (510 in.) today,
   and platform 6's sum to 437 to 458 in., but the model uses 48.168 ft (578 in.).
   The source of the model's widths is unknown.
-- **It has no positions.**
-  Those are only in the Master Plan's and NJ Transit's drawings,
-  and would have to be measured from them.
+  Platform 3's 5 existing VCEs total just 233 in. (19.4 ft):
+  3 stairs (165 in.) and 2 escalators (68 in.).
+  At 17 pax/min/ft for the stairs and typical escalator capacities,
+  that's roughly the Moynihan Station EA's 437 pax/min for platform 3,
+  while the model's 42.5 ft is 722 pax/min, the EA's figure for platform 1.
+  So the model likely overstates platform 3's VCE capacity by about 65%.
+- **Positions are approximate.**
+  They're scaled from small drawings, so they're only accurate to within about 10 ft.
 
 The FRA's Service Optimization Study measured today's VCEs on site,
 but didn't publish the measurements.
