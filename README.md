@@ -110,25 +110,29 @@ each using the passenger counts left by the one before.
    Arriving passengers leave the platform
    via the vertical circulation elements (VCEs), i.e. the stairs and escalators.
    - All VCEs are treated as stairs, except one per platform, which is excluded.
-   - The flow up comes from Fruin's ascending stair equation
-     ([Fruin, p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)):
-     `P = (111M − 162)/M²` pax/min per foot of VCE width,
-     where `M` is the platform's usable area per arriving passenger on it.
-   - It's capped at LOS E capacity, 17 pax/min/ft
-     ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)).
-   - While the stair queues are full, it's at least the LOS C/D boundary, 10 pax/min/ft.
-     The stair queues hold 20 ft of queue in front of the VCEs at 5 sq ft/pax
-     (the TCQSM's stair queuing space, [p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
-   - Once the remaining arriving passengers fit in the stair queues,
-     the flow tapers off as the platform empties.
+   - They queue at the stairs, which discharge them at LOS E capacity,
+     17 pax/min per foot of VCE width
+     ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)),
+     as long as anyone is queued
+     ([TCQSM, p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
+   - So there's no gradual taper: the stairs stay at capacity until the platform is clear.
+   - The report's "taper time" is when the remaining arriving passengers fit in the stair queues,
+     20 ft of queue in front of the VCEs at 5 sq ft/pax
+     (the TCQSM's stair queuing space).
+     It's now always about 15 s before the clear time,
+     but it's kept in the results table to compare with the report.
+   - The few seconds of walking from the doors to the stairs are ignored.
 3. **Coming downstairs.**
    Departing passengers upstairs come down to the platform.
    - The trains' passengers split the VCE width
      in proportion to how many of each are still upstairs.
    - Stairs carry at most 12 pax/min/ft in both directions combined,
      so passengers come down with whatever the upward flow leaves of that.
-   - Their flow is also limited by Fruin's ascending stair equation,
-     applied to a 5,000 sq ft concourse, minus the upward flow.
+   - Their flow is also limited by Fruin's ascending stair equation
+     ([Fruin, p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)),
+     `P = (111M − 162)/M²` pax/min per foot of VCE width,
+     where `M` is the space per departing passenger in a 5,000 sq ft concourse,
+     minus the upward flow.
 4. **Boarding.**
    Departing passengers on the platform board a train once it has arrived,
    using whatever door capacity alighting leaves that second.
@@ -190,7 +194,7 @@ The [known bugs](#known-bugs) are listed separately.
 
 - **Pessimistic:** All VCEs are treated as stairs, even escalators, which have higher capacities.
 - **Pessimistic:** One VCE per platform is excluded, e.g. an escalator running the other way.
-- **Optimistic:** All VCEs act as one pooled stair:
+- **Optimistic:** All VCEs act as one pooled queue:
   passengers spread across them in proportion to their widths,
   with no preference for any exit, e.g. toward 7th Avenue.
 - **Unclear:** Stair capacity is linear in width,
@@ -245,27 +249,6 @@ The bugs in the downward flow bias crowding and boarding in opposite directions:
 slower downward flow keeps departing passengers upstairs longer,
 so there's less crowding on the platform (optimistic),
 but they board later (pessimistic).
-
-### Fruin's stair equation is applied to the platform's density
-
-Fruin's equation relates stair flow to the space per passenger *on the stair*,
-but the model applies it to the platform's usable area per arriving passenger,
-so the upward flow falls as the platform empties,
-even though whoever is left can walk straight onto an empty stair (pessimistic).
-E.g. on platform 3 with trains 2 minutes apart, the flow is:
-
-- Never at capacity, 12.04 pax/s,
-  but at most 10.13 pax/s from Fruin's equation around the most crowded moment,
-  when there are about 6 to 7 sq ft per arriving passenger.
-- Then from Fruin's equation, falling to 7.08 pax/s as the platform empties.
-- Then at its floor, 10 pax/min/ft or 7.08 pax/s,
-  while more arriving passengers are on the platform than fit in the stair queues (170).
-- Then from Fruin's equation again, now about 0.6% of the arriving passengers left per second,
-  e.g. 1.0 pax/s with 162 left and 0.4 pax/s with 59 left,
-  so the last arriving passengers take many minutes to clear the platform.
-
-The TCQSM's stair queuing procedure instead has the stairs discharge at capacity
-as long as anyone is queued ([p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
 
 ### The whole upward flow is subtracted from each train's share of the stairs
 
@@ -370,25 +353,28 @@ its baseline, i.e. today's VCEs,
 needed up to 7.9 minutes of passenger service time,
 the time for passengers to alight, cross the platform, and reach the VCEs
 ([Table 2, p. 4-43](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=54)).
-This model can't be compared with that until its [bugs](#known-bugs) are fixed:
-it takes over 15 minutes to clear platform 3,
-because of its [tapering stair flow](#fruins-stair-equation-is-applied-to-the-platforms-density).
+This model clears platform 3's arriving passengers in 4:29,
+so it's likely substantially optimistic,
+though the two aren't exactly comparable:
+7.9 minutes is the worst case across all platforms and simulation runs.
 
 The FRA attributes long clearance times to things this model leaves out
 ([p. 3-33](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=44)):
 queues at the base of VCEs, uneven use of VCEs, and platform clutter
 reducing the usable width.
 
-### Stairs Are One Pooled Stair
+### Stairs Are One Pooled Queue
 
-The model treats all of the VCEs as one stair,
-which is optimistic for a whole platform:
+Like the TCQSM and NFPA 130 for platform clearance
+([TCQSM, p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)),
+the model treats all of the VCEs as one queue discharging at capacity until it's empty.
+This is optimistic for a whole platform:
 
 - **Stairs empty unevenly.**
   Stairs near the ends of the platform, or far from the busiest doors,
   run out of passengers while others still have a queue,
   so the total flow drops below capacity before the platform clears.
-  This is likely the model's largest optimistic bias once its bugs are fixed.
+  This is likely the model's largest optimistic bias.
 - **Passengers prefer some exits**, e.g. toward 7th Avenue, as the ETA report notes,
   concentrating queues at fewer stairs.
 - **Walking from the doors to the stairs takes no time.**
@@ -462,21 +448,21 @@ This table is generated by `./vce_two_trains_alight_and_board.py --update-readme
 <!-- results-table:start -->
 | Platform | Headway | VCE width | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max up rate (pax/s) | Max pax on platform | Max density (pax/m²) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 3 | 0:00 | 42.5 ft | 0:00, 0:00, 33:22, 33:22 | 33:22, 33:22, 0:51, 0:51 | 39:25 | 52:37 | 58:22 | 0:18 | 12.04 | 3666 | 3.25 (F) |
-| 3 (recon) | 0:00 | 44.75 ft | 0:00, 0:00, 31:50, 31:50 | 31:50, 31:50, 0:51, 0:51 | 37:34 | 50:15 | 55:42 | 0:16 | 12.68 | 3649 | 3.23 (F) |
-| 6 | 0:00 | 48.168 ft | 0:00, 0:00, 29:48, 29:48 | 29:48, 29:48, 0:51, 0:51 | 35:09 | 47:17 | 52:24 | 0:02 | 13.65 | 3626 | 3.15 (F) |
-| 10 | 0:00 | 70.58 ft | 0:00, 0:00, 30:40, 30:40 | 30:40, 30:40, 0:51, 0:51 | 34:54 | 59:46 | 62:58 | 0:00 | 11.76 | 3575 | 1.11 (E) |
-| 11 | 0:00 | 43.58 ft | 0:00, 0:00, 33:56, 33:56 | 33:56, 33:56, 0:51, 0:51 | 40:13 | 56:03 | 62:14 | 0:00 | 11.31 | 3685 | 2.67 (F) |
-| 3 | 2:00 | 42.5 ft | 0:00, 2:00, 34:08, 34:08 | 34:08, 32:08, 0:51, 0:51 | 40:11 | 53:23 | 59:08 | 0:09 | 12.04 | 3660 | 3.24 (F) |
-| 3 (recon) | 2:00 | 44.75 ft | 0:00, 2:00, 32:34, 32:34 | 32:34, 30:34, 0:51, 0:51 | 38:18 | 50:59 | 56:26 | 0:08 | 12.68 | 3642 | 3.23 (F) |
-| 6 | 2:00 | 48.168 ft | 0:00, 2:00, 30:36, 30:36 | 30:36, 28:36, 0:51, 0:51 | 35:57 | 48:05 | 53:12 | 0:01 | 13.65 | 3619 | 3.15 (F) |
-| 10 | 2:00 | 70.58 ft | 0:00, 2:00, 30:41, 30:41 | 30:41, 28:41, 0:51, 0:51 | 34:55 | 59:47 | 63:00 | 0:00 | 11.76 | 3562 | 1.11 (E) |
-| 11 | 2:00 | 43.58 ft | 0:00, 2:00, 34:31, 34:31 | 34:31, 32:31, 0:51, 0:51 | 40:48 | 56:38 | 62:49 | 0:00 | 11.31 | 3679 | 2.67 (F) |
-| 3 | 5:00 | 42.5 ft | 0:00, 5:00, 35:55, 35:55 | 35:55, 30:55, 0:51, 0:51 | 41:58 | 55:10 | 60:55 | 0:09 | 12.04 | 3660 | 3.24 (F) |
-| 3 (recon) | 5:00 | 44.75 ft | 0:00, 5:00, 34:31, 34:31 | 34:31, 29:31, 0:51, 0:51 | 40:15 | 52:56 | 58:23 | 0:08 | 12.68 | 3642 | 3.23 (F) |
-| 6 | 5:00 | 48.168 ft | 0:00, 5:00, 32:33, 32:33 | 32:33, 27:33, 0:51, 0:51 | 37:54 | 50:02 | 55:09 | 0:01 | 13.65 | 3619 | 3.15 (F) |
-| 10 | 5:00 | 70.58 ft | 0:00, 5:00, 33:35, 33:35 | 33:35, 28:35, 0:51, 0:51 | 37:49 | 62:41 | 65:53 | 0:00 | 11.76 | 3562 | 1.11 (E) |
-| 11 | 5:00 | 43.58 ft | 0:00, 5:00, 36:05, 36:05 | 36:05, 31:05, 0:51, 0:51 | 42:22 | 58:12 | 64:22 | 0:00 | 11.31 | 3679 | 2.67 (F) |
+| 3 | 0:00 | 42.5 ft | 0:00, 0:00, 27:10, 27:10 | 27:10, 27:10, 0:51, 0:51 | 31:24 | 31:39 | 34:51 | 8:58 | 12.04 | 3521 | 3.12 (F) |
+| 3 (recon) | 0:00 | 44.75 ft | 0:00, 0:00, 25:47, 25:47 | 25:47, 25:47, 0:51, 0:51 | 29:48 | 30:03 | 33:05 | 8:30 | 12.68 | 3496 | 3.10 (F) |
+| 6 | 0:00 | 48.168 ft | 0:00, 0:00, 23:57, 23:57 | 23:57, 23:57, 0:51, 0:51 | 27:40 | 27:55 | 30:44 | 7:54 | 13.65 | 3457 | 3.01 (F) |
+| 10 | 0:00 | 70.58 ft | 0:00, 0:00, 16:20, 16:20 | 16:20, 16:20, 0:51, 0:51 | 18:47 | 19:02 | 20:58 | 5:24 | 20.00 | 3205 | 1.00 (D) |
+| 11 | 0:00 | 43.58 ft | 0:00, 0:00, 26:29, 26:29 | 26:29, 26:29, 0:51, 0:51 | 30:37 | 30:52 | 33:58 | 8:44 | 12.35 | 3509 | 2.54 (F) |
+| 3 | 2:00 | 42.5 ft | 0:00, 2:00, 27:10, 27:10 | 27:10, 25:10, 0:51, 0:51 | 31:24 | 31:39 | 34:51 | 8:58 | 12.04 | 3516 | 3.12 (F) |
+| 3 (recon) | 2:00 | 44.75 ft | 0:00, 2:00, 25:47, 25:47 | 25:47, 23:47, 0:51, 0:51 | 29:48 | 30:03 | 33:05 | 8:30 | 12.68 | 3491 | 3.09 (F) |
+| 6 | 2:00 | 48.168 ft | 0:00, 2:00, 23:57, 23:57 | 23:57, 21:57, 0:51, 0:51 | 27:40 | 27:55 | 30:44 | 7:53 | 13.65 | 3452 | 3.00 (F) |
+| 10 | 2:00 | 70.58 ft | 0:00, 2:00, 16:20, 16:20 | 16:20, 14:20, 0:51, 0:51 | 18:47 | 19:02 | 20:58 | 5:24 | 20.00 | 3198 | 0.99 (D) |
+| 11 | 2:00 | 43.58 ft | 0:00, 2:00, 26:29, 26:29 | 26:29, 24:29, 0:51, 0:51 | 30:37 | 30:52 | 33:58 | 8:44 | 12.35 | 3504 | 2.54 (F) |
+| 3 | 5:00 | 42.5 ft | 0:00, 5:00, 27:10, 27:10 | 27:10, 22:10, 0:51, 0:51 | 31:24 | 31:39 | 34:51 | 8:57 | 12.04 | 3516 | 3.12 (F) |
+| 3 (recon) | 5:00 | 44.75 ft | 0:00, 5:00, 25:47, 25:47 | 25:47, 20:47, 0:51, 0:51 | 29:48 | 30:03 | 33:05 | 8:29 | 12.68 | 3491 | 3.09 (F) |
+| 6 | 5:00 | 48.168 ft | 0:00, 5:00, 23:57, 23:57 | 23:57, 18:57, 0:51, 0:51 | 27:40 | 27:55 | 30:44 | 7:53 | 13.65 | 3452 | 3.00 (F) |
+| 10 | 5:00 | 70.58 ft | 0:00, 5:00, 16:20, 16:20 | 16:20, 11:20, 0:51, 0:51 | 18:47 | 19:02 | 20:58 | 5:24 | 20.00 | 3198 | 0.99 (D) |
+| 11 | 5:00 | 43.58 ft | 0:00, 5:00, 26:30, 26:30 | 26:30, 21:30, 0:51, 0:51 | 30:38 | 30:53 | 33:59 | 8:44 | 12.35 | 3504 | 2.54 (F) |
 <!-- results-table:end -->
 
 ### History
@@ -491,3 +477,11 @@ and each fix's effect is summarized here.
   scaling stair flow by 60 / VCE width, e.g. overstating it by about 1.4x on platform 3.
   Platform 3 with 2-minute headways now peaks at 10.13 pax/s (10.47 with Penn Reconstruction)
   and never reaches capacity, tapering at 411 s (392 s) instead of 361 s (353 s).
+- **Replaced the platform-density taper with a stair queue:**
+  Fruin's equation relates flow to the space per passenger on the stair, not on the platform,
+  so it held the stairs below capacity while the platform was crowded,
+  and slowed them as it emptied, so they never fully cleared.
+  Now queued stairs discharge at LOS E capacity until empty.
+  Platform 3 with 2-minute headways is at capacity for 269 s (255 s with Penn Reconstruction),
+  tapers at 254 s (241 s), and clears at 269 s (256 s), where it never cleared before.
+  The platform peaks at 1521 passengers (1496) instead of 2274 (2219).
