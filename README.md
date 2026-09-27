@@ -71,8 +71,10 @@ Each second:
    but it's kept in the results table to compare with the report.
    The few seconds of walking from the doors to the stairs are ignored.
 3. **Coming downstairs.** Departing passengers queue upstairs and come down with whatever stair capacity
-   the upward flow leaves, up to the LOS C/D boundary, 10 pax/min/ft,
-   split between the two trains in proportion to how many are still upstairs.
+   the upward flow leaves, with both directions sharing LOS E capacity, 17 pax/min/ft.
+   But nobody comes down while the upward flow is worse than LOS C, 10 pax/min/ft.
+   The stairs are split between the two trains' departing passengers
+   in proportion to how many are still upstairs.
 4. **Boarding.** Departing passengers on the platform board a train that has arrived
    once every arriving passenger has alighted, at 1 pax/s per door.
 
@@ -118,13 +120,13 @@ and 12.04 pax/s for 32 s, tapering at 364 s, without it.
 
 | Platform | Headway | VCE width | Max up rate (pax/s) | Time at capacity | Taper time | Clear time | Boarded time | Max pax on platform | Min space/pax (sqft) |
 |---|---|---|---|---|---|---|---|---|---|
-| platform3 | 120 s | 42.5 ft | 12.04 | 269 s | 254 s | 269 s | 325 s | 1533 | 7.9 (C) |
-| platform3 | 300 s | 42.5 ft | 12.04 | 268 s | 420 s | 435 s | 351 s | 1533 | 7.9 (C) |
-| platform3_recon | 120 s | 44.75 ft | 12.68 | 255 s | 241 s | 256 s | 309 s | 1508 | 8.1 (C) |
-| platform3_recon | 300 s | 44.75 ft | 12.68 | 254 s | 413 s | 428 s | 351 s | 1508 | 8.1 (C) |
-| platform6 | 0 s | 48.168 ft | 13.65 | 237 s | 223 s | 238 s | 287 s | 3088 | 4.0 (D) |
-| platform10 | 120 s | 70.58 ft | 20.00 | 162 s | 186 s | 201 s | 171 s | 1212 | 28.6 (A) |
-| platform11 | 120 s | 43.58 ft | 12.35 | 262 s | 248 s | 263 s | 317 s | 1521 | 9.8 (C) |
+| platform3 | 120 s | 42.5 ft | 12.04 | 269 s | 254 s | 269 s | 302 s | 1538 | 7.9 (C) |
+| platform3 | 300 s | 42.5 ft | 12.04 | 268 s | 420 s | 435 s | 351 s | 1538 | 7.9 (C) |
+| platform3_recon | 120 s | 44.75 ft | 12.68 | 255 s | 241 s | 256 s | 287 s | 1513 | 8.0 (C) |
+| platform3_recon | 300 s | 44.75 ft | 12.68 | 254 s | 413 s | 428 s | 351 s | 1513 | 8.0 (C) |
+| platform6 | 0 s | 48.168 ft | 13.65 | 237 s | 223 s | 238 s | 266 s | 3094 | 4.0 (D) |
+| platform10 | 120 s | 70.58 ft | 20.00 | 162 s | 186 s | 201 s | 171 s | 1220 | 28.4 (A) |
+| platform11 | 120 s | 43.58 ft | 12.35 | 262 s | 248 s | 263 s | 294 s | 1526 | 9.7 (C) |
 
 ### History
 
@@ -169,3 +171,7 @@ and each fix's effect is summarized here.
   instead of slowing as a fixed 5,000 sqft concourse empties.
   Every scenario now finishes boarding: platform 3 with 2-minute headways by 325 s
   (309 s with Penn Reconstruction), where most never boarded before.
+- **Let passengers come down at up to LOS E capacity, 17 pax/min/ft, when few are going up,**
+  since the report's 10 pax/min/ft rule only applies to flow in both directions.
+  Platform 3 with 2-minute headways finishes boarding by 302 s instead of 325 s
+  (287 s instead of 309 s with Penn Reconstruction).

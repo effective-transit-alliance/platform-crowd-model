@@ -67,7 +67,10 @@ def platform_ingress(kdep: float, w: float, r_up: float) -> float:
     :return: platform ingress rate on stairs (pax/s)
     """
     # No flow in both directions past the LOS C/D boundary, 10 pax/min/ft.
-    return min(kdep, max(0, 10 * w / 60 - r_up))
+    if r_up > 10 * w / 60:
+        return 0
+    # Otherwise, both directions share LOS E capacity, 17 pax/min/ft.
+    return min(kdep, 17 * w / 60 - r_up)
 
 
 def boarder_fraction(trainA_boarders: float, trainB_boarders: float) -> float:
