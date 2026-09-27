@@ -116,6 +116,69 @@ and more than NFPA 130's 1.41 pax/in/min, i.e. 16.9 pax/min/ft,
 for evacuating up stairs ([TCQSM p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)),
 and it ignores walking time, so it's a lower bound.
 
+## Assumptions
+
+Beyond the numbers above, the model assumes the following.
+Where it's clear which way an assumption biases the results,
+it's marked as optimistic (less crowding than reality) or pessimistic (more).
+
+### Platform
+
+- The platform is a single island platform serving two tracks.
+- 75% of its area is usable, the rest taken by columns, stairs, and other obstructions.
+- Passengers are spread evenly over the whole usable area,
+  so local crowding, e.g. at the foot of the stairs or at the doors, isn't modeled (optimistic).
+- Space per passenger counts everyone on the platform:
+  arrived passengers heading up and departing passengers waiting to board.
+
+### Stairs and Escalators
+
+- All VCEs are treated as stairs, even escalators, which have higher capacities (pessimistic).
+- One VCE per platform is excluded, e.g. an escalator running the other way (pessimistic).
+- All VCEs act as one pooled queue:
+  passengers spread across them in proportion to their widths,
+  with no preference for any exit, e.g. toward 7th Avenue (optimistic).
+- Stair capacity is linear in width, at 17 pax/min/ft,
+  though the TCQSM notes capacity is really stepped by the number of pedestrian lanes
+  ([p. 10-49](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=53)).
+- Stair capacity doesn't depend on the stair's rise,
+  though long climbs slow people down ([p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)) (optimistic),
+  or on luggage, strollers, or wheelchairs (optimistic).
+- Walking from the doors to the stairs takes no time;
+  passengers join the stair queue the same second they alight (optimistic, by a few seconds).
+- The concourse upstairs never backs up, so the stairs always discharge (optimistic).
+- Both directions share the stairs' 17 pax/min/ft,
+  but nobody comes down while more than 10 pax/min/ft is going up.
+
+### Trains
+
+- Every arriving passenger alights; nobody stays on a through train (pessimistic).
+- Passengers alight and board at 1 pax/s per single-door equivalent,
+  starting the second after the train arrives, with no delay for the doors to open (optimistic).
+- Nobody boards until everyone has alighted.
+- Trains don't depart within the 600 s simulated,
+  so dwell times aren't modeled, and nobody misses a train.
+
+### Departing Passengers
+
+- Each train has 400 departing passengers, all present at the start:
+  200 on the platform and 200 upstairs.
+  None arrive during the simulation, even with 5-minute headways (optimistic).
+- Departing passengers come downstairs even before their train arrives,
+  and wait for it on the platform, adding to the crowding.
+- The stairs are split between the two trains' departing passengers
+  in proportion to how many of each are still upstairs.
+
+### Simulation
+
+- It steps through time 1 s at a time, with fractional passengers.
+- Each second, passengers alight, then go upstairs, then come downstairs, then board,
+  each using the counts left by the previous step.
+- The stair LOS grades only the upward flow, not the downward flow.
+- The emergency egress time only counts the passengers on both trains,
+  not the departing passengers,
+  and ignores walking time (optimistic).
+
 ## Results
 
 Each run writes a spreadsheet per scenario with the full time series and charts,
