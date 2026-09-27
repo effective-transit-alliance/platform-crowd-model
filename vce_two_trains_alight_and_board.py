@@ -43,6 +43,7 @@ def platform_clearance(karr: float, w: float) -> float:
     """
     Arrived passengers queue at the stairs, which discharge them at LOS E capacity,
     17 pax/min per foot of width, as long as anyone is queued.
+    See the TCQSM's stair queuing procedure: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
 
     Fruin's stair equation relates flow to the space per passenger *on the stair*,
     which a queued stair holds near its critical density,
@@ -121,6 +122,7 @@ def space_per_pax(k: float, a: float) -> float:
 def platform_crowd_los(inst_crowding: float) -> str:
     """
     Fruin's LOS for queuing and waiting areas, like a platform, not for walkways.
+    See the TCQSM's Exhibit 10-32: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59
 
     :param inst_crowding: space per passenger (ft^2/pax)
     """
@@ -139,6 +141,12 @@ def platform_crowd_los(inst_crowding: float) -> str:
 
 
 def egress_crowd_los(w: float, plat_egress_rate: float) -> str:
+    """
+    Fruin's LOS for stairs: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12
+
+    :param w: total width of vertical circulation elements (ft)
+    :param plat_egress_rate: upward stair flow (pax/s)
+    """
     if plat_egress_rate <= w * 5 / 60:
         return "A"
     elif w * 5 / 60 < plat_egress_rate <= w * 7 / 60:

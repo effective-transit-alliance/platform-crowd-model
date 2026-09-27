@@ -44,6 +44,15 @@ uv run pre-commit install
 
 ## How the Model Works
 
+The sources cited below are:
+
+- [ETA's report](https://www.etany.org/penn-station-can-handle-the-load), which used this model.
+- [Fruin, "Designing for Pedestrians: A Level-of-Service Concept"](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf),
+  Highway Research Record 355 (1971), cited in the code,
+  with page numbers of the PDF.
+- [The Transit Capacity and Quality of Service Manual (TCQSM), 3rd edition, chapter 10](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf),
+  TCRP Report 165 (2013), with the manual's page numbers.
+
 The model is the one used in ETA's report
 [Penn Station Can Handle the Load](https://www.etany.org/penn-station-can-handle-the-load).
 It simulates one island platform served by two tracks, one second at a time,
@@ -63,16 +72,19 @@ Each second:
    i.e. the stairs and escalators, all treated as stairs,
    with one VCE per platform excluded.
    They queue at the stairs, which discharge them at LOS E capacity,
-   17 pax/min per foot of VCE width, as long as anyone is queued.
+   17 pax/min per foot of VCE width ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)), as long as anyone is queued,
+   as in the TCQSM's stair queuing procedure ([p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
    So there's no gradual taper: the stairs stay at capacity until the platform is clear.
    The report's "taper time" is when the remaining arrived passengers fit in the stair queues,
-   20 ft of queue in front of the total VCE width at 5 sqft/pax,
+   20 ft of queue in front of the total VCE width at 5 sqft/pax
+   (the TCQSM's stair queuing space, [p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)),
    which is now always a fixed ~15 s before the clear time,
    but it's kept in the results table to compare with the report.
    The few seconds of walking from the doors to the stairs are ignored.
 3. **Coming downstairs.** Departing passengers queue upstairs and come down with whatever stair capacity
    the upward flow leaves, with both directions sharing LOS E capacity, 17 pax/min/ft.
-   But nobody comes down while the upward flow is worse than LOS C, 10 pax/min/ft.
+   But nobody comes down while the upward flow is worse than LOS C, 10 pax/min/ft,
+   per the ETA report.
    The stairs are split between the two trains' departing passengers
    in proportion to how many are still upstairs.
 4. **Boarding.** Departing passengers on the platform board a train that has arrived
@@ -82,9 +94,12 @@ Space per passenger is the usable platform area (75% of the platform's area)
 divided by everyone on the platform,
 graded with Fruin's LOS for queuing and waiting areas
 (A > 13, B > 10, C > 7, D > 3, E > 2 sqft/pax, else F),
+which the TCQSM applies to station platforms
+([Exhibit 10-32, p. 10-55](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59)),
 since most passengers on the platform are waiting, either to board or in the stair queues.
 The upward stair flow is graded with Fruin's stair LOS
-(A ≤ 5, B ≤ 7, C ≤ 10, D ≤ 13, E ≤ 17 pax/min/ft, else F).
+(A ≤ 5, B ≤ 7, C ≤ 10, D ≤ 13, E ≤ 17 pax/min/ft, else F;
+[Fruin, pp. 12–14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12)).
 
 Every scenario has 200 departing passengers per train already on the platform
 and another 200 per train upstairs.
@@ -93,11 +108,13 @@ except on platform 6, where both trains arrive at once.
 
 The model also prints an "emergency egress time":
 the time for everyone on both trains to go upstairs at 19 pax/min/ft,
-the maximum ascending stair flow in the cited TRB paper (18.9 pax/min/ft),
+the maximum ascending stair flow in Fruin's paper
+(18.9 pax/min/ft, [p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)),
 reached at about 3 sqft/pax, the edge of LOS F.
 This is more than the 17 pax/min/ft LOS E capacity used everywhere else,
-and it ignores walking time and evacuation standards like NFPA 130,
-so it's a lower bound.
+and more than NFPA 130's 1.41 pax/in/min, i.e. 16.9 pax/min/ft,
+for evacuating up stairs ([TCQSM p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)),
+and it ignores walking time, so it's a lower bound.
 
 ## Results
 
