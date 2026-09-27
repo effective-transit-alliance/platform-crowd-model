@@ -6,7 +6,6 @@ model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 """
 
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 import openpyxl
@@ -254,7 +253,7 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
     rownum = 0
 
-    def make_row(value: Any, description: str) -> None:
+    def make_row(value: str | float, description: str) -> None:
         nonlocal rownum
         rownum = rownum + 1
         writable_cell(sheet, row=rownum, column=1).value = description
