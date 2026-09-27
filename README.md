@@ -62,16 +62,15 @@ Each second:
 2. **Going upstairs.** Arrived passengers leave via the vertical circulation elements (VCEs),
    i.e. the stairs and escalators, all treated as stairs,
    with one VCE per platform excluded.
-   The flow is P pax/min per foot of VCE width from Fruin's ascending stair equation,
-   P = (111M − 162)/M², where M is the platform space per arrived passenger,
-   capped at LOS E capacity, 17 pax/min/ft.
-   The stair queues hold 20 ft of queue in front of the total VCE width at 5 sqft/pax.
-   While more arrived passengers are waiting than fit in those queues,
-   they flow up at no less than the LOS C/D boundary, 10 pax/min/ft.
-   Otherwise, the flow tapers off as the platform empties.
+   They queue at the stairs, which discharge them at LOS E capacity,
+   17 pax/min per foot of VCE width, as long as anyone is queued.
+   The stair queues hold 20 ft of queue in front of the total VCE width at 5 sqft/pax;
+   once the remaining arrived passengers fit in them, they taper off.
+   The few seconds of walking from the doors to the stairs are ignored.
 3. **Coming downstairs.** Departing passengers come down with whatever stair capacity
    the upward flow leaves, up to 12 pax/min/ft,
-   and also limited by the same stair equation, with M the space per departing passenger
+   and also limited by Fruin's stair equation, P = (111M − 162)/M² pax/min/ft,
+   with M the space per departing passenger
    in a 5,000 sqft concourse,
    split between the two trains in proportion to how many are still upstairs.
 4. **Boarding.** Departing passengers on the platform board a train that has arrived
@@ -104,13 +103,13 @@ and 12.04 pax/s for 32 s, tapering at 364 s, without it.
 
 | Platform | Headway | VCE width | Max up rate (pax/s) | Time at capacity | Taper time | Clear time | Max pax on platform | Min space/pax (sqft) |
 |---|---|---|---|---|---|---|---|---|
-| platform3 | 120 s | 42.5 ft | 10.13 | 0 s | 411 s | never | 2274 | 5.3 (E) |
-| platform3 | 300 s | 42.5 ft | 7.68 | 0 s | 517 s | never | 1752 | 6.9 (E) |
-| platform3_recon | 120 s | 44.75 ft | 10.47 | 0 s | 392 s | never | 2219 | 5.5 (E) |
-| platform3_recon | 300 s | 44.75 ft | 8.03 | 0 s | 505 s | never | 1739 | 7.0 (E) |
-| platform6 | 0 s | 48.168 ft | 13.65 | 1 s | 321 s | never | 3228 | 3.8 (F) |
-| platform10 | 120 s | 70.58 ft | 11.76 | 0 s | 258 s | never | 1637 | 21.2 (C) |
-| platform11 | 120 s | 43.58 ft | 9.02 | 0 s | 416 s | never | 2276 | 6.5 (E) |
+| platform3 | 120 s | 42.5 ft | 12.04 | 269 s | 254 s | 269 s | 1521 | 8.0 (E) |
+| platform3 | 300 s | 42.5 ft | 12.04 | 268 s | 420 s | 435 s | 1521 | 8.0 (E) |
+| platform3_recon | 120 s | 44.75 ft | 12.68 | 255 s | 241 s | 256 s | 1496 | 8.1 (E) |
+| platform3_recon | 300 s | 44.75 ft | 12.68 | 254 s | 413 s | 428 s | 1496 | 8.1 (E) |
+| platform6 | 0 s | 48.168 ft | 13.65 | 237 s | 223 s | 238 s | 3057 | 4.0 (F) |
+| platform10 | 120 s | 70.58 ft | 20.00 | 162 s | 186 s | 201 s | 1205 | 28.8 (B) |
+| platform11 | 120 s | 43.58 ft | 12.35 | 262 s | 248 s | 263 s | 1509 | 9.8 (E) |
 
 ### History
 
@@ -124,3 +123,11 @@ and each fix's effect is summarized here.
   overstating stair flow by 60 / VCE width, about 1.4x.
   Platform 3 with 2-minute headways now peaks at 10.13 pax/s (10.47 with Penn Reconstruction)
   and never reaches capacity, tapering at 411 s (392 s) instead of 361 s (353 s).
+- **Replaced the platform-density taper with a stair queue:**
+  Fruin's equation relates flow to the space per passenger on the stair, not on the platform,
+  so it held the stairs below capacity while the platform was crowded,
+  and slowed them as it emptied, so they never fully cleared.
+  Now queued stairs discharge at LOS E capacity until empty.
+  Platform 3 with 2-minute headways is at capacity for 269 s (255 s with Penn Reconstruction),
+  tapers at 254 s (241 s), and clears at 269 s (256 s), where it never cleared before.
+  The platform peaks at 1521 passengers (1496) instead of 2274 (2219).

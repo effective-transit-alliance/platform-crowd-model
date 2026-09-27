@@ -51,25 +51,21 @@ def fruin_stair_flow(m: float) -> float:
     return (111 * m - 162) / m**2
 
 
-def platform_clearance(karr: float, a: float, w: float, qmax: float) -> float:
+def platform_clearance(karr: float, w: float) -> float:
     """
-    :param a: usable platform area
-    :param w: total width of vertical circulation elements
-    :param: karr: number of people waiting to get onto a stairwell
-    :param: qmax: number of people that can fit around stair thresholds
-    :return: platform egress rate on stairs
+    Arrived passengers queue at the stairs, which discharge them at LOS E capacity,
+    17 pax/min per foot of width, as long as anyone is queued.
+
+    Fruin's stair equation relates flow to the space per passenger *on the stair*,
+    which a queued stair holds near its critical density,
+    so it doesn't apply to the space per passenger on the platform.
+    The few seconds of walking from the doors to the stairs are ignored.
+
+    :param karr: number of arrived passengers on the platform (pax)
+    :param w: total width of vertical circulation elements (ft)
+    :return: platform egress rate on stairs (pax/s)
     """
-    if karr <= qmax:
-        return min(
-            karr,
-            min(17 * w / 60, fruin_stair_flow(a / max(1, karr)) * w / 60),
-        )
-    else:
-        return max(
-            10 * w / 60,
-            # Min of upstairs LOS C/D boundary flow rate
-            min(17 * w / 60, fruin_stair_flow(a / max(1, karr)) * w / 60),
-        )
+    return min(karr, 17 * w / 60)
 
 
 def platform_ingress(kdep: float, a: float, w: float, r_up: float) -> float:
@@ -282,7 +278,10 @@ class Params:
     """Time (in seconds) when train 2 arrives."""
 
     queue_length: Annotated[int, Field(name="Stair Queue Length", units="ft")]
-    """Length (in feet) of the queue in front of each stair that pushes max flow."""
+    """
+    Length (in feet) of the queue in front of each stair.
+    Once the arrived passengers fit in these queues, they start to taper off.
+    """
 
     total_vce_width: Annotated[float, Field(name="Total VCE Width", units="ft")]
     """Total width (in feet) of all of the VCEs (vertical circulation elements) going upstairs."""
@@ -503,12 +502,7 @@ def calc_workbook(params: Params) -> tuple[openpyxl.Workbook, Summary]:
             train2_remaining_arrivals = 0
         total_pax_on_platform += train1_off_rate + train2_off_rate
         arrived_pax_waiting_on_plat += train1_off_rate + train2_off_rate
-        plat_egress_rate = platform_clearance(
-            arrived_pax_waiting_on_plat,
-            eff_area,
-            params.total_vce_width,
-            qmax,
-        )
+        plat_egress_rate = platform_clearance(arrived_pax_waiting_on_plat, params.total_vce_width)
         arrived_pax_waiting_on_plat -= plat_egress_rate
         if arrived_pax_waiting_on_plat < 0:
             arrived_pax_waiting_on_plat = 0
