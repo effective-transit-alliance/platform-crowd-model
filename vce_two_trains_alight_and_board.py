@@ -85,6 +85,14 @@ class Assumptions:
     Shorter platforms get trains as long as `Params.platform_max_cars`.
     """
 
+    max_train_overhang: Annotated[float, Field(name="Max Train Overhang", units="ft")] = 15
+    """
+    How far a train can extend past its platform's west end,
+    e.g. 12-car LIRR trains on platform 11, 1,007 ft long, per the Moynihan Station EA.
+    Trains only overhang their platform if they're longer than it.
+    Not from any source.
+    """
+
     seats_per_car: Annotated[int, Field(name="Seats per Car", units="pax")] = 135
     """
     Seats in each car, all of which are full on arrival, and all of whose passengers alight.
@@ -738,8 +746,18 @@ class Params:
 
     @property
     def cars(self) -> Annotated[int, Field(name="Cars per Train", units="car")]:
-        """Cars in each train: as many as fit on the platform, up to `max_train_cars`."""
-        return min(self.platform_max_cars, self.assumptions.max_train_cars)
+        """
+        Cars in each train: as many as fit on the platform's tracks and along the platform,
+        with up to `max_train_overhang`, up to `max_train_cars`.
+        """
+        return min(
+            self.platform_max_cars,
+            int(
+                (self.platform_length + self.assumptions.max_train_overhang)
+                // self.assumptions.car_length
+            ),
+            self.assumptions.max_train_cars,
+        )
 
     @property
     def arriving_pax_per_train(
@@ -1504,9 +1522,11 @@ def best_stopping_position(params: Params) -> Params:
     if params.platform_east_end is None:
         return params
     platform_west_end = params.platform_east_end - params.platform_length
+    # A train longer than the platform overhangs its west end.
+    overhang = max(0, params.train_length - params.platform_length)
     candidates: list[Params] = []
     train_east_end = params.platform_east_end
-    while train_east_end - params.train_length >= platform_west_end:
+    while train_east_end - params.train_length >= platform_west_end - overhang:
         candidates.append(dataclasses.replace(params, train_east_end=train_east_end))
         train_east_end -= STOPPING_POSITION_STEP
 
