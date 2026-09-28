@@ -102,7 +102,9 @@ each using the passenger counts left by the one before.
      from the Moynihan Station environmental assessment
      ([Table 4.4-10, p. 4.4-22](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22);
      [Table 4.4-19, p. 4.4-47](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=47)).
-   - It has 40 doors, as a 10-car train does, the worst case.
+   - It has 40 doors, as a 10-car train does,
+     though its passengers fill a 12-car train
+     (see [its known bug](#trains-have-a-12-car-trains-passengers-but-a-10-car-trains-doors)).
      (A 12-car LIRR train has more doors, and LIRR platforms are generally wider.)
 2. **Going upstairs.**
    Arriving passengers leave the platform
@@ -325,6 +327,14 @@ and the TCQSM grades station platforms with Fruin's LOS for queuing and waiting 
 (A > 13, B > 10, C > 7, D > 3, E > 2 sq ft/pax, or else F;
 [Exhibit 10-32, p. 10-55](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59)).
 So the platform's grades are much worse than they should be (pessimistic).
+
+### Trains have a 12-car train's passengers but a 10-car train's doors
+
+Every train carries 1,620 passengers, a seated 12-car NJ Transit train,
+but has only 40 doors, as a 10-car train does, instead of a 12-car train's 48,
+so its passengers take longer to alight and board (pessimistic).
+Platform 3's tracks only fit 10 cars,
+so its trains should instead carry 1,350 passengers (pessimistic too).
 
 ### The stair LOS C/D boundary is 9.5 pax/min/ft, not 10
 

@@ -101,6 +101,8 @@ class Assumptions:
     Doors (single-door equivalents) on each train on the platform side.
     A 10-car NJ Transit MultiLevel with 4 per car, the worst case.
     A 12-car LIRR train has more and better doors.
+    A bug: `arriving_pax_per_train` is a 12-car train's, which has 48 doors.
+    See `README.md#trains-have-a-12-car-trains-passengers-but-a-10-car-trains-doors`.
     """
 
     door_flow_rate: Annotated[float, Field(name="Door Flow Rate", units="pax/s/door")] = 1.0
