@@ -83,13 +83,15 @@ class Assumptions:
     ] = 400
     """Passengers boarding each train, from the ETA report."""
 
-    departing_pax_on_platform_per_train: Annotated[
-        int, Field(name="Departing Passengers on Platform per Train", units="pax")
-    ] = 200
+    departing_pax_lead_time: Annotated[
+        int, Field(name="Departing Passengers Lead Time", units="s")
+    ] = 120
     """
-    Of `departing_pax_per_train`, those already on the platform at the start.
-    The rest start upstairs, all at once, with none arriving during the simulation.
-    From the ETA report.
+    How long before its scheduled arrival a train's departing passengers
+    start coming down to the platform, all at once, like when its track is announced.
+    Until then, they all wait in the concourse, off the platform and the stairs,
+    with none arriving later.
+    Not from any source.
     """
 
     doors_per_train: Annotated[int, Field(name="Doors per Train", units="door")] = 48
@@ -584,12 +586,18 @@ def calc_workbook(
     """
     remaining_arrivals = [float(assumptions.arriving_pax_per_train) for _ in trains]
     new_pax = [0.0 for _ in trains]
-    boarders_upstairs = [
-        float(assumptions.departing_pax_per_train - assumptions.departing_pax_on_platform_per_train)
-        for _ in trains
+    release_times = [
+        train * params.headway - assumptions.departing_pax_lead_time for train in trains
     ]
-    boarders_on_plat = [float(assumptions.departing_pax_on_platform_per_train) for _ in trains]
-    total_pax_on_platform = sum(boarders_on_plat)
+    """When each train's departing passengers start coming down to the platform."""
+    start_time = min(0, *release_times)
+    """
+    When the simulation starts (s): before the first train arrives at 0 s,
+    once its departing passengers start coming down.
+    """
+    boarders_upstairs = [0.0 for _ in trains]
+    boarders_on_plat = [0.0 for _ in trains]
+    total_pax_on_platform: float = 0
     wb = openpyxl.Workbook()
     trains_sheet = wb.create_sheet("Trains")
     """Each train's passengers, alighting, boarding, and departing passengers each second."""
@@ -647,14 +655,21 @@ def calc_workbook(
                 return FIRST_DATA_COLUMN + i
         raise AttributeError(Instant, attr_name)
 
-    time_after = 0
-    for time_after in itertools.count():
-        if time_after >= MAX_SIMULATION_LENGTH:
+    def row_for(time: int) -> int:
+        """The spreadsheets' row for `time`."""
+        return time - start_time + FIRST_DATA_ROW
+
+    time_after = start_time
+    for time_after in itertools.count(start_time):
+        if time_after - start_time >= MAX_SIMULATION_LENGTH:
             raise RuntimeError(
                 f"{params.filename_prefix} hasn't finished after {MAX_SIMULATION_LENGTH} s"
             )
+        for train in trains:
+            if release_times[train] == time_after:
+                boarders_upstairs[train] = float(assumptions.departing_pax_per_train)
         if write_workbook:
-            writable_cell(trains_sheet, row=time_after + 2, column=1).value = time_after
+            writable_cell(trains_sheet, row=row_for(time_after), column=1).value = time_after
         off_rates: list[float] = []
         for train in trains:
             off_rate = alight_rate(
@@ -739,7 +754,11 @@ def calc_workbook(
             and arriving_pax_waiting_on_plat < 1
         ):
             summary.clear_time = time_after
-        if summary.boarded_time is None and sum(boarders_upstairs) + sum(boarders_on_plat) < 1:
+        if (
+            summary.boarded_time is None
+            and time_after >= max(release_times)
+            and sum(boarders_upstairs) + sum(boarders_on_plat) < 1
+        ):
             summary.boarded_time = time_after
         for train in trains:
             arrival_time = arrival_times[train]
@@ -792,14 +811,14 @@ def calc_workbook(
                 ):
                     writable_cell(
                         trains_sheet,
-                        row=instant.time + 2,
+                        row=row_for(instant.time),
                         column=2 + len(TRAIN_COLUMNS) * train + j,
                     ).value = value
 
             for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
                 column = FIRST_DATA_COLUMN + i
                 writable_cell(sheet, row=1, column=column).value = field.description
-                writable_cell(sheet, row=instant.time + 2, column=column).value = value
+                writable_cell(sheet, row=row_for(instant.time), column=column).value = value
 
         # Stop once the last train has departed and the platform has cleared.
         if (
@@ -810,7 +829,7 @@ def calc_workbook(
             break
     if not write_workbook:
         return wb, summary
-    simulation_length = time_after + 1
+    simulation_length = time_after - start_time + 1
 
     def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
@@ -818,8 +837,8 @@ def calc_workbook(
         chart.style = 13
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = simulation_length
+        chart.x_axis.scaling.min = start_time
+        chart.x_axis.scaling.max = time_after
         chart.legend = None
 
         max_row = simulation_length + FIRST_DATA_ROW - 1
@@ -840,8 +859,8 @@ def calc_workbook(
         chart.style = 13
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = simulation_length
+        chart.x_axis.scaling.min = start_time
+        chart.x_axis.scaling.max = time_after
         chart.y_axis.scaling.min = 0
         chart.y_axis.scaling.max = 50
         chart.legend = None
@@ -871,8 +890,8 @@ def calc_workbook(
         chart.style = 13
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = simulation_length
+        chart.x_axis.scaling.min = start_time
+        chart.x_axis.scaling.max = time_after
         assert chart.legend is not None
         chart.legend.position = "b"
 
