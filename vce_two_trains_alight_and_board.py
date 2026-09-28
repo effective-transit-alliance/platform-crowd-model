@@ -8,6 +8,7 @@ model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 import dataclasses
 import typing
 from collections.abc import Generator
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
@@ -1009,13 +1010,21 @@ def main() -> None:
             )
         ),
     )
-    run_model(params_p3120)
-    run_model(params_p3300)
-    run_model(params_p3recon120)
-    run_model(params_p3recon300)
-    run_model(params_p60)
-    run_model(params_p10120)
-    run_model(params_p11120)
+    with ProcessPoolExecutor() as executor:
+        list(
+            executor.map(
+                run_model,
+                [
+                    params_p3120,
+                    params_p3300,
+                    params_p3recon120,
+                    params_p3recon300,
+                    params_p60,
+                    params_p10120,
+                    params_p11120,
+                ],
+            )
+        )
 
 
 if __name__ == "__main__":
