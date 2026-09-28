@@ -922,6 +922,8 @@ def calc_workbook(
     """Arriving passengers walking to each VCE, whenever they reach it, i.e. `walking` summed."""
     cars = train_cars(params)
     nearest_cars = [cars_by_distance(cars, i) for i in range(len(params.vces))]
+    car_board_rates = [car.doors * assumptions.door_flow_rate for car in cars]
+    """Each car's maximum boarding rate (pax/s)."""
     """Each VCE's cars, from the nearest to the farthest."""
     trains = range(params.trains)
     boarders_walking: defaultdict[int, list[list[float]]] = defaultdict(
@@ -1138,18 +1140,23 @@ def calc_workbook(
         for train in trains:
             boarders_on_plat[train] = sum(car_waiting[train])
             total_pax_on_platform += plat_ingress_rates[train]
-        # Each car boards through its own doors.
+        # Each car boards through its own doors,
+        # once its train has arrived and everyone has alighted from it.
         car_on_rates = [
             [
                 board_rate(
-                    car.doors * assumptions.door_flow_rate,
+                    max_rate,
                     off_rates[train],
                     time_after,
-                    arrival_times[train],
+                    arrival_time,
                     waiting,
                 )
-                for car, waiting in zip(cars, car_waiting[train], strict=True)
+                for max_rate, waiting in zip(car_board_rates, car_waiting[train], strict=True)
             ]
+            if (arrival_time := arrival_times[train]) is not None
+            and arrival_time < time_after
+            and off_rates[train] == 0
+            else [0 for _ in cars]
             for train in trains
         ]
         for train, on_rates in enumerate(car_on_rates):
