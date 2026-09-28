@@ -560,6 +560,17 @@ These are only estimates:
   with stairs in about 2021.
 - Escalators are still counted by width, not by an escalator's capacity.
 
+Platforms 9 to 11 aren't on that plan,
+so their VCEs are estimated from NJ Transit's January 2022 station directory instead,
+whose map is schematic and not to scale.
+Each level of its map is calibrated to feet by matching its icons on platforms 1 to 8,
+and the Master Plan's on platforms 9 and 10, to their positions,
+to within about 20 ft on average.
+The directory doesn't show every VCE, so the Master Plan's existing VCEs it doesn't show are added,
+though they're from before Moynihan Train Hall opened.
+Each has the Master Plan's width where it has one,
+or else the median width of that type on platforms 1 to 8, marked `typical`.
+
 ### Field Survey
 
 Since no public source has every VCE's width,

@@ -31,11 +31,21 @@ Each VCE is matched to a Master Plan VCE of the same type on the same platform w
 Matched VCEs have the Master Plan's width,
 and the rest have only this sheet's width, marked `estimated`.
 
+Platforms 9 to 11 aren't on that plan, so their VCEs are estimated from
+NJ Transit's January 2022 station directory and the Master Plan instead;
+see `directory_vces`.
+Their widths are the Master Plan's, or else typical of platforms 1 to 8, marked `typical`.
+
 Writes `data/estimated_vce_widths.csv`.
 """
 
+import bisect
 import csv
+import functools
+import statistics
 import urllib.request
+from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -43,6 +53,7 @@ import pymupdf
 
 REPO = Path(__file__).resolve().parent.parent
 MASTER_PLAN_CSV = REPO / "data" / "master_plan_existing_vces.csv"
+DIRECTORY_CSV = REPO / "data" / "njt_directory_vces.csv"
 OUT_CSV = REPO / "data" / "estimated_vce_widths.csv"
 PDF_CACHE = REPO / ".cache" / "pcip-2-conceptual-design-preliminary-drawings.pdf"
 PDF_URL = "https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf"
@@ -391,11 +402,12 @@ def main() -> None:
                 "notes": " ".join(notes),
             }
         )
+    out += directory_vces(out, master_plan)
     with OUT_CSV.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(out[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(out)
-    matched = [v for v in out if v["master_plan_width_in"]]
+    matched = [v for v in out if v["master_plan_width_in"] and v["sheet_width_in"] != ""]
     errors = [
         int(str(v["sheet_width_in"])) - int(str(v["master_plan_width_in"]).split("/")[0])
         for v in matched
@@ -404,6 +416,206 @@ def main() -> None:
         f"wrote {len(out)} VCEs; {len(matched)} match the Master Plan, "
         f"with sheet widths off by {min(errors)} to {max(errors)} in."
     )
+
+
+DIRECTORY_PLATFORMS = (9, 10, 11)
+"""
+Platforms the PCIP Phase 2 existing plan doesn't show,
+whose VCEs are instead estimated from NJ Transit's January 2022 station directory.
+"""
+
+DIRECTORY_SOURCE = (
+    "NJ Transit's Penn Station directory, January 2022, "
+    "positioned by calibrating its map against platforms 1 to 8"
+)
+
+UNMATCHED_ICON_COST_FT = 60
+"""
+How far off (ft) a directory icon's position has to be
+before it's left unmatched when calibrating, e.g. for a VCE the other source doesn't have.
+"""
+
+WRONG_TYPE_COST_FT = 30
+"""Extra cost (ft) of matching a directory icon to a VCE of another type when calibrating."""
+
+CALIBRATION_ITERATIONS = 8
+
+INITIAL_CALIBRATIONS = {"lower": (0.28, 10), "upper": (0.225, 90)}
+"""
+Each directory level's approximate feet per map unit and offset (ft),
+from fitting one line to all of its icons, as a starting point for the piecewise calibration.
+"""
+
+
+def align(
+    icons: list[tuple[float, str]],
+    known: list[tuple[float, str]],
+    to_ft: Callable[[float], float],
+) -> tuple[float, tuple[tuple[float, float], ...]]:
+    """
+    The cheapest matching of `icons` (map x, type) to `known` VCEs (ft, type) in order,
+    and its cost, where each icon costs how far it is from its match, or else
+    `UNMATCHED_ICON_COST_FT` if it's left unmatched.
+    """
+    icons = sorted(icons)
+    known = sorted(known)
+
+    @functools.cache
+    def best(i: int, j: int) -> tuple[float, tuple[tuple[float, float], ...]]:
+        if i == len(icons):
+            return 0.0, ()
+        skip_cost, skip_pairs = best(i + 1, j)
+        result = (UNMATCHED_ICON_COST_FT + skip_cost, skip_pairs)
+        for k in range(j, len(known)):
+            cost = abs(to_ft(icons[i][0]) - known[k][0])
+            if icons[i][1] != known[k][1]:
+                cost += WRONG_TYPE_COST_FT
+            rest_cost, rest_pairs = best(i + 1, k + 1)
+            if cost + rest_cost < result[0]:
+                result = (cost + rest_cost, ((icons[i][0], known[k][0]), *rest_pairs))
+        return result
+
+    return best(0, 0)
+
+
+def linear(scale: float, offset: float) -> Callable[[float], float]:
+    """The function `offset + scale * x`."""
+
+    def fit(x: float) -> float:
+        return offset + scale * x
+
+    return fit
+
+
+def monotone_fit(pairs: list[tuple[float, float]]) -> Callable[[float], float]:
+    """
+    A piecewise-linear, nondecreasing function through `pairs` (x, y),
+    after averaging nearby x's and pooling any that would decrease.
+    """
+    groups: defaultdict[int, list[tuple[float, float]]] = defaultdict(list)
+    for x, y in pairs:
+        groups[round(x / 40)].append((x, y))
+    points = sorted(
+        (statistics.mean(x for x, _ in g), statistics.mean(y for _, y in g))
+        for g in groups.values()
+    )
+    # Pool adjacent points whose y's decrease, so the function never does.
+    blocks = [[x, y, 1] for x, y in points]
+    i = 0
+    while i < len(blocks) - 1:
+        a, b = blocks[i], blocks[i + 1]
+        if a[1] > b[1]:
+            n = a[2] + b[2]
+            blocks[i] = [(a[0] * a[2] + b[0] * b[2]) / n, (a[1] * a[2] + b[1] * b[2]) / n, n]
+            del blocks[i + 1]
+            i = max(i - 1, 0)
+        else:
+            i += 1
+    xs = [b[0] for b in blocks]
+    ys = [b[1] for b in blocks]
+
+    def fit(x: float) -> float:
+        j = min(max(bisect.bisect(xs, x) - 1, 0), len(xs) - 2)
+        return ys[j] + (ys[j + 1] - ys[j]) * (x - xs[j]) / (xs[j + 1] - xs[j])
+
+    return fit
+
+
+def directory_vces(
+    estimated: list[dict[str, object]], master_plan: list[dict[str, str]]
+) -> list[dict[str, object]]:
+    """
+    Every VCE on `DIRECTORY_PLATFORMS`, from NJ Transit's station directory
+    (`data/njt_directory_vces.csv`), whose map is schematic and not to scale.
+
+    Each level's map is calibrated to feet with a piecewise-linear, nondecreasing fit,
+    matching each platform's icons in order to its VCEs in `estimated` on platforms 1 to 8,
+    and to the Master Plan's on platforms 9 and 10, and refitting until it settles.
+    Icons of the same type within `SAME_VCE_TOLERANCE_FT` on both levels are one VCE.
+    Each VCE has the Master Plan's width, if it has one of the same type within
+    `SAME_VCE_TOLERANCE_FT`, or else the median width and length of that type on platforms 1 to 8.
+    The directory doesn't show every VCE, so the Master Plan's that it doesn't have are added,
+    though they're from before Moynihan Train Hall opened.
+    """
+    icons: defaultdict[tuple[str, int], list[tuple[float, str]]] = defaultdict(list)
+    with DIRECTORY_CSV.open() as f:
+        for row in csv.DictReader(f):
+            if row["type"] != "elevator":
+                icons[(row["level"], int(row["platform"]))].append(
+                    (float(row["map_x"]), row["type"])
+                )
+    known: defaultdict[int, list[tuple[float, str]]] = defaultdict(list)
+    for v in estimated:
+        mid = (float(str(v["west_end_ft"])) + float(str(v["east_end_ft"]))) / 2
+        known[int(str(v["platform"]))].append((mid, str(v["type"])))
+    for m in master_plan:
+        if int(m["platform"]) in DIRECTORY_PLATFORMS:
+            known[int(m["platform"])].append((float(m["mid_ft"]), m["type"]))
+
+    positions: defaultdict[int, list[tuple[float, str]]] = defaultdict(list)
+    for level, (scale, offset) in INITIAL_CALIBRATIONS.items():
+        to_ft = linear(scale, offset)
+        platforms = [p for lv, p in icons if lv == level and p in known]
+        for _ in range(CALIBRATION_ITERATIONS):
+            pairs = [
+                pair for p in platforms for pair in align(icons[(level, p)], known[p], to_ft)[1]
+            ]
+            to_ft = monotone_fit(pairs)
+        for p in DIRECTORY_PLATFORMS:
+            for x, type_ in icons.get((level, p), []):
+                ft = to_ft(x)
+                if not any(
+                    t == type_ and abs(ft - other) <= SAME_VCE_TOLERANCE_FT
+                    for other, t in positions[p]
+                ):
+                    positions[p].append((ft, type_))
+
+    def typical(type_: str, key: str) -> float:
+        return statistics.median(
+            float(str(v[key]))
+            if key == "sheet_width_in"
+            else float(str(v["east_end_ft"])) - float(str(v["west_end_ft"]))
+            for v in estimated
+            if v["type"] == type_
+        )
+
+    # The directory doesn't show every VCE, so add the Master Plan's that it doesn't have.
+    for m in master_plan:
+        p = int(m["platform"])
+        if p in DIRECTORY_PLATFORMS and not any(
+            t == m["type"] and abs(float(m["mid_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
+            for mid, t in positions[p]
+        ):
+            positions[p].append((float(m["mid_ft"]), m["type"]))
+
+    out: list[dict[str, object]] = []
+    for p in DIRECTORY_PLATFORMS:
+        for n, (mid, type_) in enumerate(sorted(positions[p]), start=1):
+            same = [
+                m
+                for m in master_plan
+                if int(m["platform"]) == p
+                and m["type"] == type_
+                and abs(float(m["mid_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
+            ]
+            match = min(same, key=lambda m: abs(float(m["mid_ft"]) - mid), default=None)
+            length = typical(type_, "length")
+            out.append(
+                {
+                    "platform": p,
+                    "vce": f"P{p}-S{n}",
+                    "type": type_,
+                    "west_end_ft": round(mid - length / 2),
+                    "east_end_ft": round(mid + length / 2),
+                    "sheet_width_in": "" if match else round(typical(type_, "sheet_width_in")),
+                    # Where the Master Plan's alternatives disagree, e.g. 66/72, the narrowest.
+                    "master_plan_width_in": match["width_in"].split("/")[0] if match else "",
+                    "width_status": "master plan" if match else "typical",
+                    "source": DIRECTORY_SOURCE,
+                    "notes": "Its position is only approximate; the directory isn't to scale.",
+                }
+            )
+    return out
 
 
 if __name__ == "__main__":
