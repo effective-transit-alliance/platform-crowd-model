@@ -27,6 +27,8 @@ from typer import Option
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
+SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
+
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
 
@@ -857,7 +859,7 @@ RESULTS_COLUMNS = [
     "Time at capacity",
     "Max up rate (pax/s)",
     "Max pax on platform",
-    "Min space/pax (sq ft)",
+    "Max density (pax/m²)",
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
@@ -907,7 +909,8 @@ def run_model(params: Params, spreadsheets: bool) -> str:
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
         f" | {fmt_time(summary.boarded_time)}"
         f" | {fmt_time(summary.secs_at_capacity)} | {summary.max_up_rate:.2f}"
-        f" | {summary.max_pax_on_platform:.0f} | {summary.min_space_per_pax:.1f}"
+        f" | {summary.max_pax_on_platform:.0f}"
+        f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
         f" ({platform_crowd_los(summary.min_space_per_pax)}) |"
     )
 
