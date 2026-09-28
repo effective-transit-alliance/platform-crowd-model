@@ -277,7 +277,7 @@ def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float
 
 def platform_ingress(
     kdep: float,
-    vces: tuple[Vce, ...],
+    widths: list[float],
     up_rates: list[float],
     directions: list[Direction],
     assumptions: Assumptions,
@@ -287,17 +287,16 @@ def platform_ingress(
     its upward flow leaves, unless that exceeds `Assumptions.bidirectional_stair_flow_limit`.
 
     :param kdep: number of departing passengers upstairs (pax)
-    :param vces: this train's share of each VCE
+    :param widths: this train's share of each VCE's width (ft)
     :param up_rates: upward flow on this train's share of each VCE (pax/s)
     :param directions: which way each VCE runs now
     :return: platform ingress rate down each VCE (pax/s)
     """
     available = [
         0
-        if direction == "up"
-        or r_up > stair_flow(assumptions.bidirectional_stair_flow_limit, vce.width)
-        else stair_flow(assumptions.stair_capacity, vce.width) - r_up
-        for vce, r_up, direction in zip(vces, up_rates, directions, strict=True)
+        if direction == "up" or r_up > stair_flow(assumptions.bidirectional_stair_flow_limit, width)
+        else stair_flow(assumptions.stair_capacity, width) - r_up
+        for width, r_up, direction in zip(widths, up_rates, directions, strict=True)
     ]
     total = sum(available)
     if total <= 0:
@@ -1091,16 +1090,16 @@ def calc_workbook(
             boarder_fraction(boarders_upstairs[train], boarders_upstairs) for train in trains
         ]
         vce_ingress_rates = [
+            # Nobody comes down for a train with nobody upstairs.
             platform_ingress(
                 boarders_upstairs[train],
-                tuple(
-                    dataclasses.replace(vce, width=vce.width * boarder_fracs[train])
-                    for vce in params.vces
-                ),
+                [vce.width * boarder_fracs[train] for vce in params.vces],
                 [r_up * boarder_fracs[train] for r_up in vce_up_rates],
                 directions,
                 assumptions,
             )
+            if boarders_upstairs[train] > 0
+            else [0.0 for _ in params.vces]
             for train in trains
         ]
         plat_ingress_rates = [sum(rates) for rates in vce_ingress_rates]
