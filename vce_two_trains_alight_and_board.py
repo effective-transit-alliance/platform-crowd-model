@@ -144,6 +144,15 @@ class Assumptions:
     Only used on platforms with each VCE's position.
     """
 
+    car_full_fraction: Annotated[float, Field(name="Car Full Fraction", units="fraction")] = 0.9
+    """
+    Departing passengers go to the nearest car
+    unless it has at least this fraction of `seats_per_car` boarded, waiting, or walking to it,
+    in which case they go to the nearest car that doesn't.
+    Not from any source.
+    Only used on platforms with each VCE's position.
+    """
+
     door_flow_rate: Annotated[float, Field(name="Door Flow Rate", units="pax/s/door")] = 1.0
     """
     Alighting and boarding rate per single-door equivalent.
@@ -562,6 +571,61 @@ def vce_roles(vces: tuple[Vce, ...]) -> list[Role]:
     return roles
 
 
+@dataclass(frozen=True)
+class Car:
+    """One of a train's cars, where departing passengers wait to board."""
+
+    doors: int
+    """Doors (single-door equivalents) on the platform side."""
+
+    walking_times: list[int]
+    """Time (s) to walk from each VCE to its nearest door."""
+
+
+def train_cars(params: Params) -> list[Car]:
+    """
+    Each train's cars.
+    If the VCEs have no positions, the train is one car
+    with no walking time from any VCE.
+    """
+    assumptions = params.assumptions
+    if params.platform_east_end is None:
+        return [Car(doors=params.doors_per_train, walking_times=[0 for _ in params.vces])]
+    doors = door_positions(params)
+    doors_per_car = assumptions.doors_per_car
+    cars: list[Car] = []
+    for car in range(params.cars):
+        car_doors = doors[car * doors_per_car : (car + 1) * doors_per_car]
+        cars.append(
+            Car(
+                doors=len(car_doors),
+                walking_times=[
+                    round(
+                        min(distance_to(vce, door) for door in car_doors)
+                        / assumptions.walking_speed
+                    )
+                    for vce in params.vces
+                ],
+            )
+        )
+    return cars
+
+
+def choose_car(params: Params, cars: list[Car], car_loads: list[float], vce: int) -> int:
+    """
+    The car departing passengers coming down `vce` walk to:
+    the nearest one that isn't close to full, per `Assumptions.car_full_fraction`,
+    or else the nearest one.
+
+    :param car_loads: passengers boarded on, waiting for, or walking to each car (pax)
+    """
+    nearest = sorted(range(len(cars)), key=lambda c: cars[c].walking_times[vce])
+    if len(cars) == 1:
+        return nearest[0]
+    full = params.assumptions.car_full_fraction * params.assumptions.seats_per_car
+    return next((c for c in nearest if car_loads[c] < full), nearest[0])
+
+
 def choose_vce(
     params: Params,
     door: Door,
@@ -836,9 +900,16 @@ def calc_workbook(
     """Which way each VCE runs now."""
     walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in params.vces])
     """Arriving passengers walking to each VCE, by the time they reach its queue."""
+    cars = train_cars(params)
     trains = range(params.trains)
-    boarders_walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in trains])
-    """Each train's departing passengers walking to its doors, by the time they reach them."""
+    boarders_walking: defaultdict[int, list[list[float]]] = defaultdict(
+        lambda: [[0.0 for _ in cars] for _ in trains]
+    )
+    """Each train's departing passengers walking to each car, by the time they reach it."""
+    car_waiting = [[0.0 for _ in cars] for _ in trains]
+    """Each train's departing passengers waiting at each car."""
+    car_loads = [list(waiting) for waiting in car_waiting]
+    """Each train's passengers boarded on, waiting for, or walking to each car."""
     arrival_times: list[int | None] = [
         train * params.headway if train < 2 else None for train in trains
     ]
@@ -925,8 +996,8 @@ def calc_workbook(
         raise AttributeError(Instant, attr_name)
 
     def walking_to_train(train: int) -> float:
-        """Departing passengers walking to `train`'s doors."""
-        return sum(walking_to_doors[train] for walking_to_doors in boarders_walking.values())
+        """Departing passengers walking to `train`'s cars."""
+        return sum(sum(walking_to_cars[train]) for walking_to_cars in boarders_walking.values())
 
     def row_for(time: int) -> int:
         """The spreadsheets' row for `time`."""
@@ -1018,27 +1089,40 @@ def calc_workbook(
             for train in trains
         ]
         plat_ingress_rates = [sum(rates) for rates in vce_ingress_rates]
-        # Departing passengers spread across the doors, walking to them from their VCE.
-        for door in doors:
-            for i, walking_time in enumerate(door.walking_times):
-                for train in trains:
-                    boarders_walking[time_after + walking_time][train] += (
-                        vce_ingress_rates[train][i] * door.share
-                    )
-        for train, reaching in enumerate(boarders_walking.pop(time_after, [0.0 for _ in trains])):
-            boarders_on_plat[train] += reaching
+        # Departing passengers walk from their VCE to a car.
         for train in trains:
+            for i, rate in enumerate(vce_ingress_rates[train]):
+                if rate <= 0:
+                    continue
+                car = choose_car(params, cars, car_loads[train], i)
+                boarders_walking[time_after + cars[car].walking_times[i]][train][car] += rate
+                car_loads[train][car] += rate
+        for train, reaching in enumerate(
+            boarders_walking.pop(time_after, [[0.0 for _ in cars] for _ in trains])
+        ):
+            for car, pax in enumerate(reaching):
+                car_waiting[train][car] += pax
+        for train in trains:
+            boarders_on_plat[train] = sum(car_waiting[train])
             total_pax_on_platform += plat_ingress_rates[train]
-        on_rates = [
-            board_rate(
-                door_rate,
-                off_rates[train],
-                time_after,
-                arrival_times[train],
-                boarders_on_plat[train],
-            )
+        # Each car boards through its own doors.
+        car_on_rates = [
+            [
+                board_rate(
+                    car.doors * assumptions.door_flow_rate,
+                    off_rates[train],
+                    time_after,
+                    arrival_times[train],
+                    waiting,
+                )
+                for car, waiting in zip(cars, car_waiting[train], strict=True)
+            ]
             for train in trains
         ]
+        for train, on_rates in enumerate(car_on_rates):
+            for car, on_rate in enumerate(on_rates):
+                car_waiting[train][car] -= on_rate
+        on_rates = [sum(rates) for rates in car_on_rates]
 
         for train in trains:
             boarders_on_plat[train] -= on_rates[train]
@@ -1086,7 +1170,7 @@ def calc_workbook(
             and time_after >= max(release_times)
             and sum(boarders_upstairs)
             + sum(boarders_on_plat)
-            + sum(sum(walking_to_doors) for walking_to_doors in boarders_walking.values())
+            + sum(sum(map(sum, walking_to_cars)) for walking_to_cars in boarders_walking.values())
             < 1
         ):
             summary.boarded_time = time_after

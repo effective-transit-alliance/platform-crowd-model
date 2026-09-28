@@ -150,14 +150,16 @@ each using the passenger counts left by the one before.
      in proportion to how many of each are still upstairs,
      and each train's share of a VCE carries the same share of its upward flow.
    - Nobody comes down a VCE while its upward flow is worse than LOS C, 10 pax/min/ft.
-   - On platforms 3 and 6, they spread evenly across their train's doors,
-     walking to them at 250 ft/min.
+   - On platforms 3 and 6, each walks at 250 ft/min to the nearest of their train's cars,
+     unless it's close to full, i.e. 90% of its 135 seats are boarded, waiting, or walking to it,
+     in which case they go to the nearest car that isn't.
    - Otherwise, both directions share LOS E capacity, 17 pax/min/ft,
      so passengers come down with whatever their share of the upward flow leaves of that.
 4. **Boarding.**
    Departing passengers on the platform board a train
    once every arriving passenger has alighted from it,
    at 1 pax/s per single-door equivalent.
+   On platforms 3 and 6, each car boards only its own waiting passengers, through its own 4 doors.
 
 ### Crowding
 
@@ -237,10 +239,11 @@ or **unclear** (it could go either way).
   though the TCQSM notes people walk slower in crowds with less than 25 sq ft/pax
   ([Exhibit 10-10, p. 10-21](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=25)).
   On platforms without each VCE's position, walking takes no time.
-- **Pessimistic:** On platforms 3 and 6, departing passengers coming downstairs
-  spread evenly across their train's doors, walking to them at 250 ft/min,
-  rather than boarding at the doors nearest their VCE.
-  On platforms without each VCE's position, walking takes no time.
+- **Unclear:** On platforms 3 and 6, departing passengers coming downstairs
+  walk to the nearest car until it's close to full, at 90% of its seats,
+  which isn't from any source.
+  On platforms without each VCE's position, walking takes no time,
+  and every door boards from one shared pool of waiting passengers.
 - **Optimistic:** The concourse upstairs never backs up, so the stairs always discharge.
 
 ### Trains
@@ -674,19 +677,19 @@ which clears sooner (see [Stairs Are One Pooled Queue](#stairs-are-one-pooled-qu
 <!-- results-table:start -->
 | Platform | Headway | VCE width | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max up rate (pax/s) | Max pax on platform | Max density (pax/m²) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 3 | 0:00 | 43 ft | 0:00, 0:00, 6:16, 6:16 | 6:16, 6:16, 0:44, 0:44 | 10:15 | 10:58 | 7:00 | 6:26 | 11.38 | 3718 | 3.29 (D) |
+| 3 | 0:00 | 43 ft | 0:00, 0:00, 3:34, 3:34 | 3:34, 3:34, 0:56, 0:56 | 8:08 | 8:58 | 4:31 | 6:45 | 11.38 | 3718 | 3.29 (D) |
 | 3 (recon) | 0:00 | 44.75 ft | 0:00, 0:00, 3:38, 3:38 | 3:38, 3:38, 0:44, 0:44 | 6:56 | 7:11 | 7:12 | 7:04 | 12.68 | 3803 | 3.37 (D) |
-| 6 | 0:00 | 30.83 ft | 0:00, 0:00, 10:31, 10:31 | 10:31, 10:31, 0:43, 0:43 | 17:19 | 18:37 | 11:14 | 12:42 | 7.82 | 3961 | 3.45 (D) |
+| 6 | 0:00 | 30.83 ft | 0:00, 0:00, 7:25, 7:25 | 7:25, 7:25, 1:05, 1:05 | 14:17 | 15:35 | 8:30 | 12:45 | 7.82 | 3961 | 3.45 (D) |
 | 10 | 0:00 | 70.58 ft | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 5:09 | 5:24 | 1:26 | 5:24 | 20.00 | 5740 | 1.78 (D) |
 | 11 | 0:00 | 43.58 ft | 0:00, 0:00, 4:31, 4:31 | 4:31, 4:31, 0:43, 0:43 | 8:39 | 8:54 | 5:14 | 8:44 | 12.35 | 4314 | 3.13 (D) |
-| 3 | 2:00 | 43 ft | 0:00, 2:00, 4:00, 9:56 | 1:32, 7:56, 6:04, 0:44 | 11:45 | 12:27 | 10:40 | 5:21 | 11.38 | 1418 | 1.26 (C) |
+| 3 | 2:00 | 43 ft | 0:00, 2:00, 4:00, 7:18 | 1:00, 5:18, 3:19, 1:05 | 9:07 | 9:49 | 8:23 | 5:21 | 11.38 | 1418 | 1.26 (C) |
 | 3 (recon) | 2:00 | 44.75 ft | 0:00, 2:00, 4:00, 6:53 | 0:44, 4:53, 2:53, 0:44 | 8:25 | 8:40 | 7:37 | 7:04 | 12.68 | 1332 | 1.18 (C) |
-| 6 | 2:00 | 30.83 ft | 0:00, 2:00, 4:00, 14:49 | 2:14, 12:49, 10:53, 0:43 | 18:03 | 19:20 | 15:32 | 12:50 | 7.82 | 2852 | 2.48 (D) |
+| 6 | 2:00 | 30.83 ft | 0:00, 2:00, 4:00, 12:02 | 1:05, 10:02, 7:43, 1:05 | 15:16 | 16:33 | 13:07 | 12:50 | 7.82 | 2812 | 2.45 (D) |
 | 10 | 2:00 | 70.58 ft | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 7:06 | 7:21 | 6:43 | 5:24 | 20.00 | 1360 | 0.42 (A) |
 | 11 | 2:00 | 43.58 ft | 0:00, 2:00, 4:00, 8:10 | 0:43, 6:10, 4:10, 0:43 | 10:07 | 10:22 | 10:22 | 8:44 | 12.35 | 1613 | 1.17 (C) |
-| 3 | 5:00 | 43 ft | 0:00, 5:00, 10:00, 15:00 | 1:32, 1:32, 1:32, 1:32 | 16:49 | 17:31 | 16:32 | 5:04 | 11.38 | 1374 | 1.22 (C) |
+| 3 | 5:00 | 43 ft | 0:00, 5:00, 10:00, 15:00 | 1:00, 1:00, 1:00, 1:00 | 16:49 | 17:31 | 16:00 | 5:04 | 11.38 | 1374 | 1.22 (C) |
 | 3 (recon) | 5:00 | 44.75 ft | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:32 | 16:47 | 15:44 | 7:04 | 12.68 | 1319 | 1.17 (C) |
-| 6 | 5:00 | 30.83 ft | 0:00, 5:00, 10:00, 15:00 | 2:14, 2:37, 2:37, 2:37 | 18:14 | 19:31 | 17:37 | 12:12 | 7.82 | 1758 | 1.53 (C) |
+| 6 | 5:00 | 30.83 ft | 0:00, 5:00, 10:00, 15:00 | 1:05, 1:05, 1:05, 1:05 | 18:14 | 19:31 | 16:05 | 12:12 | 7.82 | 1758 | 1.53 (C) |
 | 10 | 5:00 | 70.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:06 | 16:21 | 15:43 | 5:24 | 20.00 | 1340 | 0.42 (A) |
 | 11 | 5:00 | 43.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:57 | 17:12 | 15:43 | 8:44 | 12.35 | 1600 | 1.16 (C) |
 <!-- results-table:end -->
@@ -799,3 +802,9 @@ and each fix's effect is summarized here.
   but the down escalator lets departing passengers board by 457 s instead of 472 s.
   Platform 6 clears at 510 s instead of 469 s, and finishes boarding by 556 s instead of 593 s.
   The time at capacity now counts only the VCEs going up.
+- **Sent departing passengers to the nearest car that isn't close to full,**
+  on platforms 3 and 6, instead of spreading them evenly across the doors,
+  with each car boarding its own waiting passengers through its own doors.
+  Platform 3 with 2-minute headways finishes boarding at 284 s instead of 457 s,
+  but with 5-minute headways at 363 s instead of 351 s, since the busiest cars' doors hold them up.
+  Platform 6 finishes boarding at 372 s instead of 556 s.
