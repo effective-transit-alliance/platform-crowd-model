@@ -213,7 +213,9 @@ The [known bugs](#known-bugs) are listed separately.
 
 - **Optimistic:** Each train has 400 departing passengers, all present at the start:
   200 on the platform and 200 upstairs.
-  None arrive during the simulation, even with 5-minute headways.
+  None arrive during the simulation, even for the second train with 5-minute headways,
+  whose passengers wait 5 minutes for it.
+  (See [its known bug](#departing-passengers-wait-on-the-platform-long-before-their-train).)
 - **Pessimistic:** Departing passengers come downstairs even before their train arrives,
   and wait for it on the platform, adding to the crowding.
 
@@ -327,6 +329,17 @@ and the TCQSM grades station platforms with Fruin's LOS for queuing and waiting 
 (A > 13, B > 10, C > 7, D > 3, E > 2 sq ft/pax, or else F;
 [Exhibit 10-32, p. 10-55](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59)).
 So the platform's grades are much worse than they should be (pessimistic).
+
+### Departing passengers wait on the platform long before their train
+
+Every train's departing passengers are there from the start,
+200 on the platform and 200 upstairs, who come down as soon as the stairs allow,
+even for the second train with 5-minute headways, which isn't due for 5 minutes.
+The ETA report put them all there at the start, too.
+At Penn Station, passengers wait in the concourse until their track is announced,
+so this fills the platform with passengers who wouldn't be there yet (pessimistic for crowding),
+but has them already at the doors when later trains arrive,
+so those trains' dwells are only as long as alighting and boarding take (optimistic for dwells).
 
 ### Trains have a 12-car train's passengers but a 10-car train's doors
 
