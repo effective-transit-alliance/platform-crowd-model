@@ -913,12 +913,16 @@ def calc_workbook(
     """Which way each VCE runs now."""
     walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in params.vces])
     """Arriving passengers walking to each VCE, by the time they reach its queue."""
+    walking_totals = [0.0 for _ in params.vces]
+    """Arriving passengers walking to each VCE, whenever they reach it, i.e. `walking` summed."""
     cars = train_cars(params)
     trains = range(params.trains)
     boarders_walking: defaultdict[int, list[list[float]]] = defaultdict(
         lambda: [[0.0 for _ in cars] for _ in trains]
     )
     """Each train's departing passengers walking to each car, by the time they reach it."""
+    boarders_walking_totals = [0.0 for _ in trains]
+    """Each train's departing passengers walking to any of its cars, `boarders_walking` summed."""
     car_waiting = [[0.0 for _ in cars] for _ in trains]
     """Each train's departing passengers waiting at each car."""
     car_loads = [list(waiting) for waiting in car_waiting]
@@ -1010,7 +1014,12 @@ def calc_workbook(
 
     def walking_to_train(train: int) -> float:
         """Departing passengers walking to `train`'s cars."""
-        return sum(sum(walking_to_cars[train]) for walking_to_cars in boarders_walking.values())
+        return boarders_walking_totals[train]
+
+    def subtract(total: float, pax: float) -> float:
+        """`total - pax`, or 0 if that's only left over from rounding."""
+        remaining = total - pax
+        return 0.0 if remaining < 1e-9 else remaining
 
     def row_for(time: int) -> int:
         """The spreadsheets' row for `time`."""
@@ -1042,9 +1051,7 @@ def calc_workbook(
             off_rates.append(off_rate)
         total_pax_on_platform += sum(off_rates)
         arriving_pax_waiting_on_plat += sum(off_rates)
-        walking_to = [
-            sum(reaching[i] for reaching in walking.values()) for i in range(len(params.vces))
-        ]
+        walking_to = list(walking_totals)
         still_alighting = arriving_pax_waiting_on_plat
         for train in trains:
             arrival_time = arrival_times[train]
@@ -1067,12 +1074,15 @@ def calc_workbook(
                 # Spread across the VCEs in proportion to their widths.
                 for i, vce in enumerate(params.vces):
                     walking[time_after][i] += alighting * vce.width / params.total_vce_width
+                    walking_totals[i] += alighting * vce.width / params.total_vce_width
                 continue
             i = choose_vce(params, door, vce_queues, walking_to, directions, vce_capacities)
             walking[time_after + door.walking_times[i]][i] += alighting
+            walking_totals[i] += alighting
             walking_to[i] += alighting
         for i, reaching in enumerate(walking.pop(time_after, [])):
             vce_queues[i] += reaching
+            walking_totals[i] = subtract(walking_totals[i], reaching)
         vce_up_rates = [
             platform_clearance(queue, vce.width, assumptions)
             for vce, queue in zip(params.vces, vce_queues, strict=True)
@@ -1110,12 +1120,14 @@ def calc_workbook(
                     continue
                 car = choose_car(params, cars, car_loads[train], i)
                 boarders_walking[time_after + cars[car].walking_times[i]][train][car] += rate
+                boarders_walking_totals[train] += rate
                 car_loads[train][car] += rate
         for train, reaching in enumerate(
             boarders_walking.pop(time_after, [[0.0 for _ in cars] for _ in trains])
         ):
             for car, pax in enumerate(reaching):
                 car_waiting[train][car] += pax
+                boarders_walking_totals[train] = subtract(boarders_walking_totals[train], pax)
         for train in trains:
             boarders_on_plat[train] = sum(car_waiting[train])
             total_pax_on_platform += plat_ingress_rates[train]
@@ -1182,10 +1194,7 @@ def calc_workbook(
         if (
             summary.boarded_time is None
             and time_after >= max(release_times)
-            and sum(boarders_upstairs)
-            + sum(boarders_on_plat)
-            + sum(sum(map(sum, walking_to_cars)) for walking_to_cars in boarders_walking.values())
-            < 1
+            and sum(boarders_upstairs) + sum(boarders_on_plat) + sum(boarders_walking_totals) < 1
         ):
             summary.boarded_time = time_after
         for train in trains:
