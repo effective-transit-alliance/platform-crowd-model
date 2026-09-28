@@ -721,15 +721,6 @@ def penn_reconstruction_platform_3_vces() -> tuple[Vce, ...]:
     )
 
 
-def pooled_vces(total_width: float) -> tuple[Vce, ...]:
-    """
-    A single VCE standing in for all of a platform's VCEs, as one pooled queue.
-    Per the ETA report, `total_width` excludes one VCE per platform,
-    e.g. an escalator running the other way.
-    """
-    return (Vce(name="All VCEs", width=total_width),)
-
-
 @dataclass
 class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
@@ -751,7 +742,13 @@ class Params:
     """The VCEs (vertical circulation elements) going upstairs."""
 
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
-    """Trains arriving, alternating between the platform's two tracks."""
+    """Trains arriving, alternating between the platform's tracks."""
+
+    tracks: Annotated[int, Field(name="Tracks", units="track")] = 2
+    """
+    Tracks the platform serves: 2 for an island platform,
+    or 1 for platform 9, which only serves track 17.
+    """
 
     platform_east_end: float | None = None
     """
@@ -1015,10 +1012,10 @@ def calc_workbook(
     car_loads = [list(waiting) for waiting in car_waiting]
     """Each train's passengers boarded on, waiting for, or walking to each car."""
     arrival_times: list[int | None] = [
-        train * params.headway if train < 2 else None for train in trains
+        train * params.headway if train < params.tracks else None for train in trains
     ]
     """
-    When each train arrives: the first two as scheduled,
+    When each train arrives: the first on each track as scheduled,
     and each later one once it's scheduled and the train before it on its track has departed.
     """
     remaining_arrivals = [float(params.arriving_pax_per_train) for _ in trains]
@@ -1301,8 +1298,10 @@ def calc_workbook(
             ):
                 summary.dwells[train] = time_after - arrival_time
                 # The next train on its track arrives once it's scheduled and this one departs.
-                if train + 2 < params.trains:
-                    arrival_times[train + 2] = max((train + 2) * params.headway, time_after)
+                if train + params.tracks < params.trains:
+                    arrival_times[train + params.tracks] = max(
+                        (train + params.tracks) * params.headway, time_after
+                    )
         summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
         aboard = sum(
             remaining_arrivals[train] + new_pax[train]
@@ -1699,20 +1698,10 @@ def main(
         vces=platform_vces(6),
         platform_east_end=849,
     )
-    params_p10120 = Params(
-        platform=10,
-        platform_max_cars=12,
-        headway=CLOSE_HEADWAY,
-        vces=pooled_vces(70.58),
-    )
-    params_p11120 = Params(
-        platform=11,
-        platform_max_cars=12,
-        headway=CLOSE_HEADWAY,
-        vces=pooled_vces(43.58),
-    )
 
-    def platform_scenarios(platform: int, max_cars: int, east_end: float) -> list[Params]:
+    def platform_scenarios(
+        platform: int, max_cars: int, east_end: float, tracks: int = 2
+    ) -> list[Params]:
         """`platform` with each VCE's position, at 0-, 2-, and 5-minute headways."""
         return [
             Params(
@@ -1721,6 +1710,7 @@ def main(
                 headway=headway,
                 vces=platform_vces(platform),
                 platform_east_end=east_end,
+                tracks=tracks,
             )
             for headway in (0, CLOSE_HEADWAY, NORMAL_HEADWAY)
         ]
@@ -1733,14 +1723,14 @@ def main(
     params_p5 = platform_scenarios(5, max_cars=17, east_end=818)
     params_p7 = platform_scenarios(7, max_cars=17, east_end=820)
     params_p8 = platform_scenarios(8, max_cars=13, east_end=778)
+    # Platforms 9 to 11's east ends are from the Master Plan's platform outlines.
+    params_p9 = platform_scenarios(9, max_cars=12, east_end=882, tracks=1)
+    params_p10 = platform_scenarios(10, max_cars=12, east_end=965)
+    params_p11 = platform_scenarios(11, max_cars=12, east_end=965)
     params_p30 = dataclasses.replace(params_p3120, headway=0)
     params_p3recon0 = dataclasses.replace(params_p3recon120, headway=0)
     params_p6120 = dataclasses.replace(params_p60, headway=CLOSE_HEADWAY)
     params_p6300 = dataclasses.replace(params_p60, headway=NORMAL_HEADWAY)
-    params_p100 = dataclasses.replace(params_p10120, headway=0)
-    params_p10300 = dataclasses.replace(params_p10120, headway=NORMAL_HEADWAY)
-    params_p110 = dataclasses.replace(params_p11120, headway=0)
-    params_p11300 = dataclasses.replace(params_p11120, headway=NORMAL_HEADWAY)
     with ProcessPoolExecutor() as executor:
         rows = list(
             executor.map(
@@ -1761,8 +1751,9 @@ def main(
                         [params_p60, params_p6120, params_p6300],
                         params_p7,
                         params_p8,
-                        [params_p100, params_p10120, params_p10300],
-                        [params_p110, params_p11120, params_p11300],
+                        params_p9,
+                        params_p10,
+                        params_p11,
                     ]
                 ],
             )

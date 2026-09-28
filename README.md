@@ -3,7 +3,7 @@
 This repo is for modeling platform crowding and alighting and boarding of trains,
 specifically at NY Penn Station.
 [`vce_two_trains_alight_and_board.py`](./vce_two_trains_alight_and_board.py)
-models a single island platform with two tracks.
+models a single platform with its tracks.
 
 ## Running
 
@@ -84,7 +84,7 @@ The sources cited below are:
 - [The Transit Capacity and Quality of Service Manual (TCQSM), 3rd edition, chapter 10](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf),
   TCRP Report 165 (2013).
 
-The model simulates one island platform served by two tracks, one second at a time,
+The model simulates one platform, served by two tracks or, on platform 9, one, one second at a time,
 and tracks four groups of passengers:
 
 - Passengers aboard each train
@@ -117,7 +117,7 @@ each using the passenger counts left by the one before.
      ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)),
      as long as anyone is queued
      ([TCQSM, p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
-   - On platforms 3 and 6, each VCE's width and position are from
+   - Each VCE's width and position are from
      [`data/estimated_vce_widths.csv`](./data/estimated_vce_widths.csv)
      (see [Estimated Widths](#estimated-widths)).
      - The train's doors are spread evenly along it,
@@ -139,22 +139,17 @@ each using the passenger counts left by the one before.
        then reverse to go down once fewer than 10% of a train's arriving passengers
        are left on the platform or aboard trains that have arrived,
        and nobody is queued at or walking to them.
-   - Elsewhere, only each platform's total VCE width is known, from the ETA report.
-     - It's treated as one VCE, excluding one VCE per platform, as the ETA report did.
-     - Arriving passengers queue at it as soon as they alight.
-     - So there's no gradual taper: the stairs stay at capacity until the platform is clear.
    - The report's "taper time" is when the remaining arriving passengers fit in the stair queues,
      20 ft of queue in front of the VCEs at 5 sq ft/pax
      (the TCQSM's stair queuing space).
-     With one pooled VCE, it's always about 15 s before the clear time,
-     but it's kept in the results table to compare with the report.
+     It's kept in the results table to compare with the report.
 3. **Coming downstairs.**
    Departing passengers queue upstairs and come down to the platform.
    - The trains' passengers split each VCE's width
      in proportion to how many of each are still upstairs,
      and each train's share of a VCE carries the same share of its upward flow.
    - Nobody comes down a VCE while its upward flow is worse than LOS C, 10 pax/min/ft.
-   - On platforms 3 and 6, each walks at 250 ft/min to the nearest of their train's cars,
+   - Each walks at 250 ft/min to the nearest of their train's cars,
      unless it's close to full, i.e. 90% of its 135 seats are boarded, waiting, or walking to it,
      in which case they go to the nearest car that isn't.
    - Otherwise, both directions share LOS E capacity, 17 pax/min/ft,
@@ -163,7 +158,7 @@ each using the passenger counts left by the one before.
    Departing passengers on the platform board a train
    once every arriving passenger has alighted from it,
    at 1 pax/s per single-door equivalent.
-   On platforms 3 and 6, each car boards only its own waiting passengers, through its own 4 doors.
+   Each car boards only its own waiting passengers, through its own 4 doors.
 
 ### Crowding
 
@@ -182,8 +177,8 @@ each using the passenger counts left by the one before.
 - Each train has 400 departing passengers, all waiting upstairs,
   who start coming down 2 minutes before it's scheduled.
 - On every platform, 4 trains are scheduled 0, 2, or 5 minutes apart,
-  alternating between the platform's two tracks,
-  so each train after the first two can only arrive
+  alternating between the platform's two tracks, or all on platform 9's one,
+  so each train after the first on each track can only arrive
   once the train before it on its track has departed at the end of its dwell.
   0 minutes apart, the first two arrive together and the last two as soon as they depart.
 
@@ -213,7 +208,8 @@ or **unclear** (it could go either way).
 
 ### Platform
 
-- **Neutral:** The platform is a single island platform serving two tracks.
+- **Neutral:** The platform is a single island platform serving two tracks,
+  except platform 9, which serves one.
 - **Optimistic:** 75% of its area is usable, the rest taken by columns, stairs, and other obstructions
   (see [Usable Platform Area](#usable-platform-area)).
 - **Optimistic:** Passengers are spread evenly over the whole usable area,
@@ -224,17 +220,17 @@ or **unclear** (it could go either way).
 ### Stairs and Escalators
 
 - **Pessimistic:** All VCEs are treated as stairs, even escalators, which have higher capacities.
-- **Unclear:** On platforms 3 and 6, which escalators run which way isn't known,
+- **Unclear:** Which escalators run which way isn't known,
   so they follow the rules above.
   Which escalator goes down is based on AM peak demand toward 7th Avenue,
   and when the extra ones reverse isn't from any source.
-  Elsewhere, one VCE per platform is excluded (pessimistic), as the ETA report did.
-- **Optimistic:** On platforms other than 3 and 6, all VCEs act as one pooled queue
-  (see [Stairs Are One Pooled Queue](#stairs-are-one-pooled-queue)).
-- **Unclear:** Most of platforms 3 and 6's VCE widths are estimated from a drawing
+- **Unclear:** Most VCEs' widths are estimated from a drawing,
+  or on platforms 9 to 11, their positions from a schematic map,
+  and some of their VCEs may be missing (pessimistic)
   (see [Estimated Widths](#estimated-widths)).
 - **Optimistic:** Arriving passengers know which VCE is quickest,
-  with no preference for any exit, e.g. toward 7th Avenue.
+  with no preference for any exit, e.g. toward 7th Avenue
+  (see [Passengers Only Prefer the Quickest VCE](#passengers-only-prefer-the-quickest-vce)).
 - **Optimistic:** Trains stop at the best position on the platform for their dwells,
   with their doors spread evenly along their length.
 - **Unclear:** Stair capacity is linear in width,
@@ -246,12 +242,9 @@ or **unclear** (it could go either way).
 - **Optimistic:** Arriving passengers walk to the VCEs at 250 ft/min,
   though the TCQSM notes people walk slower in crowds with less than 25 sq ft/pax
   ([Exhibit 10-10, p. 10-21](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=25)).
-  On platforms without each VCE's position, walking takes no time.
-- **Unclear:** On platforms 3 and 6, departing passengers coming downstairs
+- **Unclear:** Departing passengers coming downstairs
   walk to the nearest car until it's close to full, at 90% of its seats,
   which isn't from any source.
-  On platforms without each VCE's position, walking takes no time,
-  and every door boards from one shared pool of waiting passengers.
 - **Optimistic:** The concourse upstairs never backs up, so the stairs always discharge.
 
 ### Trains
@@ -310,32 +303,18 @@ The FRA attributes long clearance times to
 queues at the base of VCEs, uneven use of VCEs, and platform clutter
 reducing the usable width
 ([p. 3-33](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=44)).
-This model only captures the first two, and only on platforms 3 and 6.
+This model only captures the first two.
 
-### Stairs Are One Pooled Queue
+### Passengers Only Prefer the Quickest VCE
 
-Except on platforms 3 and 6,
-like the TCQSM and NFPA 130 for platform clearance
-([TCQSM, p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)),
-the model treats all of the VCEs as one queue discharging at capacity until it's empty.
-This is optimistic for a whole platform:
-
-- **Stairs empty unevenly.**
-  Stairs near the ends of the platform, or far from the busiest doors,
-  run out of passengers while others still have a queue,
-  so the total flow drops below capacity before the platform clears.
-  This is likely the model's largest optimistic bias.
-- **Passengers prefer some exits**, e.g. toward 7th Avenue, as the ETA report notes,
-  concentrating queues at fewer stairs.
-- **Walking from the doors to the stairs takes no time.**
-  This only shifts the results by a few seconds, but also ignores
-  passengers crossing through crowds of waiting passengers.
-
-Platforms 3 and 6 model each VCE's own queue with walking distances,
-which fixes the first and last.
-With 2-minute headways, platform 3 clears 44 s later than as one pooled queue,
-and platform 6 98 s later.
-The other platforms need each VCE's position and width.
+Each VCE has its own queue, with walking distances to it,
+so stairs near the ends of the platform or far from the busiest doors can run dry
+while others still have a queue.
+But passengers only choose the VCE they can go up soonest,
+though they prefer some exits, e.g. toward 7th Avenue, as the ETA report notes,
+concentrating queues at fewer stairs (optimistic).
+Before each VCE had its own queue, e.g. on platform 3 with 2-minute headways,
+one pooled queue cleared 44 s sooner.
 
 ### Platform Crowding Is Graded Against the Whole Platform
 
@@ -362,12 +341,12 @@ So the usable area, and the space per passenger, are likely overstated (optimist
 
 ### Total VCE Width
 
-Except on platforms 3 and 6,
-each platform's `total_vce_width` comes from the ETA report, and its source is unknown.
-Platforms 10 and 11's match the
+The ETA report's total VCE widths, whose source is unknown,
+are only used for how much Penn Reconstruction widens platform 3's VCEs, 2.25 ft.
+Its platforms 10 and 11's match the
 [Moynihan Station EA's](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22)
 2008 per-platform stair capacities divided by 17 pax/min/ft,
-but platform 3's matches the EA's platform 1, not platform 3,
+but its platform 3's matches the EA's platform 1, not platform 3,
 and they probably don't reflect the VCEs added since,
 with the West End Concourse's expansion and Moynihan Train Hall.
 
@@ -424,7 +403,7 @@ though it's also possible that the directory, a schematic wayfinding map,
 shows some stairs more than once
 (see [Sources and Their Dates](#sources-and-their-dates)).
 
-This data can't yet replace `total_vce_width`:
+This data couldn't replace the ETA report's total VCE widths on its own:
 
 - **It doesn't fully describe the station today.**
   Each alternative replaces most existing VCEs,
@@ -437,16 +416,16 @@ This data can't yet replace `total_vce_width`:
   like the ETA report's exclusion of one VCE per platform,
   but platforms 4 to 8 exclude nothing,
   and Alternative 2's platforms 2 and 3 exclude a stair.
-- **It doesn't match `total_vce_width`.**
+- **It doesn't match the ETA report's total VCE widths.**
   E.g. platform 3's VCEs sum to 412 to 458 in. across the alternatives, even with their new VCEs,
-  but the model uses 42.5 ft (510 in.) today,
-  and platform 6's sum to 437 to 458 in., but the model uses 48.168 ft (578 in.).
-  The source of the model's widths is unknown.
+  but the ETA report used 42.5 ft (510 in.) today,
+  and platform 6's sum to 437 to 458 in., but the ETA report used 48.168 ft (578 in.).
+  The source of the ETA report's widths is unknown.
   Platform 3's 5 existing VCEs in the Master Plan total 233 in. (19.4 ft):
   3 stairs (165 in.) and 2 escalators (68 in.).
   At 17 pax/min/ft for the stairs and typical escalator capacities,
   that's roughly the Moynihan Station EA's 437 pax/min for platform 3 in 2008,
-  while the model's 42.5 ft is 722 pax/min, the EA's figure for platform 1.
+  while the ETA report's 42.5 ft is 722 pax/min, the EA's figure for platform 1.
   But the Master Plan probably doesn't include the West End Concourse's VCEs,
   and the EA's data predates Moynihan Train Hall,
   so platform 3's total width today is probably more than 19.4 ft.
@@ -708,9 +687,11 @@ and 12.04 pax/s for 0:32, tapering at 6:04, without it.
 ### Current Results
 
 This table is generated by `./vce_two_trains_alight_and_board.py --update-readme`.
-Platforms 10 and 11 don't have each VCE's position yet,
-so their VCEs are one pooled queue,
-which clears sooner (see [Stairs Are One Pooled Queue](#stairs-are-one-pooled-queue)).
+Platforms 9 to 11's VCEs are only estimated from NJ Transit's station directory
+(see [Estimated Widths](#estimated-widths)).
+The directory doesn't show every VCE, and the Master Plan has none on platform 11,
+so its VCEs total only 27.9 ft, much less than the ETA report's 43.58 ft,
+which likely makes it look much worse than it is.
 Penn Reconstruction's new VCEs on platform 3 aren't known,
 so they're one stair in the middle of the platform,
 as wide as the ETA report's total VCE width with it is wider than without it, 2.25 ft.
@@ -728,8 +709,9 @@ as wide as the ETA report's total VCE width with it is wider than without it, 2.
 | 6 | 0:00 | 30.83 ft | 0:00, 0:00, 7:25, 7:25 | 7:25, 7:25, 1:05, 1:05 | 14:01 | 15:02 | 8:30 | 13:00 | 7.91 | 3948 | 2.21 (D) | 8:58 ✗ |
 | 7 | 0:00 | 32.75 ft | 0:00, 0:00, 6:31, 6:31 | 6:31, 6:31, 1:04, 1:04 | 13:49 | 14:36 | 7:35 | 10:56 | 8.36 | 4062 | 2.13 (D) | 8:37 ✗ |
 | 8 | 0:00 | 36.25 ft | 0:00, 0:00, 5:41, 5:41 | 5:41, 5:41, 1:00, 1:00 | 12:23 | 13:14 | 6:41 | 9:36 | 9.37 | 4116 | 2.87 (D) | 7:49 ✗ |
-| 10 | 0:00 | 70.58 ft | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 5:09 | 5:24 | 1:26 | 5:24 | 20.00 | 5740 | 2.36 (D) | 5:23 ✗ |
-| 11 | 0:00 | 43.58 ft | 0:00, 0:00, 4:31, 4:31 | 4:31, 4:31, 0:43, 0:43 | 8:39 | 8:54 | 5:14 | 8:44 | 12.35 | 4314 | 3.88 (E) | 6:26 ✗ |
+| 9 | 0:00 | 40.08 ft | 0:00, 2:31, 3:34, 4:37 | 2:31, 1:03, 1:03, 1:03 | 8:18 | 8:54 | 5:40 | 6:35 | 11.36 | 2663 | 1.99 (D) | 4:51 ✗ |
+| 10 | 0:00 | 64.5 ft | 0:00, 0:00, 0:52, 0:52 | 0:52, 0:52, 0:52, 0:52 | 6:00 | 6:49 | 1:44 | 5:39 | 17.38 | 5798 | 2.38 (D) | 6:10 ✗ |
+| 11 | 0:00 | 27.92 ft | 0:00, 0:00, 8:39, 8:39 | 8:39, 8:39, 1:05, 1:05 | 15:16 | 15:52 | 9:44 | 12:50 | 7.91 | 3846 | 3.46 (D) | 9:42 ✗ |
 | 1 | 2:00 | 34.25 ft | 0:00, 2:00, 4:00, 8:24 | 1:05, 6:24, 4:25, 1:04 | 10:30 | 11:20 | 9:28 | 7:51 | 8.83 | 1366 | 1.30 (C) | 3:50 ✓ |
 | 2 | 2:00 | 35.92 ft | 0:00, 2:00, 4:00, 8:06 | 1:04, 6:06, 4:06, 1:03 | 10:01 | 10:43 | 9:09 | 7:57 | 9.37 | 1343 | 1.36 (C) | 2:55 ✓ |
 | 3 | 2:00 | 43 ft | 0:00, 2:00, 4:00, 7:14 | 0:59, 5:14, 3:15, 1:00 | 9:00 | 9:39 | 8:14 | 6:21 | 11.31 | 1424 | 1.12 (C) | 3:11 ✓ |
@@ -739,8 +721,9 @@ as wide as the ETA report's total VCE width with it is wider than without it, 2.
 | 6 | 2:00 | 30.83 ft | 0:00, 2:00, 4:00, 11:40 | 1:05, 9:40, 7:41, 1:05 | 14:50 | 15:27 | 12:45 | 13:04 | 7.91 | 2780 | 1.56 (D) | 6:49 ✗ |
 | 7 | 2:00 | 32.75 ft | 0:00, 2:00, 4:00, 11:05 | 1:05, 9:05, 7:05, 1:05 | 14:04 | 14:32 | 12:10 | 12:02 | 8.36 | 2670 | 1.40 (C) | 6:13 ✗ |
 | 8 | 2:00 | 36.25 ft | 0:00, 2:00, 4:00, 10:02 | 1:05, 8:02, 6:02, 1:05 | 12:52 | 13:35 | 11:07 | 9:42 | 9.37 | 2394 | 1.67 (D) | 5:07 ✗ |
-| 10 | 2:00 | 70.58 ft | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 7:06 | 7:21 | 6:43 | 5:24 | 20.00 | 1360 | 0.56 (A) | 1:43 ✓ |
-| 11 | 2:00 | 43.58 ft | 0:00, 2:00, 4:00, 8:10 | 0:43, 6:10, 4:10, 0:43 | 10:07 | 10:22 | 10:22 | 8:44 | 12.35 | 1613 | 1.45 (C) | 2:46 ✓ |
+| 9 | 2:00 | 40.08 ft | 0:00, 2:00, 5:55, 6:59 | 1:01, 3:55, 1:04, 1:03 | 9:43 | 10:17 | 8:02 | 6:15 | 11.36 | 2017 | 1.51 (C) | 3:50 ✓ |
+| 10 | 2:00 | 64.5 ft | 0:00, 2:00, 4:00, 6:00 | 0:52, 1:01, 0:59, 0:59 | 7:23 | 8:17 | 6:59 | 3:33 | 17.38 | 1555 | 0.64 (A) | 2:00 ✓ |
+| 11 | 2:00 | 27.92 ft | 0:00, 2:00, 4:00, 13:09 | 1:05, 11:09, 9:09, 1:05 | 16:23 | 16:58 | 14:14 | 12:29 | 7.91 | 2713 | 2.44 (D) | 7:05 ✗ |
 | 1 | 5:00 | 34.25 ft | 0:00, 5:00, 10:00, 15:00 | 0:50, 0:50, 0:50, 0:50 | 17:04 | 17:46 | 15:50 | 7:12 | 8.83 | 1325 | 1.26 (C) | 3:04 ✓ |
 | 2 | 5:00 | 35.92 ft | 0:00, 5:00, 10:00, 15:00 | 0:52, 0:52, 0:52, 0:52 | 16:55 | 17:40 | 15:52 | 7:20 | 9.37 | 1304 | 1.31 (C) | 2:54 ✓ |
 | 3 | 5:00 | 43 ft | 0:00, 5:00, 10:00, 15:00 | 0:59, 0:59, 0:59, 0:59 | 16:48 | 17:24 | 15:59 | 4:56 | 11.31 | 1380 | 1.09 (C) | 2:36 ✓ |
@@ -750,8 +733,9 @@ as wide as the ETA report's total VCE width with it is wider than without it, 2.
 | 6 | 5:00 | 30.83 ft | 0:00, 5:00, 10:00, 15:00 | 1:05, 1:00, 1:00, 1:00 | 18:10 | 18:40 | 16:00 | 11:56 | 7.91 | 1762 | 0.99 (B) | 4:20 ✗ |
 | 7 | 5:00 | 32.75 ft | 0:00, 5:00, 10:00, 15:00 | 1:05, 0:56, 0:56, 0:56 | 18:00 | 18:31 | 15:56 | 11:04 | 8.36 | 1747 | 0.92 (B) | 4:03 ✗ |
 | 8 | 5:00 | 36.25 ft | 0:00, 5:00, 10:00, 15:00 | 1:05, 0:58, 0:58, 0:58 | 17:57 | 18:44 | 15:58 | 7:36 | 9.37 | 1715 | 1.20 (C) | 3:37 ✓ |
-| 10 | 5:00 | 70.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:06 | 16:21 | 15:43 | 5:24 | 20.00 | 1340 | 0.55 (A) | 1:42 ✓ |
-| 11 | 5:00 | 43.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:57 | 17:12 | 15:43 | 8:44 | 12.35 | 1600 | 1.44 (C) | 2:45 ✓ |
+| 9 | 5:00 | 40.08 ft | 0:00, 5:00, 10:00, 15:00 | 1:01, 1:01, 1:01, 1:01 | 16:48 | 17:18 | 16:01 | 5:16 | 11.36 | 1394 | 1.04 (B) | 2:47 ✓ |
+| 10 | 5:00 | 64.5 ft | 0:00, 5:00, 10:00, 15:00 | 0:52, 0:52, 0:52, 0:52 | 16:22 | 17:10 | 15:52 | 3:20 | 17.38 | 1471 | 0.60 (A) | 1:57 ✓ |
+| 11 | 5:00 | 27.92 ft | 0:00, 5:00, 10:00, 15:00 | 1:05, 1:05, 1:05, 1:05 | 18:14 | 18:49 | 16:05 | 11:20 | 7.91 | 1772 | 1.59 (D) | 4:47 ✗ |
 <!-- results-table:end -->
 
 ### History
