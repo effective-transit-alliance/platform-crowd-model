@@ -122,7 +122,8 @@ each using the passenger counts left by the one before.
      (see [Estimated Widths](#estimated-widths)).
      - The train's doors are spread evenly along it,
        and it stops wherever on the platform the arriving passengers clear soonest,
-       trying every position 5 ft apart.
+       trying every position a car length (85 ft) apart,
+       then every position 5 ft apart within a car length of the best of those.
      - Each second, each door's alighting passengers walk to the quickest VCE:
        the one with the least walking time plus waiting time
        for everyone already queued or walking there.

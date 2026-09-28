@@ -1453,6 +1453,12 @@ def update_readme_results(table: str) -> None:
 STOPPING_POSITION_STEP = 5
 """Distance (ft) between the stopping positions `best_stopping_position` tries."""
 
+COARSE_STOPPING_POSITION_STEP = 85
+"""
+Distance (ft) between the stopping positions `best_stopping_position` tries first,
+a car's length, before trying every `STOPPING_POSITION_STEP` around the best of them.
+"""
+
 
 def best_stopping_position(params: Params) -> Params:
     """
@@ -1479,7 +1485,19 @@ def best_stopping_position(params: Params) -> Params:
             never if summary.boarded_time is None else summary.boarded_time,
         )
 
-    return min(candidates, key=score)
+    scores: dict[float, tuple[float, float]] = {}
+
+    def cached_score(candidate: Params) -> tuple[float, float]:
+        assert candidate.train_east_end is not None
+        if candidate.train_east_end not in scores:
+            scores[candidate.train_east_end] = score(candidate)
+        return scores[candidate.train_east_end]
+
+    # Try every car length first, then every `STOPPING_POSITION_STEP` within a car length of it.
+    coarse_step = COARSE_STOPPING_POSITION_STEP // STOPPING_POSITION_STEP
+    coarse = min(candidates[::coarse_step], key=cached_score)
+    i = candidates.index(coarse)
+    return min(candidates[max(0, i - coarse_step) : i + coarse_step + 1], key=cached_score)
 
 
 def run_model(params: Params, spreadsheets: bool) -> str:
