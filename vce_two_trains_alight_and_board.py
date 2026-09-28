@@ -834,12 +834,12 @@ RESULTS_COLUMNS = [
     "Platform",
     "Headway",
     "VCE width",
-    "Max up rate (pax/s)",
-    "Time at capacity",
+    "Dwell",
     "Taper time",
     "Clear time",
     "Boarded time",
-    "Dwell",
+    "Time at capacity",
+    "Max up rate (pax/s)",
     "Max pax on platform",
     "Min space/pax (sq ft)",
 ]
@@ -887,10 +887,10 @@ def run_model(params: Params, spreadsheets: bool) -> str:
 
     return (
         f"| {params.filename_prefix} | {fmt_time(headway)} | {params.total_vce_width} ft"
-        f" | {summary.max_up_rate:.2f} | {fmt_time(summary.secs_at_capacity)}"
+        f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
         f" | {fmt_time(summary.boarded_time)}"
-        f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
+        f" | {fmt_time(summary.secs_at_capacity)} | {summary.max_up_rate:.2f}"
         f" | {summary.max_pax_on_platform:.0f} | {summary.min_space_per_pax:.1f}"
         f" ({platform_crowd_los(summary.min_space_per_pax)}) |"
     )
