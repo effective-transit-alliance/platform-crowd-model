@@ -464,7 +464,7 @@ class Params:
     vce_widths: NDArray[np.floating]
     """Widths (in feet) of each VCE (vertical circulation element)."""
 
-    trains: Annotated[int, Field(name="Trains", units="train")] = 2
+    trains: Annotated[int, Field(name="Trains", units="train")] = 4
     """Trains arriving, alternating between the platform's two tracks."""
 
     assumptions: Assumptions = dataclasses.field(default_factory=Assumptions)
@@ -594,6 +594,9 @@ class Summary:
     clear_time: int | None
     """First second after the last arrival when all arriving passengers have left the platform."""
 
+    arrival_times: list[int | None]
+    """When each train arrives (s), or `None` if it doesn't within the simulation."""
+
     dwells: list[int | None]
     """
     Each train's dwell (s):
@@ -691,6 +694,7 @@ def calc_workbook(
         secs_at_capacity=0,
         taper_time=None,
         clear_time=None,
+        arrival_times=arrival_times,
         dwells=[None for _ in trains],
         boarded_time=None,
         max_pax_on_platform=total_pax_on_platform,
@@ -1011,6 +1015,7 @@ RESULTS_COLUMNS = [
     "Platform",
     "Headway",
     "VCE width",
+    "Arrivals",
     "Dwell",
     "Taper time",
     "Clear time",
@@ -1064,6 +1069,7 @@ def run_model(params: Params, spreadsheets: bool) -> str:
 
     return (
         f"| {params.name} | {fmt_time(headway)} | {params.total_vce_width} ft"
+        f" | {', '.join(fmt_time(arrival) for arrival in summary.arrival_times)}"
         f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
         f" | {fmt_time(summary.boarded_time)}"
