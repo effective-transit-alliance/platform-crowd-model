@@ -696,6 +696,31 @@ def choose_vce(
     return min(going_up, key=time_to_go_up)
 
 
+PENN_RECONSTRUCTION_PLATFORM_3_EXTRA_WIDTH = 44.75 - 42.5
+"""
+How much wider platform 3's VCEs are after Penn Reconstruction, in total (ft),
+from the ETA report's total VCE widths with and without it.
+"""
+
+
+def penn_reconstruction_platform_3_vces() -> tuple[Vce, ...]:
+    """
+    Platform 3's VCEs after Penn Reconstruction:
+    its existing VCEs, plus one stair as wide as `PENN_RECONSTRUCTION_PLATFORM_3_EXTRA_WIDTH`
+    in the middle of the platform, standing in for the new VCEs,
+    whose positions and widths aren't known.
+    """
+    return (
+        *platform_vces(3),
+        Vce(
+            name="P3-Reconstruction",
+            width=PENN_RECONSTRUCTION_PLATFORM_3_EXTRA_WIDTH,
+            west_end=245,
+            east_end=259,
+        ),
+    )
+
+
 def pooled_vces(total_width: float) -> tuple[Vce, ...]:
     """
     A single VCE standing in for all of a platform's VCEs, as one pooled queue.
@@ -1656,14 +1681,16 @@ def main(
         platform=3,
         platform_max_cars=10,
         headway=CLOSE_HEADWAY,
-        vces=pooled_vces(44.75),
+        vces=penn_reconstruction_platform_3_vces(),
+        platform_east_end=719,
     )
     params_p3recon300 = Params(
         modifier="recon",
         platform=3,
         platform_max_cars=10,
         headway=NORMAL_HEADWAY,
-        vces=pooled_vces(44.75),
+        vces=penn_reconstruction_platform_3_vces(),
+        platform_east_end=719,
     )
     params_p60 = Params(
         platform=6,
