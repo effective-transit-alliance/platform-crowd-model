@@ -9,6 +9,7 @@ import csv
 import dataclasses
 import functools
 import itertools
+import math
 import typing
 from collections import defaultdict
 from collections.abc import Generator
@@ -31,6 +32,20 @@ if TYPE_CHECKING:
 SECONDS_PER_MINUTE = 60
 
 SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
+
+NFPA_130_EXIT_FLOW = 1.41 * 12
+"""
+Exit capacity of stairs and stopped escalators for evacuating a platform (pax/min/ft),
+1.41 pax/min per inch of width in NFPA 130's 2010 edition.
+TCQSM p. 10-51: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
+"""
+
+NFPA_130_PLATFORM_EVACUATION_TIME = 240
+"""
+Time within which NFPA 130 requires a platform's occupants,
+including those on trains, to be able to evacuate it (s).
+TCQSM p. 10-3: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=7
+"""
 
 CLOSE_HEADWAY = 120
 """Time between two trains' arrivals in the closely spaced scenarios (s), from the ETA report."""
@@ -189,18 +204,6 @@ class Assumptions:
     The ETA report says there's no bidirectional flow on stairs worse than LOS C,
     i.e. above the LOS C/D boundary, 10 pax/min/ft.
     Otherwise, both directions share `stair_capacity`.
-    """
-
-    emergency_stair_flow: Annotated[
-        float, Field(name="Emergency Stair Flow", units="pax/min/ft")
-    ] = 19
-    """
-    Stair flow used only for the emergency egress time.
-    Fruin's maximum ascending stair flow is 18.9
-    (p. 9: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9),
-    more than both `stair_capacity` and NFPA 130's 16.9
-    (TCQSM p. 10-79: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83),
-    so the emergency egress time is a lower bound.
     """
 
     platform_los_min_space: tuple[tuple[str, float], ...] = (
@@ -761,21 +764,18 @@ class Params:
         return sum(vce.width for vce in self.vces)
 
     @property
-    def los_f_egress_rate(
+    def nfpa_130_exit_capacity(
         self,
-    ) -> Annotated[float, Field(name="LOS F Egress Rate", units="pax/s")]:
-        """LOS (level of service) F egress rate (in pax/s)."""
-        return stair_flow(self.assumptions.emergency_stair_flow, self.total_vce_width)
-
-    @property
-    def emergency_egress_time(
-        self,
-    ) -> Annotated[float, Field(name="Emergency Egress Time", units="s")]:
+    ) -> Annotated[float, Field(name="NFPA 130 Exit Capacity", units="pax/s")]:
         """
-        Time (in seconds) for everyone on both trains to go upstairs
-        at `Assumptions.emergency_stair_flow`.
+        How fast the VCEs can evacuate the platform under NFPA 130 (in pax/s),
+        at `NFPA_130_EXIT_FLOW`, with the widest escalator out of service,
+        and escalators providing at most half of the capacity.
+        TCQSM p. 10-52: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=56
         """
-        return 2 * self.arriving_pax_per_train / self.los_f_egress_rate
+        stairs = sum(vce.width for vce in self.vces if vce.type != "escalator")
+        escalators = sorted(vce.width for vce in self.vces if vce.type == "escalator")[:-1]
+        return stair_flow(NFPA_130_EXIT_FLOW, stairs + min(sum(escalators), stairs))
 
 
 def writable_cell(sheet: Worksheet, row: int, column: int) -> Cell:
@@ -884,6 +884,12 @@ class Summary:
 
     max_pax_on_platform: float
     """Most passengers on the platform at once."""
+
+    max_occupants: float
+    """
+    Most passengers on the platform or aboard its trains at once,
+    counting trains from their arrival until they depart.
+    """
 
     min_space_per_pax: float
     """Least platform space per passenger (sq ft)."""
@@ -1009,6 +1015,7 @@ def calc_workbook(
         dwells=[None for _ in trains],
         boarded_time=None,
         max_pax_on_platform=total_pax_on_platform,
+        max_occupants=total_pax_on_platform,
         min_space_per_pax=space_per_pax(total_pax_on_platform, eff_area),
     )
 
@@ -1225,6 +1232,14 @@ def calc_workbook(
                 if train + 2 < params.trains:
                     arrival_times[train + 2] = max((train + 2) * params.headway, time_after)
         summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
+        aboard = sum(
+            remaining_arrivals[train] + new_pax[train]
+            for train in trains
+            if (arrival_time := arrival_times[train]) is not None
+            and time_after >= arrival_time
+            and summary.dwells[train] is None
+        )
+        summary.max_occupants = max(summary.max_occupants, total_pax_on_platform + aboard)
         summary.min_space_per_pax = min(summary.min_space_per_pax, inst_crowding)
 
         for i, (queue, r_up) in enumerate(zip(vce_queues, vce_up_rates, strict=True)):
@@ -1419,11 +1434,6 @@ def calc_workbook(
         ),
         "V64",
     )
-    if print_time_series:
-        print(
-            f"LOS F egress rate is {params.los_f_egress_rate} pax/s. "
-            f"Emergency egress time is {params.emergency_egress_time} seconds."
-        )
     vce_list = wb.create_sheet("VCE List")
     vce_list.append(
         [
@@ -1457,6 +1467,7 @@ RESULTS_COLUMNS = [
     "Max up rate (pax/s)",
     "Max pax on platform",
     "Max density (pax/m²)",
+    "NFPA 130 evacuation",
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
@@ -1540,6 +1551,9 @@ def run_model(params: Params, spreadsheets: bool) -> str:
         )
     wb.close()
 
+    evacuation_time = math.ceil(summary.max_occupants / params.nfpa_130_exit_capacity)
+    evacuation_ok = "✓" if evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME else "✗"
+
     def fmt_time(t: int | None) -> str:
         """`t` seconds as `m:ss`."""
         if t is None:
@@ -1556,7 +1570,8 @@ def run_model(params: Params, spreadsheets: bool) -> str:
         f" | {fmt_time(summary.secs_at_capacity)} | {summary.max_up_rate:.2f}"
         f" | {summary.max_pax_on_platform:.0f}"
         f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
-        f" ({platform_crowd_los(summary.min_space_per_pax, params.assumptions)}) |"
+        f" ({platform_crowd_los(summary.min_space_per_pax, params.assumptions)})"
+        f" | {fmt_time(evacuation_time)} {evacuation_ok} |"
     )
 
 

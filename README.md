@@ -187,18 +187,21 @@ each using the passenger counts left by the one before.
   once the train before it on its track has departed at the end of its dwell.
   0 minutes apart, the first two arrive together and the last two as soon as they depart.
 
-### Emergency Egress Time
+### NFPA 130 Evacuation
 
-The model also computes an "emergency egress time":
-the time for everyone on both trains to go upstairs at 19 pax/min/ft.
+NFPA 130 requires enough exit capacity to evacuate a platform's occupants,
+including those on its trains, in 4 minutes or less
+([TCQSM p. 10-3](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=7)).
+The model checks this at the moment the most passengers are on the platform or aboard its trains,
+counting each train from its arrival until it departs.
 
-- That's Fruin's maximum ascending stair flow, 18.9 pax/min/ft
-  ([p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)),
-  reached at about 3 sq ft/pax, the edge of LOS F.
-- It's more than the 17 pax/min/ft LOS E capacity,
-  and more than NFPA 130's 1.41 pax/in/min, i.e. 16.9 pax/min/ft,
-  for evacuating up stairs ([TCQSM p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)).
-- It ignores walking time, so it's a lower bound.
+- Stairs and stopped escalators carry 1.41 pax/min per inch of width, i.e. 16.92 pax/min/ft
+  ([TCQSM p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
+- The widest escalator is out of service,
+  and escalators provide at most half of the exit capacity
+  ([TCQSM p. 10-52](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=56)).
+- It ignores walking time to the VCEs, and NFPA 130's separate 6-minute limit
+  to reach a point of safety, so it's a lower bound.
 
 ## Assumptions
 
@@ -274,9 +277,8 @@ or **unclear** (it could go either way).
 - **Neutral:** Each second, passengers alight, then go upstairs, then come downstairs, then board,
   each using the counts left by the previous step.
 - **Neutral:** The stair LOS grades only the upward flow, not the downward flow.
-- **Optimistic:** The emergency egress time only counts the passengers on both trains,
-  not the departing passengers,
-  and ignores walking time.
+- **Optimistic:** The NFPA 130 evacuation time ignores walking time to the VCEs,
+  and the 6-minute limit to reach a point of safety.
 
 ## Limitations
 
@@ -664,6 +666,8 @@ Headways, time at capacity, and dwells are durations, and the rest are times aft
 - **Max up rate:** the highest upstairs rate.
 - **Max pax on platform** and **Max density:** the most crowded moment on the platform,
   with its LOS, graded by its space per passenger in sq ft.
+- **NFPA 130 evacuation:** how long the platform's peak occupants, including those aboard its trains,
+  take to evacuate at NFPA 130's exit capacity, marked ✗ if it's over its 4-minute limit.
 
 The ETA report quotes the max up rate, time at capacity, and taper time
 for platform 3 with trains 2 minutes apart:
@@ -680,23 +684,23 @@ which clears sooner (see [Stairs Are One Pooled Queue](#stairs-are-one-pooled-qu
 
 
 <!-- results-table:start -->
-| Platform | Headway | VCE width | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max up rate (pax/s) | Max pax on platform | Max density (pax/m²) |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| 3 | 0:00 | 43 ft | 0:00, 0:00, 3:36, 3:36 | 3:36, 3:36, 0:56, 0:56 | 7:59 | 8:50 | 4:32 | 7:04 | 11.31 | 3736 | 3.31 (D) |
-| 3 (recon) | 0:00 | 44.75 ft | 0:00, 0:00, 3:38, 3:38 | 3:38, 3:38, 0:44, 0:44 | 6:56 | 7:11 | 7:12 | 7:04 | 12.68 | 3803 | 3.37 (D) |
-| 6 | 0:00 | 30.83 ft | 0:00, 0:00, 7:25, 7:25 | 7:25, 7:25, 1:05, 1:05 | 14:01 | 15:02 | 8:30 | 13:00 | 7.91 | 3948 | 3.43 (D) |
-| 10 | 0:00 | 70.58 ft | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 5:09 | 5:24 | 1:26 | 5:24 | 20.00 | 5740 | 1.78 (D) |
-| 11 | 0:00 | 43.58 ft | 0:00, 0:00, 4:31, 4:31 | 4:31, 4:31, 0:43, 0:43 | 8:39 | 8:54 | 5:14 | 8:44 | 12.35 | 4314 | 3.13 (D) |
-| 3 | 2:00 | 43 ft | 0:00, 2:00, 4:00, 7:14 | 0:59, 5:14, 3:15, 1:00 | 9:00 | 9:39 | 8:14 | 6:21 | 11.31 | 1424 | 1.26 (C) |
-| 3 (recon) | 2:00 | 44.75 ft | 0:00, 2:00, 4:00, 6:53 | 0:44, 4:53, 2:53, 0:44 | 8:25 | 8:40 | 7:37 | 7:04 | 12.68 | 1332 | 1.18 (C) |
-| 6 | 2:00 | 30.83 ft | 0:00, 2:00, 4:00, 11:40 | 1:05, 9:40, 7:41, 1:05 | 14:50 | 15:27 | 12:45 | 13:04 | 7.91 | 2780 | 2.42 (D) |
-| 10 | 2:00 | 70.58 ft | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 7:06 | 7:21 | 6:43 | 5:24 | 20.00 | 1360 | 0.42 (A) |
-| 11 | 2:00 | 43.58 ft | 0:00, 2:00, 4:00, 8:10 | 0:43, 6:10, 4:10, 0:43 | 10:07 | 10:22 | 10:22 | 8:44 | 12.35 | 1613 | 1.17 (C) |
-| 3 | 5:00 | 43 ft | 0:00, 5:00, 10:00, 15:00 | 0:59, 0:59, 0:59, 0:59 | 16:48 | 17:24 | 15:59 | 4:56 | 11.31 | 1380 | 1.22 (C) |
-| 3 (recon) | 5:00 | 44.75 ft | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:32 | 16:47 | 15:44 | 7:04 | 12.68 | 1319 | 1.17 (C) |
-| 6 | 5:00 | 30.83 ft | 0:00, 5:00, 10:00, 15:00 | 1:05, 1:00, 1:00, 1:00 | 18:10 | 18:40 | 16:00 | 11:56 | 7.91 | 1762 | 1.53 (C) |
-| 10 | 5:00 | 70.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:06 | 16:21 | 15:43 | 5:24 | 20.00 | 1340 | 0.42 (A) |
-| 11 | 5:00 | 43.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:57 | 17:12 | 15:43 | 8:44 | 12.35 | 1600 | 1.16 (C) |
+| Platform | Headway | VCE width | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max up rate (pax/s) | Max pax on platform | Max density (pax/m²) | NFPA 130 evacuation |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | 0:00 | 43 ft | 0:00, 0:00, 3:36, 3:36 | 3:36, 3:36, 0:56, 0:56 | 7:59 | 8:50 | 4:32 | 7:04 | 11.31 | 3736 | 3.31 (D) | 6:03 ✗ |
+| 3 (recon) | 0:00 | 44.75 ft | 0:00, 0:00, 3:38, 3:38 | 3:38, 3:38, 0:44, 0:44 | 6:56 | 7:11 | 7:12 | 7:04 | 12.68 | 3803 | 3.37 (D) | 5:36 ✗ |
+| 6 | 0:00 | 30.83 ft | 0:00, 0:00, 7:25, 7:25 | 7:25, 7:25, 1:05, 1:05 | 14:01 | 15:02 | 8:30 | 13:00 | 7.91 | 3948 | 3.43 (D) | 8:58 ✗ |
+| 10 | 0:00 | 70.58 ft | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 5:09 | 5:24 | 1:26 | 5:24 | 20.00 | 5740 | 1.78 (D) | 5:23 ✗ |
+| 11 | 0:00 | 43.58 ft | 0:00, 0:00, 4:31, 4:31 | 4:31, 4:31, 0:43, 0:43 | 8:39 | 8:54 | 5:14 | 8:44 | 12.35 | 4314 | 3.13 (D) | 6:26 ✗ |
+| 3 | 2:00 | 43 ft | 0:00, 2:00, 4:00, 7:14 | 0:59, 5:14, 3:15, 1:00 | 9:00 | 9:39 | 8:14 | 6:21 | 11.31 | 1424 | 1.26 (C) | 3:11 ✓ |
+| 3 (recon) | 2:00 | 44.75 ft | 0:00, 2:00, 4:00, 6:53 | 0:44, 4:53, 2:53, 0:44 | 8:25 | 8:40 | 7:37 | 7:04 | 12.68 | 1332 | 1.18 (C) | 2:20 ✓ |
+| 6 | 2:00 | 30.83 ft | 0:00, 2:00, 4:00, 11:40 | 1:05, 9:40, 7:41, 1:05 | 14:50 | 15:27 | 12:45 | 13:04 | 7.91 | 2780 | 2.42 (D) | 6:49 ✗ |
+| 10 | 2:00 | 70.58 ft | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 7:06 | 7:21 | 6:43 | 5:24 | 20.00 | 1360 | 0.42 (A) | 1:43 ✓ |
+| 11 | 2:00 | 43.58 ft | 0:00, 2:00, 4:00, 8:10 | 0:43, 6:10, 4:10, 0:43 | 10:07 | 10:22 | 10:22 | 8:44 | 12.35 | 1613 | 1.17 (C) | 2:46 ✓ |
+| 3 | 5:00 | 43 ft | 0:00, 5:00, 10:00, 15:00 | 0:59, 0:59, 0:59, 0:59 | 16:48 | 17:24 | 15:59 | 4:56 | 11.31 | 1380 | 1.22 (C) | 2:36 ✓ |
+| 3 (recon) | 5:00 | 44.75 ft | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:32 | 16:47 | 15:44 | 7:04 | 12.68 | 1319 | 1.17 (C) | 2:19 ✓ |
+| 6 | 5:00 | 30.83 ft | 0:00, 5:00, 10:00, 15:00 | 1:05, 1:00, 1:00, 1:00 | 18:10 | 18:40 | 16:00 | 11:56 | 7.91 | 1762 | 1.53 (C) | 4:20 ✗ |
+| 10 | 5:00 | 70.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:06 | 16:21 | 15:43 | 5:24 | 20.00 | 1340 | 0.42 (A) | 1:42 ✓ |
+| 11 | 5:00 | 43.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:57 | 17:12 | 15:43 | 8:44 | 12.35 | 1600 | 1.16 (C) | 2:45 ✓ |
 <!-- results-table:end -->
 
 ### History
