@@ -63,14 +63,19 @@ class Assumptions:
     From the ETA report.
     """
 
-    arriving_pax_per_train: Annotated[
-        int, Field(name="Arriving Passengers per Train", units="pax")
-    ] = 1620
+    max_train_cars: Annotated[int, Field(name="Max Train Cars", units="car")] = 12
     """
-    Passengers arriving on each train, all of whom alight.
-    A seated 12-car NJ Transit train at 135 seats per car,
+    Cars in the longest trains, on platforms long enough for them.
+    Shorter platforms get trains as long as `Params.platform_max_cars`.
+    """
+
+    seats_per_car: Annotated[int, Field(name="Seats per Car", units="pax")] = 135
+    """
+    Seats in each car, all of which are full on arrival, and all of whose passengers alight.
+    A seated NJ Transit car,
     from the Moynihan Station Development Project environmental assessment,
-    chapter 4.4, Station Circulation Analysis, Tables 4.4-10 and 4.4-19:
+    chapter 4.4, Station Circulation Analysis, Tables 4.4-10 and 4.4-19,
+    which have 1,620 passengers on a 12-car train:
     https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22
     https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=47
     """
@@ -91,11 +96,11 @@ class Assumptions:
     Not from any source.
     """
 
-    doors_per_train: Annotated[int, Field(name="Doors per Train", units="door")] = 48
+    doors_per_car: Annotated[int, Field(name="Doors per Car", units="door")] = 4
     """
-    Doors (single-door equivalents) on each train on the platform side.
-    A 12-car NJ Transit MultiLevel with 4 per car, like `arriving_pax_per_train`.
-    A 12-car LIRR train has more and better doors.
+    Doors (single-door equivalents) on each car on the platform side.
+    An NJ Transit MultiLevel, the worst case.
+    An LIRR car has more and better doors.
     """
 
     door_flow_rate: Annotated[float, Field(name="Door Flow Rate", units="pax/s/door")] = 1.0
@@ -447,6 +452,12 @@ class Params:
     platform_length: Annotated[int, Field(name="Platform Length", units="ft")]
     """Platform length (in feet)."""
 
+    platform_max_cars: Annotated[int, Field(name="Platform Max Cars", units="car")]
+    """
+    Cars in the longest train that fits on the platform's tracks, from
+    https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
+    """
+
     headway: Annotated[int, Field(name="Headway", units="s")]
     """
     Time (in seconds) between trains' scheduled arrivals.
@@ -479,6 +490,23 @@ class Params:
         return f"platform{self.platform}" + (f"_{self.modifier}" if self.modifier else "")
 
     @property
+    def cars(self) -> Annotated[int, Field(name="Cars per Train", units="car")]:
+        """Cars in each train: as many as fit on the platform, up to `max_train_cars`."""
+        return min(self.platform_max_cars, self.assumptions.max_train_cars)
+
+    @property
+    def arriving_pax_per_train(
+        self,
+    ) -> Annotated[int, Field(name="Arriving Passengers per Train", units="pax")]:
+        """Passengers arriving on each train, all of whom alight."""
+        return self.cars * self.assumptions.seats_per_car
+
+    @property
+    def doors_per_train(self) -> Annotated[int, Field(name="Doors per Train", units="door")]:
+        """Doors (single-door equivalents) on each train on the platform side."""
+        return self.cars * self.assumptions.doors_per_car
+
+    @property
     def total_vce_width(self) -> Annotated[float, Field(name="Total VCE Width", units="ft")]:
         """Total width (in feet) of all of the VCEs."""
         return sum(vce.width for vce in self.vces)
@@ -498,7 +526,7 @@ class Params:
         Time (in seconds) for everyone on both trains to go upstairs
         at `Assumptions.emergency_stair_flow`.
         """
-        return 2 * self.assumptions.arriving_pax_per_train / self.los_f_egress_rate
+        return 2 * self.arriving_pax_per_train / self.los_f_egress_rate
 
 
 def writable_cell(sheet: Worksheet, row: int, column: int) -> Cell:
@@ -625,7 +653,7 @@ def calc_workbook(
     eff_area = (
         params.platform_width * params.platform_length * assumptions.usable_platform_area_multiplier
     )
-    door_rate = assumptions.doors_per_train * assumptions.door_flow_rate
+    door_rate = params.doors_per_train * assumptions.door_flow_rate
 
     # Initialize counters
     arriving_pax_waiting_on_plat: float = 0
@@ -639,7 +667,7 @@ def calc_workbook(
     When each train arrives: the first two as scheduled,
     and each later one once it's scheduled and the train before it on its track has departed.
     """
-    remaining_arrivals = [float(assumptions.arriving_pax_per_train) for _ in trains]
+    remaining_arrivals = [float(params.arriving_pax_per_train) for _ in trains]
     new_pax = [0.0 for _ in trains]
     release_times = [
         train * params.headway - assumptions.departing_pax_lead_time for train in trains
@@ -1075,8 +1103,8 @@ def run_model(params: Params, spreadsheets: bool) -> str:
     if spreadsheets:
         wb.save(
             f"{params.filename_prefix}"
-            f"_{params.assumptions.arriving_pax_per_train}"
-            f"_{params.assumptions.arriving_pax_per_train}"
+            f"_{params.arriving_pax_per_train}"
+            f"_{params.arriving_pax_per_train}"
             f"_{headway}s.xlsx"
         )
     wb.close()
@@ -1118,6 +1146,7 @@ def main(
         platform=3,
         platform_width=18,
         platform_length=900,
+        platform_max_cars=10,
         headway=CLOSE_HEADWAY,
         vces=platform_vces(3),
     )
@@ -1125,6 +1154,7 @@ def main(
         platform=3,
         platform_width=18,
         platform_length=900,
+        platform_max_cars=10,
         headway=NORMAL_HEADWAY,
         vces=platform_vces(3),
     )
@@ -1133,6 +1163,7 @@ def main(
         modifier="recon",
         platform_width=18,
         platform_length=900,
+        platform_max_cars=10,
         headway=CLOSE_HEADWAY,
         vces=pooled_vces(44.75),
     )
@@ -1141,6 +1172,7 @@ def main(
         modifier="recon",
         platform_width=18,
         platform_length=900,
+        platform_max_cars=10,
         headway=NORMAL_HEADWAY,
         vces=pooled_vces(44.75),
     )
@@ -1148,6 +1180,7 @@ def main(
         platform=6,
         platform_width=15,
         platform_length=1100,
+        platform_max_cars=17,
         headway=0,
         vces=platform_vces(6),
     )
@@ -1155,6 +1188,7 @@ def main(
         platform=10,
         platform_width=42,
         platform_length=1100,
+        platform_max_cars=12,
         headway=CLOSE_HEADWAY,
         vces=pooled_vces(70.58),
     )
@@ -1162,6 +1196,7 @@ def main(
         platform=11,
         platform_width=18,
         platform_length=1100,
+        platform_max_cars=12,
         headway=CLOSE_HEADWAY,
         vces=pooled_vces(43.58),
     )
