@@ -232,8 +232,8 @@ def annotated_field_values(
 
 @dataclass
 class Params:
-    filename_prefix: str
-    """Prefix of filename to save the spreadsheet in."""
+    platform: Annotated[int, Field(name="Platform", units="#")]
+    """Which platform it is, e.g. 3."""
 
     simulation_length: Annotated[int, Field(name="Simulation Length", units="s")]
     """Time (in seconds) to simulate."""
@@ -290,6 +290,22 @@ class Params:
 
     train2_boarding_pax: Annotated[int, Field(name="Train 2 Boarding Passengers", units="pax")]
     """Number of passengers already on the platform at time 0 wanting to board train 2."""
+
+    modifier: str | None = None
+    """
+    What sets this scenario apart from the platform's others,
+    e.g. `recon` for its VCEs after Penn Reconstruction.
+    """
+
+    @property
+    def name(self) -> str:
+        """The platform's name in the results table, e.g. `3 (recon)`."""
+        return f"{self.platform} ({self.modifier})" if self.modifier else str(self.platform)
+
+    @property
+    def filename_prefix(self) -> str:
+        """Prefix of the filename to save the spreadsheet in, e.g. `platform3_recon`."""
+        return f"platform{self.platform}" + (f"_{self.modifier}" if self.modifier else "")
 
     @property
     def los_f_egress_rate(
@@ -886,7 +902,7 @@ def run_model(params: Params, spreadsheets: bool) -> str:
         return f"{minutes}:{seconds:02}"
 
     return (
-        f"| {params.filename_prefix} | {fmt_time(headway)} | {params.total_vce_width} ft"
+        f"| {params.name} | {fmt_time(headway)} | {params.total_vce_width} ft"
         f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
         f" | {fmt_time(summary.boarded_time)}"
@@ -910,7 +926,7 @@ def main(
     # params are labeled  with p<platform number><time in seconds>
     # recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
-        filename_prefix="platform3",
+        platform=3,
         simulation_length=600,
         platform_width=18,
         platform_length=900,
@@ -950,7 +966,7 @@ def main(
         ),
     )
     params_p3300 = Params(
-        filename_prefix="platform3",
+        platform=3,
         simulation_length=600,
         platform_width=18,
         platform_length=900,
@@ -990,7 +1006,8 @@ def main(
         ),
     )
     params_p3recon120 = Params(
-        filename_prefix="platform3_recon",
+        platform=3,
+        modifier="recon",
         simulation_length=600,
         platform_width=18,
         platform_length=900,
@@ -1030,7 +1047,8 @@ def main(
         ),
     )
     params_p3recon300 = Params(
-        filename_prefix="platform3_recon",
+        platform=3,
+        modifier="recon",
         simulation_length=600,
         platform_width=18,
         platform_length=900,
@@ -1070,7 +1088,7 @@ def main(
         ),
     )
     params_p60 = Params(
-        filename_prefix="platform6",
+        platform=6,
         simulation_length=600,
         platform_width=15,
         platform_length=1100,
@@ -1110,7 +1128,7 @@ def main(
         ),
     )
     params_p10120 = Params(
-        filename_prefix="platform10",
+        platform=10,
         simulation_length=600,
         platform_width=42,
         platform_length=1100,
@@ -1150,7 +1168,7 @@ def main(
         ),
     )
     params_p11120 = Params(
-        filename_prefix="platform11",
+        platform=11,
         simulation_length=600,
         platform_width=18,
         platform_length=1100,
