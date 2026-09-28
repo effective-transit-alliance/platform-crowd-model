@@ -1478,7 +1478,7 @@ def best_stopping_position(params: Params) -> Params:
     def score(candidate: Params) -> tuple[float, float]:
         # Only the summary matters, so hide the time series `calc_workbook` prints.
         with contextlib.redirect_stdout(io.StringIO()):
-            _wb, summary = calc_workbook(candidate)
+            _wb, summary = calc_workbook(candidate, write_workbook=False)
         never = float("inf")
         return (
             never if summary.clear_time is None else summary.clear_time,
