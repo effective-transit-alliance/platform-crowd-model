@@ -1659,103 +1659,51 @@ def main(
 ) -> None:
     """Run every scenario and print a table of their results."""
 
-    # params are labeled  with p<platform number><time in seconds>
-    # recon indicates that a platform was modelled accounting for penn reconstruction plans
-    params_p3120 = Params(
-        platform=3,
-        platform_max_cars=10,
-        headway=CLOSE_HEADWAY,
-        vces=platform_vces(3),
-        platform_east_end=719,
-    )
-    params_p3300 = Params(
-        platform=3,
-        platform_max_cars=10,
-        headway=NORMAL_HEADWAY,
-        vces=platform_vces(3),
-        platform_east_end=719,
-    )
-    params_p3recon120 = Params(
-        modifier="recon",
-        platform=3,
-        platform_max_cars=10,
-        headway=CLOSE_HEADWAY,
-        vces=penn_reconstruction_platform_3_vces(),
-        platform_east_end=719,
-    )
-    params_p3recon300 = Params(
-        modifier="recon",
-        platform=3,
-        platform_max_cars=10,
-        headway=NORMAL_HEADWAY,
-        vces=penn_reconstruction_platform_3_vces(),
-        platform_east_end=719,
-    )
-    params_p60 = Params(
-        platform=6,
-        platform_max_cars=17,
-        headway=0,
-        vces=platform_vces(6),
-        platform_east_end=849,
-    )
-
-    def platform_scenarios(
-        platform: int, max_cars: int, east_end: float, tracks: int = 2
-    ) -> list[Params]:
-        """`platform` with each VCE's position, at 0-, 2-, and 5-minute headways."""
-        return [
-            Params(
-                platform=platform,
-                platform_max_cars=max_cars,
-                headway=headway,
-                vces=platform_vces(platform),
-                platform_east_end=east_end,
-                tracks=tracks,
-            )
-            for headway in (0, CLOSE_HEADWAY, NORMAL_HEADWAY)
-        ]
+    def platform_params(platform: int, max_cars: int, east_end: float, tracks: int = 2) -> Params:
+        """`platform` with each VCE's position, before choosing a headway."""
+        return Params(
+            platform=platform,
+            platform_max_cars=max_cars,
+            headway=0,
+            vces=platform_vces(platform),
+            platform_east_end=east_end,
+            tracks=tracks,
+        )
 
     # East ends are from the PCIP Phase 2 existing plan, like each VCE's position,
     # which shows platforms 1 and 2 extending farther east than the rest.
-    params_p1 = platform_scenarios(1, max_cars=9, east_end=910)
-    params_p2 = platform_scenarios(2, max_cars=9, east_end=910)
-    params_p4 = platform_scenarios(4, max_cars=13, east_end=762)
-    params_p5 = platform_scenarios(5, max_cars=17, east_end=818)
-    params_p7 = platform_scenarios(7, max_cars=17, east_end=820)
-    params_p8 = platform_scenarios(8, max_cars=13, east_end=778)
     # Platforms 9 to 11's east ends are from the Master Plan's platform outlines.
-    params_p9 = platform_scenarios(9, max_cars=12, east_end=882, tracks=1)
-    params_p10 = platform_scenarios(10, max_cars=12, east_end=965)
-    params_p11 = platform_scenarios(11, max_cars=12, east_end=965)
-    params_p30 = dataclasses.replace(params_p3120, headway=0)
-    params_p3recon0 = dataclasses.replace(params_p3recon120, headway=0)
-    params_p6120 = dataclasses.replace(params_p60, headway=CLOSE_HEADWAY)
-    params_p6300 = dataclasses.replace(params_p60, headway=NORMAL_HEADWAY)
+    platform_3 = platform_params(3, max_cars=10, east_end=719)
+    platforms = [
+        platform_params(1, max_cars=9, east_end=910),
+        platform_params(2, max_cars=9, east_end=910),
+        platform_3,
+        # Platform 3 accounting for Penn Reconstruction's plans.
+        dataclasses.replace(
+            platform_3,
+            modifier="recon",
+            vces=penn_reconstruction_platform_3_vces(),
+        ),
+        platform_params(4, max_cars=13, east_end=762),
+        platform_params(5, max_cars=17, east_end=818),
+        platform_params(6, max_cars=17, east_end=849),
+        platform_params(7, max_cars=17, east_end=820),
+        platform_params(8, max_cars=13, east_end=778),
+        platform_params(9, max_cars=12, east_end=882, tracks=1),
+        platform_params(10, max_cars=12, east_end=965),
+        platform_params(11, max_cars=12, east_end=965),
+    ]
+    # Group the results by headway first, then by platform.
+    scenarios = [
+        dataclasses.replace(params, headway=headway)
+        for headway in (0, CLOSE_HEADWAY, NORMAL_HEADWAY)
+        for params in platforms
+    ]
     with ProcessPoolExecutor() as executor:
         rows = list(
             executor.map(
                 functools.partial(run_model, spreadsheets=spreadsheets),
-                # Each platform's scenarios are at 0-, 2-, and 5-minute headways,
-                # so take the first of each platform's, then the second, then the third,
-                # to group the results by headway first, then by platform.
-                [
-                    scenarios[i]
-                    for i in range(3)
-                    for scenarios in [
-                        params_p1,
-                        params_p2,
-                        [params_p30, params_p3120, params_p3300],
-                        [params_p3recon0, params_p3recon120, params_p3recon300],
-                        params_p4,
-                        params_p5,
-                        [params_p60, params_p6120, params_p6300],
-                        params_p7,
-                        params_p8,
-                        params_p9,
-                        params_p10,
-                        params_p11,
-                    ]
-                ],
+                scenarios,
             )
         )
     table = "\n".join([RESULTS_HEADER, *rows])
