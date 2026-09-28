@@ -636,6 +636,7 @@ def choose_vce(
     vce_queues: list[float],
     walking_to: list[float],
     directions: list[Direction],
+    capacities: list[float],
 ) -> int:
     """
     The VCE the passengers from `door` walk to, per `Assumptions.vce_choice`,
@@ -644,13 +645,12 @@ def choose_vce(
     :param vce_queues: arriving passengers queued at each VCE (pax)
     :param walking_to: arriving passengers walking to each VCE (pax)
     :param directions: which way each VCE runs now
+    :param capacities: each VCE's upward capacity (pax/s)
     """
     going_up = [i for i, direction in enumerate(directions) if direction != "down"]
 
     def time_to_go_up(i: int) -> float:
-        vce = params.vces[i]
-        capacity = stair_flow(params.assumptions.stair_capacity, vce.width)
-        return door.walking_times[i] + (vce_queues[i] + walking_to[i]) / capacity
+        return door.walking_times[i] + (vce_queues[i] + walking_to[i]) / capacities[i]
 
     if params.assumptions.vce_choice == "nearest":
         return min(going_up, key=lambda i: door.walking_times[i])
@@ -905,6 +905,8 @@ def calc_workbook(
     vce_queues = [0.0 for _ in params.vces]
     """Arriving passengers queued at each VCE."""
     doors = doors_to_vces(params)
+    vce_capacities = [stair_flow(assumptions.stair_capacity, vce.width) for vce in params.vces]
+    """Each VCE's upward capacity (pax/s), for choosing VCEs."""
     roles = vce_roles(params.vces)
     directions: list[Direction] = [
         "both" if role == "stair" else "down" if role == "down" else "up" for role in roles
@@ -1059,14 +1061,15 @@ def calc_workbook(
                 directions[i] = "up"
             elif role == "reversible":
                 directions[i] = "down"
-        for door in doors:
+        # Nobody walks to a VCE in a second nobody alights.
+        for door in doors if sum(off_rates) > 0 else ():
             alighting = sum(off_rates) * door.share
             if params.platform_east_end is None:
                 # Spread across the VCEs in proportion to their widths.
                 for i, vce in enumerate(params.vces):
                     walking[time_after][i] += alighting * vce.width / params.total_vce_width
                 continue
-            i = choose_vce(params, door, vce_queues, walking_to, directions)
+            i = choose_vce(params, door, vce_queues, walking_to, directions, vce_capacities)
             walking[time_after + door.walking_times[i]][i] += alighting
             walking_to[i] += alighting
         for i, reaching in enumerate(walking.pop(time_after, [])):
