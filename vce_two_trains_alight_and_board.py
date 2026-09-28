@@ -1684,6 +1684,28 @@ def main(
         headway=CLOSE_HEADWAY,
         vces=pooled_vces(43.58),
     )
+
+    def platform_scenarios(platform: int, max_cars: int, east_end: float) -> list[Params]:
+        """`platform` with each VCE's position, at 0-, 2-, and 5-minute headways."""
+        return [
+            Params(
+                platform=platform,
+                platform_max_cars=max_cars,
+                headway=headway,
+                vces=platform_vces(platform),
+                platform_east_end=east_end,
+            )
+            for headway in (0, CLOSE_HEADWAY, NORMAL_HEADWAY)
+        ]
+
+    # East ends are from the PCIP Phase 2 existing plan, like each VCE's position,
+    # which shows platforms 1 and 2 extending farther east than the rest.
+    params_p1 = platform_scenarios(1, max_cars=9, east_end=910)
+    params_p2 = platform_scenarios(2, max_cars=9, east_end=910)
+    params_p4 = platform_scenarios(4, max_cars=13, east_end=762)
+    params_p5 = platform_scenarios(5, max_cars=17, east_end=818)
+    params_p7 = platform_scenarios(7, max_cars=17, east_end=820)
+    params_p8 = platform_scenarios(8, max_cars=13, east_end=778)
     params_p30 = dataclasses.replace(params_p3120, headway=0)
     params_p3recon0 = dataclasses.replace(params_p3recon120, headway=0)
     params_p6120 = dataclasses.replace(params_p60, headway=CLOSE_HEADWAY)
@@ -1696,23 +1718,25 @@ def main(
         rows = list(
             executor.map(
                 functools.partial(run_model, spreadsheets=spreadsheets),
-                # Group the results by headway first, then by platform.
+                # Each platform's scenarios are at 0-, 2-, and 5-minute headways,
+                # so take the first of each platform's, then the second, then the third,
+                # to group the results by headway first, then by platform.
                 [
-                    params_p30,
-                    params_p3recon0,
-                    params_p60,
-                    params_p100,
-                    params_p110,
-                    params_p3120,
-                    params_p3recon120,
-                    params_p6120,
-                    params_p10120,
-                    params_p11120,
-                    params_p3300,
-                    params_p3recon300,
-                    params_p6300,
-                    params_p10300,
-                    params_p11300,
+                    scenarios[i]
+                    for i in range(3)
+                    for scenarios in [
+                        params_p1,
+                        params_p2,
+                        [params_p30, params_p3120, params_p3300],
+                        [params_p3recon0, params_p3recon120, params_p3recon300],
+                        params_p4,
+                        params_p5,
+                        [params_p60, params_p6120, params_p6300],
+                        params_p7,
+                        params_p8,
+                        [params_p100, params_p10120, params_p10300],
+                        [params_p110, params_p11120, params_p11300],
+                    ]
                 ],
             )
         )
