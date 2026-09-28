@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
 import numpy as np
 import openpyxl
+import typer
 from numpy.typing import NDArray
 from openpyxl.cell import Cell
 from openpyxl.chart import Reference, ScatterChart
@@ -728,6 +729,8 @@ def run_model(params: Params) -> None:
 
 
 def main() -> None:
+    """Run every scenario and save their spreadsheets."""
+
     # params are labeled  with p<platform number><time in seconds>
     # recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
@@ -1028,4 +1031,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    typer.run(main)
