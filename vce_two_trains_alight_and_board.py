@@ -233,15 +233,15 @@ def fruin_ascending_stair_flow(m: float) -> float:
     return (a * m - b) / m**2
 
 
-def alight_rate(k: float, t: float, t0: float, u: float) -> float:
+def alight_rate(k: float, t: float, t0: float | None, u: float) -> float:
     """
     :param k: number of people waiting to get off train
     :param t: time pass counter (s)
-    :param t0: train arrival time
+    :param t0: train arrival time, or `None` if it hasn't been scheduled yet
     :param u: maximum alighting rate across all doors (pax/s)
     :return: egress rate from train to platform across all doors (pax/s)
     """
-    if t > t0:
+    if t0 is not None and t > t0:
         return min(k, u)
     else:
         return 0
@@ -299,9 +299,15 @@ def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumption
         return 0
 
 
-def boarder_fraction(trainA_boarders: float, trainB_boarders: float) -> float:
-    if trainA_boarders + trainB_boarders > 0:
-        return trainA_boarders / (trainB_boarders + trainA_boarders)
+def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
+    """
+    :param train_boarders: one train's departing passengers upstairs (pax)
+    :param all_boarders: every train's departing passengers upstairs (pax)
+    :return: that train's share of them
+    """
+    total = sum(all_boarders)
+    if total > 0:
+        return train_boarders / total
     else:
         return 1
 
@@ -310,7 +316,7 @@ def board_rate(
     r_max: float,
     r_off: float,
     sim_t: float,
-    arr_t: float,
+    arr_t: float | None,
     boarders: float,
 ) -> float:
     """
@@ -321,11 +327,11 @@ def board_rate(
     :param r_max: maximum boarding rate across all doors (pax/s)
     :param r_off: train alight rate (pax/s)
     :param sim_t: time (s)
-    :param arr_t: train arrival time (s)
+    :param arr_t: train arrival time (s), or `None` if it hasn't been scheduled yet
     :param boarders: number of passengers waiting on platform to board
     :return: train ingress rate across all doors (pax/s)
     """
-    if arr_t < sim_t:
+    if arr_t is not None and arr_t < sim_t:
         return min(r_max - r_off, boarders)
     else:
         return 0
@@ -442,11 +448,11 @@ class Params:
     platform_length: Annotated[int, Field(name="Platform Length", units="ft")]
     """Platform length (in feet)."""
 
-    train1_arrival_time: Annotated[int, Field(name="Train 1 Arrival Time", units="s")]
-    """Time (in seconds) when train 1 arrives."""
-
-    train2_arrival_time: Annotated[int, Field(name="Train 2 Arrival Time", units="s")]
-    """Time (in seconds) when train 2 arrives."""
+    headway: Annotated[int, Field(name="Headway", units="s")]
+    """
+    Time (in seconds) between trains' scheduled arrivals.
+    The first arrives at 0 s, on one track, and the second on the other.
+    """
 
     total_vce_width: Annotated[float, Field(name="Total VCE Width", units="ft")]
     """
@@ -457,6 +463,9 @@ class Params:
 
     vce_widths: NDArray[np.floating]
     """Widths (in feet) of each VCE (vertical circulation element)."""
+
+    trains: Annotated[int, Field(name="Trains", units="train")] = 2
+    """Trains arriving, alternating between the platform's two tracks."""
 
     assumptions: Assumptions = dataclasses.field(default_factory=Assumptions)
     """What the model assumes, the same for every scenario unless overridden."""
@@ -528,23 +537,11 @@ class Instant:
     time: Annotated[int, Field(name="Time", units="s")]
     """Time (in seconds)."""
 
-    train1_pax: Annotated[float, Field(name="Train 1 Passengers", units="pax")]
-    """Train 1 number of passengers."""
+    off_rate: Annotated[float, Field(name="Alighting Rate", units="pax/s")]
+    """Alighting rate from every train (in pax/s)."""
 
-    train2_pax: Annotated[float, Field(name="Train 2 Passengers", units="pax")]
-    """Train 2 number of passengers."""
-
-    train1_off_rate: Annotated[float, Field(name="Train 1 Alighting Rate", units="pax/s")]
-    """Train 1 alighting rate (in pax/s)."""
-
-    train2_off_rate: Annotated[float, Field(name="Train 2 Alighting Rate", units="pax/s")]
-    """Train 2 alighting rate (in pax/s)."""
-
-    train1_on_rate: Annotated[float, Field(name="Train 1 Boarding Rate", units="pax/s")]
-    """Train 1 boarding rate (in pax/s)."""
-
-    train2_on_rate: Annotated[float, Field(name="Train 2 Boarding Rate", units="pax/s")]
-    """Train 2 boarding rate (in pax/s)."""
+    on_rate: Annotated[float, Field(name="Boarding Rate", units="pax/s")]
+    """Boarding rate onto every train (in pax/s)."""
 
     down_rate: Annotated[float, Field(name="Downstairs Rate", units="pax/s")]
     """Downstairs rate (in pax/s)."""
@@ -552,15 +549,10 @@ class Instant:
     up_rate: Annotated[float, Field(name="Upstairs Rate", units="pax/s")]
     """Upstairs rate (in pax/s)."""
 
-    train1_departing_pax_on_platform: Annotated[
-        float, Field(name="Train 1 Departing Passengers on Platform", units="pax")
+    departing_pax_on_platform: Annotated[
+        float, Field(name="Departing Passengers on Platform", units="pax")
     ]
-    """Train 1 departing passengers on platform."""
-
-    train2_departing_pax_on_platform: Annotated[
-        float, Field(name="Train 2 Departing Passengers on Platform", units="pax")
-    ]
-    """Train 2 departing passengers on platform."""
+    """Departing passengers on the platform for every train."""
 
     arriving_pax_waiting_on_platform: Annotated[
         float, Field(name="Arriving Passengers on Platform", units="pax")
@@ -642,19 +634,38 @@ def calc_workbook(
 
     # Initialize counters
     arriving_pax_waiting_on_plat: float = 0
-    train1_remaining_arrivals = float(assumptions.arriving_pax_per_train)
-    train2_remaining_arrivals = float(assumptions.arriving_pax_per_train)
-    train1_new_pax: float = 0
-    train2_new_pax: float = 0
-    boarders_upstairs = float(
-        assumptions.departing_pax_per_train - assumptions.departing_pax_on_platform_per_train
-    )
-    train1_boarders_upstairs = boarders_upstairs
-    train2_boarders_upstairs = boarders_upstairs
-    train1_boarders_on_plat = float(assumptions.departing_pax_on_platform_per_train)
-    train2_boarders_on_plat = float(assumptions.departing_pax_on_platform_per_train)
-    total_pax_on_platform = train1_boarders_on_plat + train2_boarders_on_plat
+    trains = range(params.trains)
+    arrival_times: list[int | None] = [
+        train * params.headway if train < 2 else None for train in trains
+    ]
+    """
+    When each train arrives: the first two as scheduled,
+    and each later one once it's scheduled and the train before it on its track has departed.
+    """
+    remaining_arrivals = [float(assumptions.arriving_pax_per_train) for _ in trains]
+    new_pax = [0.0 for _ in trains]
+    boarders_upstairs = [
+        float(assumptions.departing_pax_per_train - assumptions.departing_pax_on_platform_per_train)
+        for _ in trains
+    ]
+    boarders_on_plat = [float(assumptions.departing_pax_on_platform_per_train) for _ in trains]
+    total_pax_on_platform = sum(boarders_on_plat)
     wb = openpyxl.Workbook()
+    trains_sheet = wb.create_sheet("Trains")
+    """Each train's passengers, alighting, boarding, and departing passengers each second."""
+    TRAIN_COLUMNS = [
+        "Passengers (pax)",
+        "Alighting Rate (pax/s)",
+        "Boarding Rate (pax/s)",
+        "Departing Passengers on Platform (pax)",
+    ]
+    if write_workbook:
+        writable_cell(trains_sheet, row=1, column=1).value = "Time (s)"
+        for train in trains:
+            for j, column_name in enumerate(TRAIN_COLUMNS):
+                writable_cell(
+                    trains_sheet, row=1, column=2 + len(TRAIN_COLUMNS) * train + j
+                ).value = f"Train {train + 1} {column_name}"
 
     sheet = active_worksheet(wb)
 
@@ -675,20 +686,19 @@ def calc_workbook(
         params.total_vce_width * assumptions.stair_queue_length / assumptions.stair_queue_space
     )
     capacity = stair_flow(assumptions.stair_capacity, params.total_vce_width)
-    last_arrival_time = max(params.train1_arrival_time, params.train2_arrival_time)
     summary = Summary(
         max_up_rate=0,
         secs_at_capacity=0,
         taper_time=None,
         clear_time=None,
-        dwells=[None, None],
+        dwells=[None for _ in trains],
         boarded_time=None,
         max_pax_on_platform=total_pax_on_platform,
         min_space_per_pax=space_per_pax(total_pax_on_platform, eff_area),
     )
 
     if print_time_series:
-        print("Elapsed_Time", "Train_1_Pax", "Train_2_Pax")
+        print("Elapsed_Time", *(f"Train_{train + 1}_Pax" for train in trains))
 
     def get_column_for(attr_name: str) -> int:
         for i, (attr, _field) in enumerate(annotated_field_names(Instant)):
@@ -702,26 +712,22 @@ def calc_workbook(
             raise RuntimeError(
                 f"{params.filename_prefix} hasn't finished after {MAX_SIMULATION_LENGTH} s"
             )
-        train1_off_rate = alight_rate(
-            train1_remaining_arrivals,
-            time_after,
-            params.train1_arrival_time,
-            door_rate,
-        )
-        train1_remaining_arrivals -= train1_off_rate
-        if train1_remaining_arrivals < 0:
-            train1_remaining_arrivals = 0
-        train2_off_rate = alight_rate(
-            train2_remaining_arrivals,
-            time_after,
-            params.train2_arrival_time,
-            door_rate,
-        )
-        train2_remaining_arrivals -= train2_off_rate
-        if train2_remaining_arrivals < 0:
-            train2_remaining_arrivals = 0
-        total_pax_on_platform += train1_off_rate + train2_off_rate
-        arriving_pax_waiting_on_plat += train1_off_rate + train2_off_rate
+        if write_workbook:
+            writable_cell(trains_sheet, row=time_after + 2, column=1).value = time_after
+        off_rates: list[float] = []
+        for train in trains:
+            off_rate = alight_rate(
+                remaining_arrivals[train],
+                time_after,
+                arrival_times[train],
+                door_rate,
+            )
+            remaining_arrivals[train] -= off_rate
+            if remaining_arrivals[train] < 0:
+                remaining_arrivals[train] = 0
+            off_rates.append(off_rate)
+        total_pax_on_platform += sum(off_rates)
+        arriving_pax_waiting_on_plat += sum(off_rates)
         plat_egress_rate = platform_clearance(
             arriving_pax_waiting_on_plat,
             eff_area,
@@ -733,96 +739,51 @@ def calc_workbook(
         if arriving_pax_waiting_on_plat < 0:
             arriving_pax_waiting_on_plat = 0
         total_pax_on_platform -= plat_egress_rate
-        plat_ingress_rate_1 = platform_ingress(
-            train1_boarders_upstairs,
-            params.total_vce_width
-            * boarder_fraction(train1_boarders_upstairs, train2_boarders_upstairs),
-            plat_egress_rate,
-            assumptions,
-        )
+        plat_ingress_rates = [
+            platform_ingress(
+                boarders_upstairs[train],
+                params.total_vce_width
+                * boarder_fraction(boarders_upstairs[train], boarders_upstairs),
+                plat_egress_rate,
+                assumptions,
+            )
+            for train in trains
+        ]
+        for train in trains:
+            boarders_on_plat[train] += plat_ingress_rates[train]
+            total_pax_on_platform += plat_ingress_rates[train]
+        on_rates = [
+            board_rate(
+                door_rate,
+                off_rates[train],
+                time_after,
+                arrival_times[train],
+                boarders_on_plat[train],
+            )
+            for train in trains
+        ]
 
-        plat_ingress_rate_2 = platform_ingress(
-            train2_boarders_upstairs,
-            params.total_vce_width
-            * boarder_fraction(train2_boarders_upstairs, train1_boarders_upstairs),
-            plat_egress_rate,
-            assumptions,
-        )
-        train1_boarders_on_plat += plat_ingress_rate_1
-        train2_boarders_on_plat += plat_ingress_rate_2
-        total_pax_on_platform += plat_ingress_rate_1
-        total_pax_on_platform += plat_ingress_rate_2
-        train1_on_rate = board_rate(
-            door_rate,
-            train1_off_rate,
-            time_after,
-            params.train1_arrival_time,
-            train1_boarders_on_plat,
-        )
-        train2_on_rate = board_rate(
-            door_rate,
-            train2_off_rate,
-            time_after,
-            params.train2_arrival_time,
-            train2_boarders_on_plat,
-        )
-
-        train1_boarders_on_plat -= train1_on_rate
-
-        train2_boarders_on_plat -= train2_on_rate
-
-        total_pax_on_platform -= train1_on_rate
-
-        total_pax_on_platform -= train2_on_rate
-
-        train1_boarders_upstairs -= plat_ingress_rate_1
-
-        train2_boarders_upstairs -= plat_ingress_rate_2
-
-        train1_new_pax += train1_on_rate
-
-        train2_new_pax += train2_on_rate
+        for train in trains:
+            boarders_on_plat[train] -= on_rates[train]
+            total_pax_on_platform -= on_rates[train]
+            boarders_upstairs[train] -= plat_ingress_rates[train]
+            new_pax[train] += on_rates[train]
 
         inst_crowding = space_per_pax(total_pax_on_platform, eff_area)
         if total_pax_on_platform < 0:
             total_pax_on_platform = 0
-        if train1_boarders_on_plat < 0:
-            train1_boarders_on_plat = 0
-        if train2_boarders_on_plat < 0:
-            train2_boarders_on_plat = 0
+        for train in trains:
+            if boarders_on_plat[train] < 0:
+                boarders_on_plat[train] = 0
         if arriving_pax_waiting_on_plat < 0:
             arriving_pax_waiting_on_plat = 0
         if print_time_series:
             print(
                 time_after,
-                train1_remaining_arrivals + train1_new_pax,
-                train2_remaining_arrivals + train2_new_pax,
+                *(remaining_arrivals[train] + new_pax[train] for train in trains),
                 arriving_pax_waiting_on_plat,
                 plat_egress_rate,
             )
-        """
-        print(
-            "At time " + str(time_after) + " s,",
-            str(train1_remaining_arrivals) + " wait to alight train 1;",
-            str(train2_remaining_arrivals) + " wait to alight train 2;",
-            str(train1_on_rate - train1_off_rate) + " pax/s train 1 net rate;",
-            str(train2_on_rate - train2_off_rate) + " pax/s train 2 net rate;",
-        )
-        print(
-            str(int(arriving_pax_waiting_on_plat))
-            + " deboarded pax on platform;",
-            str(int(train1_boarders_on_plat + int(train2_boarders_on_plat)))
-            + " boarding pax on platform;",
-            str(int(total_pax_on_platform)) + " total pax on platform;",
-            str(int(inst_crowding)) + " sq ft per pax;",
-        )
-        print(
-            str(plat_egress_rate) + " pax/s up;",
-            str((plat_ingress_rate_1 + plat_ingress_rate_2)) + "pax/s down;",
-            str((train1_boarders_upstairs + train2_boarders_upstairs))
-            + " pax are upstairs"
-        )
-        """
         summary.max_up_rate = max(summary.max_up_rate, plat_egress_rate)
         if plat_egress_rate >= capacity - 1e-9:
             summary.secs_at_capacity += 1
@@ -830,73 +791,69 @@ def calc_workbook(
             summary.taper_time = time_after
         if (
             summary.clear_time is None
-            and time_after > last_arrival_time
+            and all(
+                arrival_time is not None and time_after > arrival_time
+                for arrival_time in arrival_times
+            )
             and arriving_pax_waiting_on_plat < 1
         ):
             summary.clear_time = time_after
-        if (
-            summary.boarded_time is None
-            and train1_boarders_upstairs
-            + train2_boarders_upstairs
-            + train1_boarders_on_plat
-            + train2_boarders_on_plat
-            < 1
-        ):
+        if summary.boarded_time is None and sum(boarders_upstairs) + sum(boarders_on_plat) < 1:
             summary.boarded_time = time_after
-        for train, (arrival_time, remaining_arrivals, upstairs, on_plat) in enumerate(
-            (
-                (
-                    params.train1_arrival_time,
-                    train1_remaining_arrivals,
-                    train1_boarders_upstairs,
-                    train1_boarders_on_plat,
-                ),
-                (
-                    params.train2_arrival_time,
-                    train2_remaining_arrivals,
-                    train2_boarders_upstairs,
-                    train2_boarders_on_plat,
-                ),
-            )
-        ):
+        for train in trains:
+            arrival_time = arrival_times[train]
             if (
                 summary.dwells[train] is None
+                and arrival_time is not None
                 and time_after > arrival_time
-                and remaining_arrivals < 1
-                and upstairs + on_plat < 1
+                and remaining_arrivals[train] < 1
+                and boarders_upstairs[train] + boarders_on_plat[train] < 1
             ):
                 summary.dwells[train] = time_after - arrival_time
+                # The next train on its track arrives once it's scheduled and this one departs.
+                if train + 2 < params.trains:
+                    arrival_times[train + 2] = max((train + 2) * params.headway, time_after)
         summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
         summary.min_space_per_pax = min(summary.min_space_per_pax, inst_crowding)
 
         if write_workbook:
+            net_pax_flow_rate: float = 0
+            for rate in plat_ingress_rates:
+                net_pax_flow_rate += rate
+            for rate in off_rates:
+                net_pax_flow_rate += rate
+            net_pax_flow_rate -= plat_egress_rate
+            for rate in on_rates:
+                net_pax_flow_rate -= rate
             instant = Instant(
                 time=time_after,
-                train1_pax=train1_remaining_arrivals + train1_new_pax,
-                train2_pax=train2_remaining_arrivals + train2_new_pax,
                 arriving_pax_waiting_on_platform=arriving_pax_waiting_on_plat,
-                train1_off_rate=train1_off_rate,
-                train2_off_rate=train2_off_rate,
-                train1_on_rate=train1_on_rate,
-                train2_on_rate=train2_on_rate,
-                down_rate=plat_ingress_rate_1 + plat_ingress_rate_2,
-                train1_departing_pax_on_platform=train1_boarders_on_plat,
-                train2_departing_pax_on_platform=train2_boarders_on_plat,
+                off_rate=sum(off_rates),
+                on_rate=sum(on_rates),
+                down_rate=sum(plat_ingress_rates),
+                departing_pax_on_platform=sum(boarders_on_plat),
                 total_pax_on_platform=total_pax_on_platform,
                 platform_crowding=inst_crowding,
                 up_rate=plat_egress_rate,
-                net_pax_flow_rate=(
-                    plat_ingress_rate_1
-                    + plat_ingress_rate_2
-                    + train1_off_rate
-                    + train2_off_rate
-                    - plat_egress_rate
-                    - train1_on_rate
-                    - train2_on_rate
-                ),
+                net_pax_flow_rate=net_pax_flow_rate,
                 platform_crowd_los=platform_crowd_los(inst_crowding, assumptions),
                 egress_los=egress_crowd_los(params.total_vce_width, plat_egress_rate, assumptions),
             )
+
+            for train in trains:
+                for j, value in enumerate(
+                    (
+                        remaining_arrivals[train] + new_pax[train],
+                        off_rates[train],
+                        on_rates[train],
+                        boarders_on_plat[train],
+                    )
+                ):
+                    writable_cell(
+                        trains_sheet,
+                        row=instant.time + 2,
+                        column=2 + len(TRAIN_COLUMNS) * train + j,
+                    ).value = value
 
             for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
                 column = FIRST_DATA_COLUMN + i
@@ -958,7 +915,16 @@ def calc_workbook(
         chart.series.append(series)
         return chart
 
-    def make_chart_2(title: str, col1: int, col2: int, x_title: str, y_title: str) -> ScatterChart:
+    def make_chart_2(
+        title: str,
+        col1: int,
+        col2: int,
+        x_title: str,
+        y_title: str,
+        *more_cols: int,
+        data_sheet: Worksheet = sheet,
+        time_col: int | None = None,
+    ) -> ScatterChart:
         chart = ScatterChart()
         chart.title = title
         chart.style = 13
@@ -971,15 +937,15 @@ def calc_workbook(
 
         max_row = simulation_length + FIRST_DATA_ROW - 1
         xvalues = Reference(
-            sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
+            data_sheet,
+            min_col=get_column_for("time") if time_col is None else time_col,
+            min_row=FIRST_DATA_ROW,
+            max_row=max_row,
         )
-        values1 = Reference(sheet, min_col=col1, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
-        values2 = Reference(sheet, min_col=col2, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
-        # Y values start one row above X values so that first cell is series name.
-        series1 = SeriesFactory(values1, xvalues, title_from_data=True)
-        chart.series.append(series1)
-        series2 = SeriesFactory(values2, xvalues, title_from_data=True)
-        chart.series.append(series2)
+        for col in (col1, col2, *more_cols):
+            values = Reference(data_sheet, min_col=col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
+            # Y values start one row above X values so that first cell is series name.
+            chart.series.append(SeriesFactory(values, xvalues, title_from_data=True))
         return chart
 
     sheet.add_chart(
@@ -995,10 +961,13 @@ def calc_workbook(
     sheet.add_chart(
         make_chart_2(
             "Passengers Aboard Trains",
-            get_column_for("train1_pax"),
-            get_column_for("train2_pax"),
+            2,
+            2 + len(TRAIN_COLUMNS),
             "Time (s)",
             "Passengers",
+            *(2 + len(TRAIN_COLUMNS) * train for train in trains[2:]),
+            data_sheet=trains_sheet,
+            time_col=1,
         ),
         "V19",
     )
@@ -1076,7 +1045,7 @@ def run_model(params: Params, spreadsheets: bool) -> str:
         params=params, write_workbook=spreadsheets, print_time_series=spreadsheets
     )
 
-    headway = params.train2_arrival_time - params.train1_arrival_time
+    headway = params.headway
     if spreadsheets:
         wb.save(
             f"{params.filename_prefix}"
@@ -1122,8 +1091,7 @@ def main(
         platform=3,
         platform_width=18,
         platform_length=900,
-        train1_arrival_time=0,
-        train2_arrival_time=CLOSE_HEADWAY,
+        headway=CLOSE_HEADWAY,
         total_vce_width=42.5,
         vce_widths=(
             1
@@ -1151,8 +1119,7 @@ def main(
         platform=3,
         platform_width=18,
         platform_length=900,
-        train1_arrival_time=0,
-        train2_arrival_time=NORMAL_HEADWAY,
+        headway=NORMAL_HEADWAY,
         total_vce_width=42.5,
         vce_widths=(
             1
@@ -1181,8 +1148,7 @@ def main(
         modifier="recon",
         platform_width=18,
         platform_length=900,
-        train1_arrival_time=0,
-        train2_arrival_time=CLOSE_HEADWAY,
+        headway=CLOSE_HEADWAY,
         total_vce_width=44.75,
         vce_widths=(
             1
@@ -1211,8 +1177,7 @@ def main(
         modifier="recon",
         platform_width=18,
         platform_length=900,
-        train1_arrival_time=0,
-        train2_arrival_time=NORMAL_HEADWAY,
+        headway=NORMAL_HEADWAY,
         total_vce_width=44.75,
         vce_widths=(
             1
@@ -1240,8 +1205,7 @@ def main(
         platform=6,
         platform_width=15,
         platform_length=1100,
-        train1_arrival_time=0,
-        train2_arrival_time=0,
+        headway=0,
         total_vce_width=48.168,
         vce_widths=(
             1
@@ -1269,8 +1233,7 @@ def main(
         platform=10,
         platform_width=42,
         platform_length=1100,
-        train1_arrival_time=0,
-        train2_arrival_time=CLOSE_HEADWAY,
+        headway=CLOSE_HEADWAY,
         total_vce_width=70.58,
         vce_widths=(
             1
@@ -1298,8 +1261,7 @@ def main(
         platform=11,
         platform_width=18,
         platform_length=1100,
-        train1_arrival_time=0,
-        train2_arrival_time=CLOSE_HEADWAY,
+        headway=CLOSE_HEADWAY,
         total_vce_width=43.58,
         vce_widths=(
             1
@@ -1323,14 +1285,14 @@ def main(
             )
         ),
     )
-    params_p30 = dataclasses.replace(params_p3120, train2_arrival_time=0)
-    params_p3recon0 = dataclasses.replace(params_p3recon120, train2_arrival_time=0)
-    params_p6120 = dataclasses.replace(params_p60, train2_arrival_time=CLOSE_HEADWAY)
-    params_p6300 = dataclasses.replace(params_p60, train2_arrival_time=NORMAL_HEADWAY)
-    params_p100 = dataclasses.replace(params_p10120, train2_arrival_time=0)
-    params_p10300 = dataclasses.replace(params_p10120, train2_arrival_time=NORMAL_HEADWAY)
-    params_p110 = dataclasses.replace(params_p11120, train2_arrival_time=0)
-    params_p11300 = dataclasses.replace(params_p11120, train2_arrival_time=NORMAL_HEADWAY)
+    params_p30 = dataclasses.replace(params_p3120, headway=0)
+    params_p3recon0 = dataclasses.replace(params_p3recon120, headway=0)
+    params_p6120 = dataclasses.replace(params_p60, headway=CLOSE_HEADWAY)
+    params_p6300 = dataclasses.replace(params_p60, headway=NORMAL_HEADWAY)
+    params_p100 = dataclasses.replace(params_p10120, headway=0)
+    params_p10300 = dataclasses.replace(params_p10120, headway=NORMAL_HEADWAY)
+    params_p110 = dataclasses.replace(params_p11120, headway=0)
+    params_p11300 = dataclasses.replace(params_p11120, headway=NORMAL_HEADWAY)
     with ProcessPoolExecutor() as executor:
         rows = list(
             executor.map(
