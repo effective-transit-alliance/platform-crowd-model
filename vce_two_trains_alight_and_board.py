@@ -879,11 +879,15 @@ def run_model(params: Params, spreadsheets: bool) -> str:
     wb.close()
 
     def fmt_time(t: int | None) -> str:
-        return "never" if t is None else f"{t} s"
+        """`t` seconds as `m:ss`."""
+        if t is None:
+            return "never"
+        minutes, seconds = divmod(t, 60)
+        return f"{minutes}:{seconds:02}"
 
     return (
-        f"| {params.filename_prefix} | {headway} s | {params.total_vce_width} ft"
-        f" | {summary.max_up_rate:.2f} | {summary.secs_at_capacity} s"
+        f"| {params.filename_prefix} | {fmt_time(headway)} | {params.total_vce_width} ft"
+        f" | {summary.max_up_rate:.2f} | {fmt_time(summary.secs_at_capacity)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
         f" | {fmt_time(summary.boarded_time)}"
         f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
