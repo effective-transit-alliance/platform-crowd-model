@@ -614,16 +614,21 @@ def train_cars(params: Params) -> list[Car]:
     return cars
 
 
-def choose_car(params: Params, cars: list[Car], car_loads: list[float], vce: int) -> int:
+def cars_by_distance(cars: list[Car], vce: int) -> list[int]:
+    """`cars`' indices, from the nearest to `vce` to the farthest, by walking time."""
+    return sorted(range(len(cars)), key=lambda c: cars[c].walking_times[vce])
+
+
+def choose_car(params: Params, nearest: list[int], car_loads: list[float]) -> int:
     """
-    The car departing passengers coming down `vce` walk to:
+    The car departing passengers coming down a VCE walk to:
     the nearest one that isn't close to full, per `Assumptions.car_full_fraction`,
     or else the nearest one.
 
+    :param nearest: the cars, from the nearest to the VCE to the farthest, per `cars_by_distance`
     :param car_loads: passengers boarded on, waiting for, or walking to each car (pax)
     """
-    nearest = sorted(range(len(cars)), key=lambda c: cars[c].walking_times[vce])
-    if len(cars) == 1:
+    if len(nearest) == 1:
         return nearest[0]
     full = params.assumptions.car_full_fraction * params.assumptions.seats_per_car
     return next((c for c in nearest if car_loads[c] < full), nearest[0])
@@ -916,6 +921,8 @@ def calc_workbook(
     walking_totals = [0.0 for _ in params.vces]
     """Arriving passengers walking to each VCE, whenever they reach it, i.e. `walking` summed."""
     cars = train_cars(params)
+    nearest_cars = [cars_by_distance(cars, i) for i in range(len(params.vces))]
+    """Each VCE's cars, from the nearest to the farthest."""
     trains = range(params.trains)
     boarders_walking: defaultdict[int, list[list[float]]] = defaultdict(
         lambda: [[0.0 for _ in cars] for _ in trains]
@@ -1118,7 +1125,7 @@ def calc_workbook(
             for i, rate in enumerate(vce_ingress_rates[train]):
                 if rate <= 0:
                     continue
-                car = choose_car(params, cars, car_loads[train], i)
+                car = choose_car(params, nearest_cars[i], car_loads[train])
                 boarders_walking[time_after + cars[car].walking_times[i]][train][car] += rate
                 boarders_walking_totals[train] += rate
                 car_loads[train][car] += rate
