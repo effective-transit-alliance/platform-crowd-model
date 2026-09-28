@@ -5,11 +5,9 @@ This is a recursive peak-hour platform clearance calculator.
 model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 """
 
-import contextlib
 import csv
 import dataclasses
 import functools
-import io
 import itertools
 import typing
 from collections import defaultdict
@@ -1476,9 +1474,8 @@ def best_stopping_position(params: Params) -> Params:
         train_east_end -= STOPPING_POSITION_STEP
 
     def score(candidate: Params) -> tuple[float, float]:
-        # Only the summary matters, so hide the time series `calc_workbook` prints.
-        with contextlib.redirect_stdout(io.StringIO()):
-            _wb, summary = calc_workbook(candidate, write_workbook=False)
+        # Only the summary matters.
+        _wb, summary = calc_workbook(candidate, write_workbook=False, print_time_series=False)
         never = float("inf")
         return (
             never if summary.clear_time is None else summary.clear_time,
