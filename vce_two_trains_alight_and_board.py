@@ -7,6 +7,7 @@ model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 
 import dataclasses
 import functools
+import itertools
 import typing
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
@@ -42,6 +43,12 @@ Fruin, p. 9: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page
 CLOSE_HEADWAY = 120
 """Time between two trains' arrivals in the closely spaced scenarios (s), from the ETA report."""
 
+MAX_SIMULATION_LENGTH = 7200
+"""
+The simulation runs until the last train departs and the platform clears,
+but stops with an error if that takes longer than this (s), which means something's wrong.
+"""
+
 NORMAL_HEADWAY = 300
 """Time between two trains' arrivals in the normal scenarios (s), from the ETA report."""
 
@@ -57,9 +64,6 @@ class Assumptions:
     override any of them to see how sensitive the results are to it,
     e.g. `Assumptions(stair_capacity=15)`.
     """
-
-    simulation_length: Annotated[int, Field(name="Simulation Length", units="s")] = 600
-    """Time to simulate (s), counted from the first train's arrival."""
 
     usable_platform_area_multiplier: Annotated[
         float, Field(name="Usable Platform Area Multiplier", units="fraction")
@@ -692,7 +696,12 @@ def calc_workbook(
                 return FIRST_DATA_COLUMN + i
         raise AttributeError(Instant, attr_name)
 
-    for time_after in range(0, assumptions.simulation_length):
+    time_after = 0
+    for time_after in itertools.count():
+        if time_after >= MAX_SIMULATION_LENGTH:
+            raise RuntimeError(
+                f"{params.filename_prefix} hasn't finished after {MAX_SIMULATION_LENGTH} s"
+            )
         train1_off_rate = alight_rate(
             train1_remaining_arrivals,
             time_after,
@@ -894,8 +903,16 @@ def calc_workbook(
                 writable_cell(sheet, row=1, column=column).value = field.description
                 writable_cell(sheet, row=instant.time + 2, column=column).value = value
 
+        # Stop once the last train has departed and the platform has cleared.
+        if (
+            summary.clear_time is not None
+            and summary.boarded_time is not None
+            and all(dwell is not None for dwell in summary.dwells)
+        ):
+            break
     if not write_workbook:
         return wb, summary
+    simulation_length = time_after + 1
 
     def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
@@ -904,10 +921,10 @@ def calc_workbook(
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
         chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = assumptions.simulation_length
+        chart.x_axis.scaling.max = simulation_length
         chart.legend = None
 
-        max_row = assumptions.simulation_length + FIRST_DATA_ROW - 1
+        max_row = simulation_length + FIRST_DATA_ROW - 1
         xvalues = Reference(
             sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
         )
@@ -926,12 +943,12 @@ def calc_workbook(
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
         chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = assumptions.simulation_length
+        chart.x_axis.scaling.max = simulation_length
         chart.y_axis.scaling.min = 0
         chart.y_axis.scaling.max = 50
         chart.legend = None
 
-        max_row = assumptions.simulation_length + FIRST_DATA_ROW - 1
+        max_row = simulation_length + FIRST_DATA_ROW - 1
         xvalues = Reference(
             sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
         )
@@ -948,11 +965,11 @@ def calc_workbook(
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
         chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = assumptions.simulation_length
+        chart.x_axis.scaling.max = simulation_length
         assert chart.legend is not None
         chart.legend.position = "b"
 
-        max_row = assumptions.simulation_length + FIRST_DATA_ROW - 1
+        max_row = simulation_length + FIRST_DATA_ROW - 1
         xvalues = Reference(
             sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
         )
