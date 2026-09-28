@@ -483,6 +483,30 @@ class Vce:
 
 VCE_DATA = Path(__file__).parent / "data" / "estimated_vce_widths.csv"
 
+PLATFORM_LENGTHS = Path(__file__).parent / "data" / "platform_lengths.csv"
+"""Each platform's length, from the Moynihan Station EA's Table 4.4-10."""
+
+OSM_PLATFORMS = Path(__file__).parent / "data" / "osm_platforms.csv"
+"""Each platform's outline's area, from OpenStreetMap, via `scripts/extract_osm_platforms.py`."""
+
+
+@functools.cache
+def platform_lengths() -> dict[int, int]:
+    """Each platform's length (ft), from `PLATFORM_LENGTHS`."""
+    with PLATFORM_LENGTHS.open() as f:
+        return {int(row["platform"]): int(row["length_ft"]) for row in csv.DictReader(f)}
+
+
+@functools.cache
+def platform_areas() -> dict[int, int]:
+    """Each platform's area (sq ft), from `OSM_PLATFORMS`."""
+    with OSM_PLATFORMS.open() as f:
+        return {
+            int(row["ref"]): int(row["area_sq_ft"])
+            for row in csv.DictReader(f)
+            if row["ref"] and row["level"] == "-3"
+        }
+
 
 @functools.cache
 def platform_vces(platform: int) -> tuple[Vce, ...]:
@@ -684,13 +708,7 @@ def pooled_vces(total_width: float) -> tuple[Vce, ...]:
 @dataclass
 class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
-    """Which platform it is, e.g. 3."""
-
-    platform_width: Annotated[int, Field(name="Platform Width", units="ft")]
-    """Platform width (in feet)."""
-
-    platform_length: Annotated[int, Field(name="Platform Length", units="ft")]
-    """Platform length (in feet)."""
+    """Which platform it is, 1 to 11, whose dimensions are in `data/`."""
 
     platform_max_cars: Annotated[int, Field(name="Platform Max Cars", units="car")]
     """
@@ -758,6 +776,19 @@ class Params:
             ),
             self.assumptions.max_train_cars,
         )
+
+    @property
+    def platform_length(self) -> Annotated[int, Field(name="Platform Length", units="ft")]:
+        """Platform length (in feet), from the Moynihan Station EA."""
+        return platform_lengths()[self.platform]
+
+    @property
+    def platform_area(self) -> Annotated[int, Field(name="Platform Area", units="ft^2")]:
+        """
+        Platform area (in square feet), from OpenStreetMap's outline of it,
+        which accounts for platforms tapering.
+        """
+        return platform_areas()[self.platform]
 
     @property
     def arriving_pax_per_train(
@@ -923,9 +954,7 @@ def calc_workbook(
     e.g. when only the summary is needed.
     """
     assumptions = params.assumptions
-    eff_area = (
-        params.platform_width * params.platform_length * assumptions.usable_platform_area_multiplier
-    )
+    eff_area = params.platform_area * assumptions.usable_platform_area_multiplier
     door_rate = params.doors_per_train * assumptions.door_flow_rate
 
     # Initialize counters
@@ -1610,8 +1639,6 @@ def main(
     # recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
         platform=3,
-        platform_width=18,
-        platform_length=900,
         platform_max_cars=10,
         headway=CLOSE_HEADWAY,
         vces=platform_vces(3),
@@ -1619,35 +1646,27 @@ def main(
     )
     params_p3300 = Params(
         platform=3,
-        platform_width=18,
-        platform_length=900,
         platform_max_cars=10,
         headway=NORMAL_HEADWAY,
         vces=platform_vces(3),
         platform_east_end=719,
     )
     params_p3recon120 = Params(
-        platform=3,
         modifier="recon",
-        platform_width=18,
-        platform_length=900,
+        platform=3,
         platform_max_cars=10,
         headway=CLOSE_HEADWAY,
         vces=pooled_vces(44.75),
     )
     params_p3recon300 = Params(
-        platform=3,
         modifier="recon",
-        platform_width=18,
-        platform_length=900,
+        platform=3,
         platform_max_cars=10,
         headway=NORMAL_HEADWAY,
         vces=pooled_vces(44.75),
     )
     params_p60 = Params(
         platform=6,
-        platform_width=15,
-        platform_length=1100,
         platform_max_cars=17,
         headway=0,
         vces=platform_vces(6),
@@ -1655,16 +1674,12 @@ def main(
     )
     params_p10120 = Params(
         platform=10,
-        platform_width=42,
-        platform_length=1100,
         platform_max_cars=12,
         headway=CLOSE_HEADWAY,
         vces=pooled_vces(70.58),
     )
     params_p11120 = Params(
         platform=11,
-        platform_width=18,
-        platform_length=1100,
         platform_max_cars=12,
         headway=CLOSE_HEADWAY,
         vces=pooled_vces(43.58),
