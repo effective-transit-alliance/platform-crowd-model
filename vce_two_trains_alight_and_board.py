@@ -474,6 +474,7 @@ class Vce:
 VCE_DATA = Path(__file__).parent / "data" / "estimated_vce_widths.csv"
 
 
+@functools.cache
 def platform_vces(platform: int) -> tuple[Vce, ...]:
     """
     Every VCE on `platform`, from `data/estimated_vce_widths.csv`,
