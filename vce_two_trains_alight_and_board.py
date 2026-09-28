@@ -423,12 +423,15 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
 
     FIRST_DATA_ROW = 2
 
+    # The parameters take up columns 1 (A) and 2 (B), so the time series starts after them.
+    FIRST_DATA_COLUMN = 3
+
     print("Elapsed_Time", "Train_1_Pax", "Train_2_Pax")
 
     def get_column_for(attr_name: str) -> int:
         for i, (attr, _field) in enumerate(annotated_field_names(Instant)):
             if attr == attr_name:
-                return 2 + i
+                return FIRST_DATA_COLUMN + i
         raise AttributeError(Instant, attr_name)
 
     for time_after in range(0, params.simulation_length):
@@ -583,11 +586,10 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         )
 
         for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
-            column = 2 + i
+            column = FIRST_DATA_COLUMN + i
             writable_cell(sheet, row=1, column=column).value = field.description
             writable_cell(sheet, row=instant.time + 2, column=column).value = value
 
-    # Time gets exported to column 3, see line 264.
     def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
         chart.title = title
@@ -599,7 +601,9 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         chart.legend = None
 
         max_row = params.simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
+        xvalues = Reference(
+            sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
+        )
         values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
         series = SeriesFactory(values, xvalues, title_from_data=True)
@@ -621,7 +625,9 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         chart.legend = None
 
         max_row = params.simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
+        xvalues = Reference(
+            sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
+        )
         values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
         series = SeriesFactory(values, xvalues, title_from_data=True)
@@ -640,7 +646,9 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         chart.legend.position = "b"
 
         max_row = params.simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(sheet, min_col=3, min_row=FIRST_DATA_ROW, max_row=max_row)
+        xvalues = Reference(
+            sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
+        )
         values1 = Reference(sheet, min_col=col1, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         values2 = Reference(sheet, min_col=col2, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
         # Y values start one row above X values so that first cell is series name.
