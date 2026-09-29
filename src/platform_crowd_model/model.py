@@ -189,6 +189,12 @@ class Assumptions:
 # platform crowd
 
 
+def fmt_ft_in(ft: float) -> str:
+    """A length in feet as feet and inches, to the nearest inch, e.g. `6'2"` for 6.17 ft."""
+    feet, inches = divmod(round(ft * 12), 12)
+    return f"{feet}'{inches}\""
+
+
 def stair_flow(flow_per_width: float, width: float) -> float:
     """
     :param flow_per_width: stair flow per foot of width (pax/min/ft)
@@ -388,6 +394,9 @@ def annotated_field_values(
         # CSVs and charts can't hold `timedelta`s, so give them in seconds, per `Field.units`.
         if isinstance(value, timedelta):
             value = round(value.total_seconds())
+        # Lengths are easier to picture in feet and inches than in decimal feet.
+        elif field.units == "ft":
+            value = fmt_ft_in(value)
         yield attr, value, field
 
 
@@ -968,7 +977,7 @@ def run_model(params: Params, charts: bool) -> str:
         return f"{minutes}:{rest.seconds:02}"
 
     return (
-        f"| {params.name} | {fmt_time(headway)} | {params.total_vce_width} ft"
+        f"| {params.name} | {fmt_time(headway)} | {fmt_ft_in(params.total_vce_width)}"
         f" | {', '.join(fmt_time(arrival) for arrival in summary.arrival_times)}"
         f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
