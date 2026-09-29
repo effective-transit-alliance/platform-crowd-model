@@ -23,10 +23,10 @@ uv run platform-crowd-model
 In doing so, `uv` will also install dependencies and set up a virtual environment.
 
 Each run prints a table of headline results.
-To also write a spreadsheet per scenario with the full time series and charts, run
+To also save each scenario's full time series as CSVs and its charts as an SVG in `output/`, run
 
 ```sh
-uv run platform-crowd-model --spreadsheets
+uv run platform-crowd-model --charts
 ```
 
 To also replace the [results table](#current-results) below with that run's, run
