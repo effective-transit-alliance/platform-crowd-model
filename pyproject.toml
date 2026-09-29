@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.scripts]
-platform-crowd-model = "platform_crowd_model.model:cli"
+platform-crowd-model = "platform_crowd_model.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.9,<1"]
