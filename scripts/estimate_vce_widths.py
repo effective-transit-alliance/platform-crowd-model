@@ -41,12 +41,12 @@ Writes `data/estimated_vce_widths.csv`.
 
 import bisect
 import csv
-import functools
 import statistics
 import urllib.request
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from functools import cache
 from pathlib import Path
 
 import pymupdf
@@ -460,7 +460,7 @@ def align(
     icons = sorted(icons)
     known = sorted(known)
 
-    @functools.cache
+    @cache
     def best(i: int, j: int) -> tuple[float, tuple[tuple[float, float], ...]]:
         if i == len(icons):
             return 0.0, ()

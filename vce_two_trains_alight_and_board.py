@@ -15,6 +15,7 @@ from collections import defaultdict
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
@@ -490,14 +491,14 @@ OSM_PLATFORMS = Path(__file__).parent / "data" / "osm_platforms.csv"
 """Each platform's outline's area, from OpenStreetMap, via `scripts/extract_osm_platforms.py`."""
 
 
-@functools.cache
+@cache
 def platform_lengths() -> dict[int, int]:
     """Each platform's length (ft), from `PLATFORM_LENGTHS`."""
     with PLATFORM_LENGTHS.open() as f:
         return {int(row["platform"]): int(row["length_ft"]) for row in csv.DictReader(f)}
 
 
-@functools.cache
+@cache
 def platform_areas() -> dict[int, int]:
     """Each platform's area (sq ft), from `OSM_PLATFORMS`."""
     with OSM_PLATFORMS.open() as f:
@@ -508,7 +509,7 @@ def platform_areas() -> dict[int, int]:
         }
 
 
-@functools.cache
+@cache
 def platform_vces(platform: int) -> tuple[Vce, ...]:
     """
     Every VCE on `platform`, from `data/estimated_vce_widths.csv`,
