@@ -570,7 +570,7 @@ and measures each VCE's width and position into
   is in [`data/platform_east_ends.csv`](./data/platform_east_ends.csv):
   the sheet's on platforms 1 to 8, and the Master Plan's on platforms 9 to 11.
 - VCEs matching a Master Plan VCE of the same type within 15 ft
-  have `width_status` `master plan`, with the Master Plan's width.
+  have `width_source` `master_plan`, with the Master Plan's width.
   The rest, 45 of 61, are `estimated`, with only the sheet's width.
 - For the 10 matched stairs, the sheet's widths differ from the Master Plan's by up to 14 in.
   (a median of 4 in.), and for the 6 matched escalators, by up to 9 in.

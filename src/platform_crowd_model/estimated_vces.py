@@ -394,7 +394,7 @@ def main() -> None:
                 "east_end_ft": ft(v.x1),
                 "estimated_width_in": round(v.width_in),
                 "master_plan_width_in": match["width_in"] if match else "",
-                "width_status": "master plan" if match else "estimated",
+                "width_source": "master_plan" if match else "estimated",
                 "source": SOURCE,
                 "notes": " ".join(notes),
             }
@@ -621,7 +621,7 @@ def directory_vces(
                     else round(typical(type_, "estimated_width_in")),
                     # Where the Master Plan's alternatives disagree, e.g. 66/72, the narrowest.
                     "master_plan_width_in": match["width_in"].split("/")[0] if match else "",
-                    "width_status": "master plan" if match else "typical",
+                    "width_source": "master_plan" if match else "typical",
                     "source": DIRECTORY_SOURCE,
                     "notes": "Its position is only approximate; the directory isn't to scale.",
                 }
