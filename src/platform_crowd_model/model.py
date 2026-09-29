@@ -1112,7 +1112,10 @@ def simulate(
     time_series = TimeSeries()
 
     max_pax_in_stair_queues = (
-        params.total_vce_width * assumptions.stair_queue_length / assumptions.stair_queue_space
+        # Nobody queues to go up the escalator that only goes down.
+        sum(vce.width for vce, role in zip(params.vces, roles, strict=True) if role != "down")
+        * assumptions.stair_queue_length
+        / assumptions.stair_queue_space
     )
     summary = Summary(
         max_up_rate=0,
