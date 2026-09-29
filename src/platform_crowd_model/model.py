@@ -1,5 +1,3 @@
-#!/usr/bin/env -S uv run
-
 """
 This is a recursive peak-hour platform clearance calculator.
 model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
@@ -983,7 +981,7 @@ RESULTS_COLUMNS = [
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
-README = Path(__file__).parent / "README.md"
+README = Path(__file__).parents[2] / "README.md"
 RESULTS_START = "<!-- results-table:start -->"
 RESULTS_END = "<!-- results-table:end -->"
 """The README's results table is between these markers, so `--update-readme` can replace it."""
@@ -1146,5 +1144,6 @@ def main(
         update_readme_results(table)
 
 
-if __name__ == "__main__":
+def cli() -> None:
+    """Run `main` as a command-line program."""
     typer.run(main)
