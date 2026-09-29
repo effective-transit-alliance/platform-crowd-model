@@ -11,6 +11,7 @@ import typing
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
 import numpy as np
@@ -25,6 +26,8 @@ from typer import Option
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
+
+SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
 
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
@@ -45,15 +48,15 @@ def alight_rate(k: float, t: float, t0: float, u: float) -> float:
         return 0
 
 
-def platform_clearance(karr: float, a: float, w: float, qmax: float) -> float:
+def platform_clearance(karr: float, a: float, w: float, max_pax_in_stair_queues: float) -> float:
     """
     :param a: usable platform area
     :param w: total width of vertical circulation elements
     :param: karr: number of people waiting to get onto a stairwell
-    :param: qmax: number of people that can fit around stair thresholds
+    :param: max_pax_in_stair_queues: number of people that can fit around stair thresholds
     :return: platform egress rate on stairs
     """
-    if karr <= qmax:
+    if karr <= max_pax_in_stair_queues:
         return min(
             karr,
             min(17 * w / 60, (111 * a / max(1, karr) - 162) / (a / max(1, karr)) ** 2),
@@ -231,8 +234,8 @@ def annotated_field_values(
 
 @dataclass
 class Params:
-    filename_prefix: str
-    """Prefix of filename to save the spreadsheet in."""
+    platform: Annotated[int, Field(name="Platform", units="#")]
+    """Which platform it is, e.g. 3."""
 
     simulation_length: Annotated[int, Field(name="Simulation Length", units="s")]
     """Time (in seconds) to simulate."""
@@ -289,6 +292,22 @@ class Params:
 
     train2_boarding_pax: Annotated[int, Field(name="Train 2 Boarding Passengers", units="pax")]
     """Number of passengers already on the platform at time 0 wanting to board train 2."""
+
+    modifier: str | None = None
+    """
+    What sets this scenario apart from the platform's others,
+    e.g. `recon` for its VCEs after Penn Reconstruction.
+    """
+
+    @property
+    def name(self) -> str:
+        """The platform's name in the results table, e.g. `3 (recon)`."""
+        return f"{self.platform} ({self.modifier})" if self.modifier else str(self.platform)
+
+    @property
+    def filename_prefix(self) -> str:
+        """Prefix of the filename to save the spreadsheet in, e.g. `platform3_recon`."""
+        return f"platform{self.platform}" + (f"_{self.modifier}" if self.modifier else "")
 
     @property
     def los_f_egress_rate(
@@ -394,13 +413,51 @@ class Instant:
     """Egress LOS (level of service)."""
 
 
+@dataclass
+class Summary:
+    """Headline results of one model run, for the results table in the README."""
+
+    max_up_rate: float
+    """Highest upstairs rate (pax/s)."""
+
+    secs_at_capacity: int
+    """Seconds the upstairs rate is at the VCEs' LOS E capacity (17 pax/min/ft)."""
+
+    taper_time: int | None
+    """
+    Last second the arriving passengers on the platform exceed what fits in the stair queues,
+    i.e. when they start to taper off, or `None` if they never do.
+    """
+
+    clear_time: int | None
+    """First second after the last arrival when all arriving passengers have left the platform."""
+
+    dwells: list[int | None]
+    """
+    Each train's dwell (s):
+    from its arrival until all of its arriving passengers have alighted
+    and all of its departing passengers have boarded,
+    or `None` if that doesn't happen within the simulation.
+    """
+
+    boarded_time: int | None
+    """First second when all departing passengers have boarded, or `None` if they never do."""
+
+    max_pax_on_platform: float
+    """Most passengers on the platform at once."""
+
+    min_space_per_pax: float
+    """Least platform space per passenger (sq ft)."""
+
+
 def calc_workbook(
     params: Params, write_workbook: bool = True, print_time_series: bool = True
-) -> openpyxl.Workbook:
+) -> tuple[openpyxl.Workbook, Summary]:
     """
-    Simulate `params`, returning its spreadsheet.
+    Simulate `params`, returning its spreadsheet and its results table's summary.
     Without `write_workbook`, the spreadsheet is left without its time series and charts,
-    and without `print_time_series`, nothing is printed.
+    and without `print_time_series`, nothing is printed,
+    e.g. when only the summary is needed.
     """
     eff_area = (
         params.platform_width * params.platform_length * params.usable_platform_area_multiplier
@@ -438,6 +495,20 @@ def calc_workbook(
     # The parameters take up columns 1 (A) and 2 (B), so the time series starts after them.
     FIRST_DATA_COLUMN = 3
 
+    max_pax_in_stair_queues = params.total_vce_width * params.queue_length / 5
+    capacity = params.total_vce_width * 17 / 60
+    last_arrival_time = max(params.train1_arrival_time, params.train2_arrival_time)
+    summary = Summary(
+        max_up_rate=0,
+        secs_at_capacity=0,
+        taper_time=None,
+        clear_time=None,
+        dwells=[None, None],
+        boarded_time=None,
+        max_pax_on_platform=total_pax_on_platform,
+        min_space_per_pax=space_per_pax(total_pax_on_platform, eff_area),
+    )
+
     if print_time_series:
         print("Elapsed_Time", "Train_1_Pax", "Train_2_Pax")
 
@@ -472,7 +543,7 @@ def calc_workbook(
             arrived_pax_waiting_on_plat,
             eff_area,
             params.total_vce_width,
-            params.total_vce_width * params.queue_length / 5,
+            max_pax_in_stair_queues,
         )
         arrived_pax_waiting_on_plat -= plat_egress_rate
         if arrived_pax_waiting_on_plat < 0:
@@ -561,7 +632,7 @@ def calc_workbook(
             str(int(train1_boarders_on_plat + int(train2_boarders_on_plat)))
             + " boarding pax on platform;",
             str(int(total_pax_on_platform)) + " total pax on platform;",
-            str(int(inst_crowding)) + " sqft per pax;",
+            str(int(inst_crowding)) + " sq ft per pax;",
         )
         print(
             str(plat_egress_rate) + " pax/s up;",
@@ -570,6 +641,51 @@ def calc_workbook(
             + " pax are upstairs"
         )
         """
+        summary.max_up_rate = max(summary.max_up_rate, plat_egress_rate)
+        if plat_egress_rate >= capacity - 1e-9:
+            summary.secs_at_capacity += 1
+        if arrived_pax_waiting_on_plat > max_pax_in_stair_queues:
+            summary.taper_time = time_after
+        if (
+            summary.clear_time is None
+            and time_after > last_arrival_time
+            and arrived_pax_waiting_on_plat < 1
+        ):
+            summary.clear_time = time_after
+        if (
+            summary.boarded_time is None
+            and train1_boarders_upstairs
+            + train2_boarders_upstairs
+            + train1_boarders_on_plat
+            + train2_boarders_on_plat
+            < 1
+        ):
+            summary.boarded_time = time_after
+        for train, (arrival_time, remaining_arrivals, upstairs, on_plat) in enumerate(
+            (
+                (
+                    params.train1_arrival_time,
+                    train1_remaining_arrivals,
+                    train1_boarders_upstairs,
+                    train1_boarders_on_plat,
+                ),
+                (
+                    params.train2_arrival_time,
+                    train2_remaining_arrivals,
+                    train2_boarders_upstairs,
+                    train2_boarders_on_plat,
+                ),
+            )
+        ):
+            if (
+                summary.dwells[train] is None
+                and time_after > arrival_time
+                and remaining_arrivals < 1
+                and upstairs + on_plat < 1
+            ):
+                summary.dwells[train] = time_after - arrival_time
+        summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
+        summary.min_space_per_pax = min(summary.min_space_per_pax, inst_crowding)
 
         if write_workbook:
             instant = Instant(
@@ -606,7 +722,7 @@ def calc_workbook(
                 writable_cell(sheet, row=instant.time + 2, column=column).value = value
 
     if not write_workbook:
-        return wb
+        return wb, summary
 
     def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
@@ -711,7 +827,7 @@ def calc_workbook(
             "Space per Passenger",
             get_column_for("platform_crowding"),
             "Time (s)",
-            "Space per passenger (sqft)",
+            "Space per passenger (sq ft)",
         ),
         "V49",
     )
@@ -729,12 +845,46 @@ def calc_workbook(
             f"LOS F egress rate is {params.los_f_egress_rate} pax/s. "
             f"Emergency egress time is {params.emergency_egress_time} seconds."
         )
-    return wb
+    return wb, summary
 
 
-def run_model(params: Params, spreadsheets: bool) -> None:
-    """Run the model, and with `spreadsheets`, print its time series and save its spreadsheet."""
-    wb = calc_workbook(params=params, write_workbook=spreadsheets, print_time_series=spreadsheets)
+RESULTS_COLUMNS = [
+    "Platform",
+    "Headway",
+    "VCE width",
+    "Dwell",
+    "Taper time",
+    "Clear time",
+    "Boarded time",
+    "Time at capacity",
+    "Max up rate (pax/s)",
+    "Max pax on platform",
+    "Max density (pax/m²)",
+]
+RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
+
+README = Path(__file__).parent / "README.md"
+RESULTS_START = "<!-- results-table:start -->"
+RESULTS_END = "<!-- results-table:end -->"
+"""The README's results table is between these markers, so `--update-readme` can replace it."""
+
+
+def update_readme_results(table: str) -> None:
+    """Replace the results table in the README with `table`."""
+    readme = README.read_text()
+    start = readme.index(RESULTS_START) + len(RESULTS_START)
+    end = readme.index(RESULTS_END)
+    README.write_text(f"{readme[:start]}\n{table}\n{readme[end:]}")
+
+
+def run_model(params: Params, spreadsheets: bool) -> str:
+    """
+    Run the model, return its row of the results table,
+    and with `spreadsheets`, print its time series and save its spreadsheet.
+    """
+    wb, summary = calc_workbook(
+        params=params, write_workbook=spreadsheets, print_time_series=spreadsheets
+    )
 
     headway = params.train2_arrival_time - params.train1_arrival_time
     if spreadsheets:
@@ -746,19 +896,40 @@ def run_model(params: Params, spreadsheets: bool) -> None:
         )
     wb.close()
 
+    def fmt_time(t: int | None) -> str:
+        """`t` seconds as `m:ss`."""
+        if t is None:
+            return "never"
+        minutes, seconds = divmod(t, 60)
+        return f"{minutes}:{seconds:02}"
+
+    return (
+        f"| {params.name} | {fmt_time(headway)} | {params.total_vce_width} ft"
+        f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
+        f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
+        f" | {fmt_time(summary.boarded_time)}"
+        f" | {fmt_time(summary.secs_at_capacity)} | {summary.max_up_rate:.2f}"
+        f" | {summary.max_pax_on_platform:.0f}"
+        f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
+        f" ({platform_crowd_los(summary.min_space_per_pax)}) |"
+    )
+
 
 def main(
+    update_readme: Annotated[
+        bool, Option(help="Replace the results table in the README with this run's.")
+    ] = False,
     spreadsheets: Annotated[
         bool,
-        Option(help="Print each scenario's time series and save its spreadsheet."),
-    ] = True,
+        Option(help="Also print each scenario's time series and save its spreadsheet."),
+    ] = False,
 ) -> None:
-    """Run every scenario."""
+    """Run every scenario and print a table of their results."""
 
     # params are labeled  with p<platform number><time in seconds>
     # recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
-        filename_prefix="platform3",
+        platform=3,
         simulation_length=600,
         platform_width=18,
         platform_length=900,
@@ -798,7 +969,7 @@ def main(
         ),
     )
     params_p3300 = Params(
-        filename_prefix="platform3",
+        platform=3,
         simulation_length=600,
         platform_width=18,
         platform_length=900,
@@ -838,7 +1009,8 @@ def main(
         ),
     )
     params_p3recon120 = Params(
-        filename_prefix="platform3_recon",
+        platform=3,
+        modifier="recon",
         simulation_length=600,
         platform_width=18,
         platform_length=900,
@@ -878,7 +1050,8 @@ def main(
         ),
     )
     params_p3recon300 = Params(
-        filename_prefix="platform3_recon",
+        platform=3,
+        modifier="recon",
         simulation_length=600,
         platform_width=18,
         platform_length=900,
@@ -918,7 +1091,7 @@ def main(
         ),
     )
     params_p60 = Params(
-        filename_prefix="platform6",
+        platform=6,
         simulation_length=600,
         platform_width=15,
         platform_length=1100,
@@ -958,7 +1131,7 @@ def main(
         ),
     )
     params_p10120 = Params(
-        filename_prefix="platform10",
+        platform=10,
         simulation_length=600,
         platform_width=42,
         platform_length=1100,
@@ -998,7 +1171,7 @@ def main(
         ),
     )
     params_p11120 = Params(
-        filename_prefix="platform11",
+        platform=11,
         simulation_length=600,
         platform_width=18,
         platform_length=1100,
@@ -1037,21 +1210,42 @@ def main(
             )
         ),
     )
+    params_p30 = dataclasses.replace(params_p3120, train2_arrival_time=0)
+    params_p3recon0 = dataclasses.replace(params_p3recon120, train2_arrival_time=0)
+    params_p6120 = dataclasses.replace(params_p60, train2_arrival_time=120)
+    params_p6300 = dataclasses.replace(params_p60, train2_arrival_time=300)
+    params_p100 = dataclasses.replace(params_p10120, train2_arrival_time=0)
+    params_p10300 = dataclasses.replace(params_p10120, train2_arrival_time=300)
+    params_p110 = dataclasses.replace(params_p11120, train2_arrival_time=0)
+    params_p11300 = dataclasses.replace(params_p11120, train2_arrival_time=300)
     with ProcessPoolExecutor() as executor:
-        list(
+        rows = list(
             executor.map(
                 functools.partial(run_model, spreadsheets=spreadsheets),
                 [
+                    params_p30,
                     params_p3120,
                     params_p3300,
+                    params_p3recon0,
                     params_p3recon120,
                     params_p3recon300,
                     params_p60,
+                    params_p6120,
+                    params_p6300,
+                    params_p100,
                     params_p10120,
+                    params_p10300,
+                    params_p110,
                     params_p11120,
+                    params_p11300,
                 ],
             )
         )
+    table = "\n".join([RESULTS_HEADER, *rows])
+    print()
+    print(table)
+    if update_readme:
+        update_readme_results(table)
 
 
 if __name__ == "__main__":
