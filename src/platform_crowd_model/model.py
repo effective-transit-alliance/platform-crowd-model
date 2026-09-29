@@ -597,7 +597,7 @@ def platform_vces(platform: int) -> tuple[Vce, ...]:
         return tuple(
             Vce(
                 name=row["vce"],
-                width=float(row["master_plan_width_in"] or row["sheet_width_in"]) / 12,
+                width=float(row["master_plan_width_in"] or row["estimated_width_in"]) / 12,
                 type=row["type"],
                 west_end=float(row["west_end_ft"]),
                 east_end=float(row["east_end_ft"]),

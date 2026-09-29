@@ -392,7 +392,7 @@ def main() -> None:
                 "type": v.type,
                 "west_end_ft": ft(v.x0),
                 "east_end_ft": ft(v.x1),
-                "sheet_width_in": round(v.width_in),
+                "estimated_width_in": round(v.width_in),
                 "master_plan_width_in": match["width_in"] if match else "",
                 "width_status": "master plan" if match else "estimated",
                 "source": SOURCE,
@@ -411,9 +411,9 @@ def main() -> None:
         writer = csv.DictWriter(f, fieldnames=list(out[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(out)
-    matched = [v for v in out if v["master_plan_width_in"] and v["sheet_width_in"] != ""]
+    matched = [v for v in out if v["master_plan_width_in"] and v["estimated_width_in"] != ""]
     errors = [
-        int(str(v["sheet_width_in"])) - int(str(v["master_plan_width_in"]).split("/")[0])
+        int(str(v["estimated_width_in"])) - int(str(v["master_plan_width_in"]).split("/")[0])
         for v in matched
     ]
     print(
@@ -582,7 +582,7 @@ def directory_vces(
     def typical(type_: str, key: str) -> float:
         return statistics.median(
             float(str(v[key]))
-            if key == "sheet_width_in"
+            if key == "estimated_width_in"
             else float(str(v["east_end_ft"])) - float(str(v["west_end_ft"]))
             for v in estimated
             if v["type"] == type_
@@ -616,7 +616,9 @@ def directory_vces(
                     "type": type_,
                     "west_end_ft": round(mid - length / 2),
                     "east_end_ft": round(mid + length / 2),
-                    "sheet_width_in": "" if match else round(typical(type_, "sheet_width_in")),
+                    "estimated_width_in": ""
+                    if match
+                    else round(typical(type_, "estimated_width_in")),
                     # Where the Master Plan's alternatives disagree, e.g. 66/72, the narrowest.
                     "master_plan_width_in": match["width_in"].split("/")[0] if match else "",
                     "width_status": "master plan" if match else "typical",

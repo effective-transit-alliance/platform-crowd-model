@@ -1,4 +1,4 @@
-platform,vce,type,west_end_ft,east_end_ft,sheet_width_in,master_plan_width_in,width_status,source,notes
+platform,vce,type,west_end_ft,east_end_ft,estimated_width_in,master_plan_width_in,width_status,source,notes
 1,P1-S1,stair,262,284,58,60,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 1,P1-S2,stair,368,377,57,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 1,P1-S3,stair,405,415,63,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",

@@ -86,7 +86,7 @@ def main() -> None:
                     if v["source"].startswith("PCIP")
                     else "2022 directory, positioned",
                     "expected_type": v["type"],
-                    "expected_width_in": v["master_plan_width_in"] or v["sheet_width_in"],
+                    "expected_width_in": v["master_plan_width_in"] or v["estimated_width_in"],
                     "expected_width_status": v["width_status"],
                     "directory_level": "",
                     "directory_map_x": "",
