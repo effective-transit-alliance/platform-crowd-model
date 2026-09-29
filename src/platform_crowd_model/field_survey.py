@@ -1,7 +1,8 @@
 """
 Make a blank field survey sheet for measuring every platform's VCEs in person,
-prefilled with the VCEs expected from the PCIP Phase 2 existing plan
-(`data/estimated_vce_widths.csv`, platforms 1 to 8),
+prefilled with the VCEs expected from `data/estimated_vce_widths.csv`,
+from the PCIP Phase 2 existing plan on platforms 1 to 8
+and positioned from the directory on platforms 9 to 11,
 NJ Transit's January 2022 station directory (`data/njt_directory_vces.csv`),
 and the Master Plan (`data/master_plan_existing_vces.csv`).
 
@@ -81,7 +82,9 @@ def main() -> None:
                     "id": v["vce"],
                     "platform": platform,
                     "tracks": TRACKS[platform],
-                    "source": "PCIP Phase 2 existing plan",
+                    "source": "PCIP Phase 2 existing plan"
+                    if v["source"].startswith("PCIP")
+                    else "2022 directory, positioned",
                     "expected_type": v["type"],
                     "expected_width_in": v["master_plan_width_in"] or v["sheet_width_in"],
                     "expected_width_status": v["width_status"],
