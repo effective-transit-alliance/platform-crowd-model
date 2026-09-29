@@ -1222,21 +1222,22 @@ def main(
         rows = list(
             executor.map(
                 functools.partial(run_model, spreadsheets=spreadsheets),
+                # Group the results by headway first, then by platform.
                 [
                     params_p30,
-                    params_p3120,
-                    params_p3300,
                     params_p3recon0,
-                    params_p3recon120,
-                    params_p3recon300,
                     params_p60,
-                    params_p6120,
-                    params_p6300,
                     params_p100,
-                    params_p10120,
-                    params_p10300,
                     params_p110,
+                    params_p3120,
+                    params_p3recon120,
+                    params_p6120,
+                    params_p10120,
                     params_p11120,
+                    params_p3300,
+                    params_p3recon300,
+                    params_p6300,
+                    params_p10300,
                     params_p11300,
                 ],
             )
