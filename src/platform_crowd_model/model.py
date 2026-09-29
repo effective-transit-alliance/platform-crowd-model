@@ -3,6 +3,7 @@ This is a recursive peak-hour platform clearance calculator.
 model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 """
 
+import csv
 import dataclasses
 import functools
 import itertools
@@ -13,12 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
-import openpyxl
 import typer
-from openpyxl.cell import Cell
-from openpyxl.chart import Reference, ScatterChart
-from openpyxl.chart.series_factory import SeriesFactory
-from openpyxl.worksheet.worksheet import Worksheet
 from typer import Option
 
 if TYPE_CHECKING:
@@ -422,7 +418,7 @@ class Params:
 
     @property
     def filename_prefix(self) -> str:
-        """Prefix of the filename to save the spreadsheet in, e.g. `platform3_recon`."""
+        """Prefix of the filenames to save the time series and charts in, e.g. `platform3_recon`."""
         return f"platform{self.platform}" + (f"_{self.modifier}" if self.modifier else "")
 
     @property
@@ -441,30 +437,6 @@ class Params:
         at `Assumptions.emergency_stair_flow`.
         """
         return 2 * self.assumptions.arriving_pax_per_train / self.los_f_egress_rate
-
-
-def writable_cell(sheet: Worksheet, row: int, column: int) -> Cell:
-    """
-    Like `sheet.cell`, but not a `MergedCell`, whose `value` is read-only.
-    We never merge cells, so this always holds.
-    """
-    cell = sheet.cell(row=row, column=column)
-    assert isinstance(cell, Cell)
-    return cell
-
-
-def active_worksheet(wb: openpyxl.Workbook) -> Worksheet:
-    """
-    `wb.active`, as a plain `Worksheet`.
-
-    The stubs type `wb.active` as a fake subclass of both `Chartsheet` and `Worksheet`.
-    Narrowing it with `type(active) is Worksheet` makes type checkers treat everything after as
-    unreachable, and narrowing with `isinstance` resolves methods like `add_chart` to
-    `Chartsheet`'s. Returning it as `Worksheet` avoids both.
-    """
-    active = wb.active
-    assert isinstance(active, Worksheet)
-    return active
 
 
 @dataclass
@@ -554,12 +526,32 @@ class Summary:
     """Least platform space per passenger (sq ft)."""
 
 
-def calc_workbook(
-    params: Params, write_workbook: bool = True, print_time_series: bool = True
-) -> tuple[openpyxl.Workbook, Summary]:
+TRAIN_COLUMNS = [
+    "Passengers (pax)",
+    "Alighting Rate (pax/s)",
+    "Boarding Rate (pax/s)",
+    "Departing Passengers on Platform (pax)",
+]
+"""What `TimeSeries.trains` has for each train each second."""
+
+
+@dataclass
+class TimeSeries:
+    """Everything that happens each second of one model run, for its CSVs and charts."""
+
+    instants: list[Instant] = dataclasses.field(default_factory=list[Instant])
+    """The whole platform each second."""
+
+    trains: list[list[list[float]]] = dataclasses.field(default_factory=list[list[list[float]]])
+    """Each second, each train's `TRAIN_COLUMNS`."""
+
+
+def simulate(
+    params: Params, record_time_series: bool = True, print_time_series: bool = True
+) -> tuple[TimeSeries, Summary]:
     """
-    Simulate `params`, returning its spreadsheet and its results table's summary.
-    Without `write_workbook`, the spreadsheet is left without its time series and charts,
+    Simulate `params`, returning its time series and its results table's summary.
+    Without `record_time_series`, the time series is left empty,
     and without `print_time_series`, nothing is printed,
     e.g. when only the summary is needed.
     """
@@ -598,37 +590,7 @@ def calc_workbook(
     boarders_upstairs = [0.0 for _ in trains]
     boarders_on_platform = [0.0 for _ in trains]
     total_pax_on_platform: float = 0
-    wb = openpyxl.Workbook()
-    trains_sheet = wb.create_sheet("Trains")
-    """Each train's passengers, alighting, boarding, and departing passengers each second."""
-    TRAIN_COLUMNS = [
-        "Passengers (pax)",
-        "Alighting Rate (pax/s)",
-        "Boarding Rate (pax/s)",
-        "Departing Passengers on Platform (pax)",
-    ]
-    if write_workbook:
-        writable_cell(trains_sheet, row=1, column=1).value = "Time (s)"
-        for train in trains:
-            for j, column_name in enumerate(TRAIN_COLUMNS):
-                writable_cell(
-                    trains_sheet, row=1, column=2 + len(TRAIN_COLUMNS) * train + j
-                ).value = f"Train {train + 1} {column_name}"
-
-    sheet = active_worksheet(wb)
-
-    writable_cell(sheet, column=1, row=1).value = "Parameter"
-    writable_cell(sheet, column=2, row=1).value = "Value"
-
-    param_values = [*annotated_field_values(params), *annotated_field_values(assumptions)]
-    for i, (_attr, value, field) in enumerate(param_values):
-        writable_cell(sheet, column=1, row=i + 2).value = field.description
-        writable_cell(sheet, column=2, row=i + 2).value = value
-
-    FIRST_DATA_ROW = 2
-
-    # The parameters take up columns 1 (A) and 2 (B), so the time series starts after them.
-    FIRST_DATA_COLUMN = 3
+    time_series = TimeSeries()
 
     max_pax_in_stair_queues = (
         params.total_vce_width * assumptions.stair_queue_length / assumptions.stair_queue_space
@@ -649,16 +611,6 @@ def calc_workbook(
     if print_time_series:
         print("Elapsed_Time", *(f"Train_{train + 1}_Pax" for train in trains))
 
-    def get_column_for(attr_name: str) -> int:
-        for i, (attr, _field) in enumerate(annotated_field_names(Instant)):
-            if attr == attr_name:
-                return FIRST_DATA_COLUMN + i
-        raise AttributeError(Instant, attr_name)
-
-    def row_for(time: int) -> int:
-        """The spreadsheets' row for `time`."""
-        return time - start_time + FIRST_DATA_ROW
-
     time_after = start_time
     for time_after in itertools.count(start_time):
         if time_after - start_time >= MAX_SIMULATION_LENGTH:
@@ -668,8 +620,6 @@ def calc_workbook(
         for train in trains:
             if release_times[train] == time_after:
                 boarders_upstairs[train] = float(assumptions.departing_pax_per_train)
-        if write_workbook:
-            writable_cell(trains_sheet, row=row_for(time_after), column=1).value = time_after
         off_rates: list[float] = []
         for train in trains:
             off_rate = alight_rate(
@@ -774,7 +724,7 @@ def calc_workbook(
         summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
         summary.min_space_per_pax = min(summary.min_space_per_pax, space)
 
-        if write_workbook:
+        if record_time_series:
             net_pax_flow_rate: float = 0
             for rate in down_rates:
                 net_pax_flow_rate += rate
@@ -798,25 +748,18 @@ def calc_workbook(
                 egress_los=egress_crowd_los(params.total_vce_width, up_rate, assumptions),
             )
 
-            for train in trains:
-                for j, value in enumerate(
-                    (
+            time_series.instants.append(instant)
+            time_series.trains.append(
+                [
+                    [
                         remaining_arrivals[train] + new_pax[train],
                         off_rates[train],
                         on_rates[train],
                         boarders_on_platform[train],
-                    )
-                ):
-                    writable_cell(
-                        trains_sheet,
-                        row=row_for(instant.time),
-                        column=2 + len(TRAIN_COLUMNS) * train + j,
-                    ).value = value
-
-            for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
-                column = FIRST_DATA_COLUMN + i
-                writable_cell(sheet, row=1, column=column).value = field.description
-                writable_cell(sheet, row=row_for(instant.time), column=column).value = value
+                    ]
+                    for train in trains
+                ]
+            )
 
         # Stop once the last train has departed and the platform has cleared.
         if (
@@ -825,144 +768,12 @@ def calc_workbook(
             and all(dwell is not None for dwell in summary.dwells)
         ):
             break
-    if not write_workbook:
-        return wb, summary
-    simulation_length = time_after - start_time + 1
-
-    def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
-        chart = ScatterChart()
-        chart.title = title
-        chart.style = 13
-        chart.x_axis.title = x_title
-        chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = start_time
-        chart.x_axis.scaling.max = time_after
-        chart.legend = None
-
-        max_row = simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(
-            sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
-        )
-        values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
-        # Y values start one row above X values so that first cell is series name.
-        series = SeriesFactory(values, xvalues, title_from_data=True)
-        chart.series.append(series)
-        return chart
-
-    def make_chart_with_chopped_y(
-        title: str, min_col: int, x_title: str, y_title: str
-    ) -> ScatterChart:
-        chart = ScatterChart()
-        chart.title = title
-        chart.style = 13
-        chart.x_axis.title = x_title
-        chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = start_time
-        chart.x_axis.scaling.max = time_after
-        chart.y_axis.scaling.min = 0
-        chart.y_axis.scaling.max = 50
-        chart.legend = None
-
-        max_row = simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(
-            sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
-        )
-        values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
-        # Y values start one row above X values so that first cell is series name.
-        series = SeriesFactory(values, xvalues, title_from_data=True)
-        chart.series.append(series)
-        return chart
-
-    def make_chart_2(
-        title: str,
-        col1: int,
-        col2: int,
-        x_title: str,
-        y_title: str,
-        *more_cols: int,
-        data_sheet: Worksheet = sheet,
-        time_col: int | None = None,
-    ) -> ScatterChart:
-        chart = ScatterChart()
-        chart.title = title
-        chart.style = 13
-        chart.x_axis.title = x_title
-        chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = start_time
-        chart.x_axis.scaling.max = time_after
-        assert chart.legend is not None
-        chart.legend.position = "b"
-
-        max_row = simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(
-            data_sheet,
-            min_col=get_column_for("time") if time_col is None else time_col,
-            min_row=FIRST_DATA_ROW,
-            max_row=max_row,
-        )
-        for col in (col1, col2, *more_cols):
-            values = Reference(data_sheet, min_col=col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
-            # Y values start one row above X values so that first cell is series name.
-            chart.series.append(SeriesFactory(values, xvalues, title_from_data=True))
-        return chart
-
-    sheet.add_chart(
-        make_chart_2(
-            "Up and Down Rates",
-            get_column_for("up_rate"),
-            get_column_for("down_rate"),
-            "Time (s)",
-            "Rate (pax/s)",
-        ),
-        "V4",
-    )
-    sheet.add_chart(
-        make_chart_2(
-            "Passengers Aboard Trains",
-            2,
-            2 + len(TRAIN_COLUMNS),
-            "Time (s)",
-            "Passengers",
-            *(2 + len(TRAIN_COLUMNS) * train for train in trains[2:]),
-            data_sheet=trains_sheet,
-            time_col=1,
-        ),
-        "V19",
-    )
-    sheet.add_chart(
-        make_chart_2(
-            "Passengers on Platform",
-            get_column_for("arriving_pax_waiting_on_platform"),
-            get_column_for("total_pax_on_platform"),
-            "Time (s)",
-            "Passengers",
-        ),
-        "V34",
-    )
-    sheet.add_chart(
-        make_chart_with_chopped_y(
-            "Space per Passenger",
-            get_column_for("platform_crowding"),
-            "Time (s)",
-            "Space per passenger (sq ft)",
-        ),
-        "V49",
-    )
-    sheet.add_chart(
-        make_chart(
-            "Net Platform Flow Rate",
-            get_column_for("net_pax_flow_rate"),
-            "Time (s)",
-            "Net Flow Rate (pax/s)",
-        ),
-        "V64",
-    )
     if print_time_series:
         print(
             f"LOS F egress rate is {params.los_f_egress_rate} pax/s. "
             f"Emergency egress time is {params.emergency_egress_time} seconds."
         )
-    return wb, summary
+    return time_series, summary
 
 
 RESULTS_COLUMNS = [
@@ -995,24 +806,125 @@ def update_readme_results(table: str) -> None:
     README.write_text(f"{readme[:start]}\n{table}\n{readme[end:]}")
 
 
-def run_model(params: Params, spreadsheets: bool) -> str:
+OUTPUT_DIR = Path("output")
+"""Where `--charts` saves each scenario's CSVs and charts."""
+
+SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]
+"""Each chart's series colors, in order, from a colorblind-safe categorical palette."""
+
+
+def write_csv(path: Path, header: list[str], rows: list[list[Any]]) -> None:
+    """Write `header` and then `rows` to the CSV at `path`."""
+    with path.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        writer.writerows(rows)
+
+
+def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> None:
+    """
+    Save `params`' parameters and time series to CSVs,
+    and its charts to an SVG, all named starting with `stem`.
+    """
+    param_values = [*annotated_field_values(params), *annotated_field_values(params.assumptions)]
+    write_csv(
+        stem.with_name(f"{stem.name}_params.csv"),
+        ["Parameter", "Value"],
+        [[field.description, value] for _attr, value, field in param_values],
+    )
+    write_csv(
+        stem.with_suffix(".csv"),
+        [field.description for _attr, field in annotated_field_names(Instant)],
+        [
+            [value for _attr, value, _field in annotated_field_values(instant)]
+            for instant in time_series.instants
+        ],
+    )
+    trains = range(params.trains)
+    write_csv(
+        stem.with_name(f"{stem.name}_trains.csv"),
+        [
+            "Time (s)",
+            *(f"Train {train + 1} {column}" for train in trains for column in TRAIN_COLUMNS),
+        ],
+        [
+            [instant.time, *itertools.chain.from_iterable(train_values)]
+            for instant, train_values in zip(time_series.instants, time_series.trains, strict=True)
+        ],
+    )
+
+    # Only `--charts` needs `matplotlib`, so don't slow down every other run importing it.
+    from matplotlib.figure import Figure
+
+    times = [instant.time for instant in time_series.instants]
+
+    def column(attr: str) -> tuple[str, list[float]]:
+        """The name and values of `Instant`'s `attr` each second."""
+        field = dict(annotated_field_names(Instant))[attr]
+        return field.name, [getattr(instant, attr) for instant in time_series.instants]
+
+    charts: list[tuple[str, str, list[tuple[str, list[float]]]]] = [
+        ("Up and Down Rates", "Rate (pax/s)", [column("up_rate"), column("down_rate")]),
+        (
+            "Passengers Aboard Trains",
+            "Passengers",
+            [
+                (
+                    f"Train {train + 1}",
+                    [train_values[train][0] for train_values in time_series.trains],
+                )
+                for train in trains
+            ],
+        ),
+        (
+            "Passengers on Platform",
+            "Passengers",
+            [column("arriving_pax_waiting_on_platform"), column("total_pax_on_platform")],
+        ),
+        ("Space per Passenger", "Space per passenger (sq ft)", [column("platform_crowding")]),
+        ("Net Platform Flow Rate", "Net Flow Rate (pax/s)", [column("net_pax_flow_rate")]),
+    ]
+    fig = Figure(figsize=(12, 3 * len(charts)), layout="constrained")
+    fig.suptitle(f"Platform {params.name}, {params.headway} s headway")
+    axes = fig.subplots(len(charts), 1, sharex=True, squeeze=False)[:, 0]
+    for ax, (title, y_label, series) in zip(axes, charts, strict=True):
+        for color, (label, values) in zip(SERIES_COLORS, series, strict=False):
+            ax.plot(times, values, label=label, color=color, linewidth=2)
+        ax.set_title(title, loc="left")
+        ax.set_ylabel(y_label)
+        ax.set_xlim(times[0], times[-1])
+        ax.grid(color="#e0e0dd", linewidth=0.5)
+        ax.spines[["top", "right"]].set_visible(False)
+        if len(series) > 1:
+            ax.legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=False)
+    # Past 50 sq ft per passenger, the platform is nearly empty, so show just the crowded part.
+    axes[3].set_ylim(0, 50)
+    axes[-1].set_xlabel("Time (s)")
+    fig.savefig(stem.with_suffix(".svg"))
+
+
+def run_model(params: Params, charts: bool) -> str:
     """
     Run the model, return its row of the results table,
-    and with `spreadsheets`, print its time series and save its spreadsheet.
+    and with `charts`, print its time series and save its CSVs and charts in `OUTPUT_DIR`.
     """
-    wb, summary = calc_workbook(
-        params=params, write_workbook=spreadsheets, print_time_series=spreadsheets
+    time_series, summary = simulate(
+        params=params, record_time_series=charts, print_time_series=charts
     )
 
     headway = params.headway
-    if spreadsheets:
-        wb.save(
-            f"{params.filename_prefix}"
-            f"_{params.assumptions.arriving_pax_per_train}"
-            f"_{params.assumptions.arriving_pax_per_train}"
-            f"_{headway}s.xlsx"
+    if charts:
+        save_time_series(
+            params,
+            time_series,
+            OUTPUT_DIR
+            / (
+                f"{params.filename_prefix}"
+                f"_{params.assumptions.arriving_pax_per_train}"
+                f"_{params.assumptions.arriving_pax_per_train}"
+                f"_{headway}s"
+            ),
         )
-    wb.close()
 
     def fmt_time(t: int | None) -> str:
         """`t` seconds as `m:ss`."""
@@ -1038,9 +950,9 @@ def main(
     update_readme: Annotated[
         bool, Option(help="Replace the results table in the README with this run's.")
     ] = False,
-    spreadsheets: Annotated[
+    charts: Annotated[
         bool,
-        Option(help="Also print each scenario's time series and save its spreadsheet."),
+        Option(help="Also print each scenario's time series and save its CSVs and charts."),
     ] = False,
 ) -> None:
     """Run every scenario and print a table of their results."""
@@ -1113,10 +1025,12 @@ def main(
     params_p10300 = dataclasses.replace(params_p10120, headway=NORMAL_HEADWAY)
     params_p110 = dataclasses.replace(params_p11120, headway=0)
     params_p11300 = dataclasses.replace(params_p11120, headway=NORMAL_HEADWAY)
+    if charts:
+        OUTPUT_DIR.mkdir(exist_ok=True)
     with ProcessPoolExecutor() as executor:
         rows = list(
             executor.map(
-                functools.partial(run_model, spreadsheets=spreadsheets),
+                functools.partial(run_model, charts=charts),
                 # Group the results by headway first, then by platform.
                 [
                     params_p30,
