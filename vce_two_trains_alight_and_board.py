@@ -6,18 +6,22 @@ model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
 """
 
 import dataclasses
+import functools
 import typing
 from collections.abc import Generator
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
 import numpy as np
 import openpyxl
+import typer
 from numpy.typing import NDArray
 from openpyxl.cell import Cell
 from openpyxl.chart import Reference, ScatterChart
 from openpyxl.chart.series_factory import SeriesFactory
 from openpyxl.worksheet.worksheet import Worksheet
+from typer import Option
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -390,14 +394,22 @@ class Instant:
     """Egress LOS (level of service)."""
 
 
-def calc_workbook(params: Params) -> openpyxl.Workbook:
+def calc_workbook(
+    params: Params, write_workbook: bool = True, print_time_series: bool = True
+) -> openpyxl.Workbook:
+    """
+    Simulate `params`, returning its spreadsheet.
+    Without `write_workbook`, the spreadsheet is left without its time series and charts,
+    and without `print_time_series`, nothing is printed.
+    """
     eff_area = (
         params.platform_width * params.platform_length * params.usable_platform_area_multiplier
     )
 
     www = params.vce_widths[0, :]
 
-    print("www = ", www)
+    if print_time_series:
+        print("www = ", www)
 
     # Initialize counters
     arrived_pax_waiting_on_plat: float = 0
@@ -426,7 +438,8 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
     # The parameters take up columns 1 (A) and 2 (B), so the time series starts after them.
     FIRST_DATA_COLUMN = 3
 
-    print("Elapsed_Time", "Train_1_Pax", "Train_2_Pax")
+    if print_time_series:
+        print("Elapsed_Time", "Train_1_Pax", "Train_2_Pax")
 
     def get_column_for(attr_name: str) -> int:
         for i, (attr, _field) in enumerate(annotated_field_names(Instant)):
@@ -526,13 +539,14 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
             train2_boarders_on_plat = 0
         if arrived_pax_waiting_on_plat < 0:
             arrived_pax_waiting_on_plat = 0
-        print(
-            time_after,
-            train1_remaining_arrivals + train1_new_pax,
-            train2_remaining_arrivals + train2_new_pax,
-            arrived_pax_waiting_on_plat,
-            plat_egress_rate,
-        )
+        if print_time_series:
+            print(
+                time_after,
+                train1_remaining_arrivals + train1_new_pax,
+                train2_remaining_arrivals + train2_new_pax,
+                arrived_pax_waiting_on_plat,
+                plat_egress_rate,
+            )
         """
         print(
             "At time " + str(time_after) + " s,",
@@ -557,38 +571,42 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         )
         """
 
-        instant = Instant(
-            time=time_after,
-            train1_pax=train1_remaining_arrivals + train1_new_pax,
-            train2_pax=train2_remaining_arrivals + train2_new_pax,
-            arrived_pax_waiting_on_platform=arrived_pax_waiting_on_plat,
-            train1_off_rate=train1_off_rate,
-            train2_off_rate=train2_off_rate,
-            train1_on_rate=train1_on_rate,
-            train2_on_rate=train2_on_rate,
-            down_rate=plat_ingress_rate_1 + plat_ingress_rate_2,
-            train1_departing_pax_on_platform=train1_boarders_on_plat,
-            train2_departing_pax_on_platform=train2_boarders_on_plat,
-            total_pax_on_platform=total_pax_on_platform,
-            platform_crowding=inst_crowding,
-            up_rate=plat_egress_rate,
-            net_pax_flow_rate=(
-                plat_ingress_rate_1
-                + plat_ingress_rate_2
-                + train1_off_rate
-                + train2_off_rate
-                - plat_egress_rate
-                - train1_on_rate
-                - train2_on_rate
-            ),
-            platform_crowd_los=platform_crowd_los(inst_crowding),
-            egress_los=egress_crowd_los(params.total_vce_width, plat_egress_rate),
-        )
+        if write_workbook:
+            instant = Instant(
+                time=time_after,
+                train1_pax=train1_remaining_arrivals + train1_new_pax,
+                train2_pax=train2_remaining_arrivals + train2_new_pax,
+                arrived_pax_waiting_on_platform=arrived_pax_waiting_on_plat,
+                train1_off_rate=train1_off_rate,
+                train2_off_rate=train2_off_rate,
+                train1_on_rate=train1_on_rate,
+                train2_on_rate=train2_on_rate,
+                down_rate=plat_ingress_rate_1 + plat_ingress_rate_2,
+                train1_departing_pax_on_platform=train1_boarders_on_plat,
+                train2_departing_pax_on_platform=train2_boarders_on_plat,
+                total_pax_on_platform=total_pax_on_platform,
+                platform_crowding=inst_crowding,
+                up_rate=plat_egress_rate,
+                net_pax_flow_rate=(
+                    plat_ingress_rate_1
+                    + plat_ingress_rate_2
+                    + train1_off_rate
+                    + train2_off_rate
+                    - plat_egress_rate
+                    - train1_on_rate
+                    - train2_on_rate
+                ),
+                platform_crowd_los=platform_crowd_los(inst_crowding),
+                egress_los=egress_crowd_los(params.total_vce_width, plat_egress_rate),
+            )
 
-        for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
-            column = FIRST_DATA_COLUMN + i
-            writable_cell(sheet, row=1, column=column).value = field.description
-            writable_cell(sheet, row=instant.time + 2, column=column).value = value
+            for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
+                column = FIRST_DATA_COLUMN + i
+                writable_cell(sheet, row=1, column=column).value = field.description
+                writable_cell(sheet, row=instant.time + 2, column=column).value = value
+
+    if not write_workbook:
+        return wb
 
     def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
@@ -706,27 +724,37 @@ def calc_workbook(params: Params) -> openpyxl.Workbook:
         ),
         "V64",
     )
-    print(
-        f"LOS F egress rate is {params.los_f_egress_rate} pax/s. "
-        f"Emergency egress time is {params.emergency_egress_time} seconds."
-    )
+    if print_time_series:
+        print(
+            f"LOS F egress rate is {params.los_f_egress_rate} pax/s. "
+            f"Emergency egress time is {params.emergency_egress_time} seconds."
+        )
     return wb
 
 
-def run_model(params: Params) -> None:
-    wb = calc_workbook(params=params)
+def run_model(params: Params, spreadsheets: bool) -> None:
+    """Run the model, and with `spreadsheets`, print its time series and save its spreadsheet."""
+    wb = calc_workbook(params=params, write_workbook=spreadsheets, print_time_series=spreadsheets)
 
     headway = params.train2_arrival_time - params.train1_arrival_time
-    wb.save(
-        f"{params.filename_prefix}"
-        f"_{params.train1_arriving_pax}"
-        f"_{params.train2_arriving_pax}"
-        f"_{headway}s.xlsx"
-    )
+    if spreadsheets:
+        wb.save(
+            f"{params.filename_prefix}"
+            f"_{params.train1_arriving_pax}"
+            f"_{params.train2_arriving_pax}"
+            f"_{headway}s.xlsx"
+        )
     wb.close()
 
 
-def main() -> None:
+def main(
+    spreadsheets: Annotated[
+        bool,
+        Option(help="Print each scenario's time series and save its spreadsheet."),
+    ] = True,
+) -> None:
+    """Run every scenario."""
+
     # params are labeled  with p<platform number><time in seconds>
     # recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
@@ -1009,14 +1037,22 @@ def main() -> None:
             )
         ),
     )
-    run_model(params_p3120)
-    run_model(params_p3300)
-    run_model(params_p3recon120)
-    run_model(params_p3recon300)
-    run_model(params_p60)
-    run_model(params_p10120)
-    run_model(params_p11120)
+    with ProcessPoolExecutor() as executor:
+        list(
+            executor.map(
+                functools.partial(run_model, spreadsheets=spreadsheets),
+                [
+                    params_p3120,
+                    params_p3300,
+                    params_p3recon120,
+                    params_p3recon300,
+                    params_p60,
+                    params_p10120,
+                    params_p11120,
+                ],
+            )
+        )
 
 
 if __name__ == "__main__":
-    main()
+    typer.run(main)
