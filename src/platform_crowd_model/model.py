@@ -384,7 +384,7 @@ def annotated_field_values(
         value = getattr(obj, attr)
         # CSVs and charts can't hold `timedelta`s, so give them in seconds, per `Field.units`.
         if isinstance(value, timedelta):
-            value = value.total_seconds()
+            value = round(value.total_seconds())
         yield attr, value, field
 
 
@@ -702,7 +702,7 @@ def simulate(
             arriving_pax_on_platform = 0
         if print_time_series:
             print(
-                int(time_after.total_seconds()),
+                round(time_after.total_seconds()),
                 *(remaining_arrivals[train] + new_pax[train] for train in trains),
                 arriving_pax_on_platform,
                 up_rate,
@@ -790,7 +790,8 @@ def simulate(
     if print_time_series:
         print(
             f"LOS F egress rate is {params.los_f_egress_rate} pax/s. "
-            f"Emergency egress time is {params.emergency_egress_time.total_seconds()} seconds."
+            "Emergency egress time is "
+            f"{round(params.emergency_egress_time.total_seconds())} seconds."
         )
     return time_series, summary
 
@@ -867,7 +868,7 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
             *(f"Train {train + 1} {column}" for train in trains for column in TRAIN_COLUMNS),
         ],
         [
-            [instant.time.total_seconds(), *itertools.chain.from_iterable(train_values)]
+            [round(instant.time.total_seconds()), *itertools.chain.from_iterable(train_values)]
             for instant, train_values in zip(time_series.instants, time_series.trains, strict=True)
         ],
     )
@@ -904,7 +905,7 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
         ("Net Platform Flow Rate", "Net Flow Rate (pax/s)", [column("net_pax_flow_rate")]),
     ]
     fig = Figure(figsize=(12, 3 * len(charts)), layout="constrained")
-    fig.suptitle(f"Platform {params.name}, {int(params.headway.total_seconds())} s headway")
+    fig.suptitle(f"Platform {params.name}, {round(params.headway.total_seconds())} s headway")
     axes = fig.subplots(len(charts), 1, sharex=True, squeeze=False)[:, 0]
     for ax, (title, y_label, series) in zip(axes, charts, strict=True):
         for color, (label, values) in zip(SERIES_COLORS, series, strict=False):
@@ -941,7 +942,7 @@ def run_model(params: Params, charts: bool) -> str:
                 f"{params.filename_prefix}"
                 f"_{params.assumptions.arriving_pax_per_train}"
                 f"_{params.assumptions.arriving_pax_per_train}"
-                f"_{int(headway.total_seconds())}s"
+                f"_{round(headway.total_seconds())}s"
             ),
         )
 
