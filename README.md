@@ -327,11 +327,57 @@ This model only captures the first two.
 Each VCE has its own queue, with walking distances to it,
 so stairs near the ends of the platform or far from the busiest doors can run dry
 while others still have a queue.
-But passengers only choose the VCE they can go up soonest,
-though they prefer some exits, e.g. toward 7th Avenue, as the ETA report notes,
-concentrating queues at fewer stairs (optimistic).
+But arriving passengers choose perfectly:
+each second, each door's passengers know every VCE's queue, even hundreds of feet away,
+and walk to the one they can go up soonest,
+so every VCE going up is used, and their waits even out across the platform (optimistic).
 Before each VCE had its own queue, e.g. on platform 3 with 2-minute headways,
 one pooled queue cleared 44 s sooner.
+Always walking to the nearest VCE is the opposite extreme (pessimistic),
+and real passengers are somewhere in between:
+
+- **They only see nearby queues.**
+  From a door, passengers can see the nearest few VCEs,
+  not one 500 ft down a crowded platform.
+- **They don't all make the same choice.**
+  Given similar options, people split between them unevenly,
+  rather than all taking the best one each second.
+- **They head for a destination.**
+  Most are heading toward 7th Avenue, as the ETA report notes,
+  and the West End Concourse leads toward 8th Avenue and Moynihan Train Hall,
+  so many take a longer wait on a VCE toward where they're going,
+  concentrating queues at fewer VCEs.
+- **Regulars position themselves.**
+  Commuters ride in the car nearest their usual exit,
+  so arriving passengers aren't spread evenly across the doors.
+- **They switch queues.**
+  Some leave a queue that isn't moving for another,
+  while the model's passengers stay with the VCE they first chose.
+- **They only see who's queued.**
+  The model counts passengers still walking to a VCE as queued ahead of them,
+  which passengers can't see.
+
+These could be modeled later, from simplest to most involved:
+
+- **A visibility radius:** passengers only consider VCEs within some distance, or the nearest few,
+  and take the quickest of those.
+- **Logit choice:** passengers split across VCEs
+  with probability proportional to e^(−θ × each VCE's time to go up),
+  the standard approach to route choice in pedestrian and transit models.
+  θ = 0 splits them evenly, and a large θ is the current model.
+  Since the model already tracks fractional passengers,
+  each second's alighting passengers can be split by those probabilities.
+- **Destination preference:** adding each VCE's walk upstairs toward each destination,
+  with a share of the passengers heading to each, e.g. 7th Avenue or the West End Concourse,
+  which needs a source for that split.
+- **Uneven doors:** more of each train's passengers at the doors nearest the busiest exits.
+- **Queue switching:** each second, passengers queued at one VCE move to another
+  if it's become much quicker.
+
+Penn could also bring passengers closer to the current model's perfect choices,
+e.g. with screens showing each VCE's queue in real time,
+staff directing passengers,
+or blocking off paths to some VCEs to spread passengers out.
 
 ### Platform Crowding Is Graded Against the Whole Platform
 
