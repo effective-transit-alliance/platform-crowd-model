@@ -308,7 +308,7 @@ especially while arriving passengers are walking to the stairs.
 
 The model uses 75% of the platform's area,
 leaving 25% for columns, stairwells, and other obstructions.
-But the TCQSM's 1'6" edge buffers alone take 3'0" of an 18'0" platform, about 17%,
+But the TCQSM's 1'6" edge buffers alone take 3' of an 18' platform, about 17%,
 leaving only 8% for everything else, which is likely too little on a narrow platform
 with stairwells in it.
 So the usable area, and the space per passenger, are likely overstated (optimistic).
