@@ -260,7 +260,7 @@ def write_existing(vces: list[dict[str, int | str]]) -> None:
             if (
                 c["platform"] == v["platform"]
                 and c["type"] == v["type"]
-                and abs(float(c["mid_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
+                and abs(float(c["midpoint_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
             ):
                 widths = {int(w) for w in str(c["width_in"]).split("/")} | {int(v["width_in"])}
                 c["width_in"] = "/".join(map(str, sorted(widths)))
@@ -272,7 +272,7 @@ def write_existing(vces: list[dict[str, int | str]]) -> None:
                     "platform": v["platform"],
                     "type": v["type"],
                     "width_in": v["width_in"],
-                    "mid_ft": round(mid),
+                    "midpoint_ft": round(mid),
                     "alternatives": str(v["alternative"]),
                 }
             )

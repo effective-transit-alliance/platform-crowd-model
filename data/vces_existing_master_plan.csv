@@ -1,4 +1,4 @@
-platform,type,width_in,mid_ft,alternatives
+platform,type,width_in,midpoint_ft,alternatives
 10,stair,92,266,3 4 1
 10,escalator,38,269,3 4 1
 10,stair,108,362,3 4 1

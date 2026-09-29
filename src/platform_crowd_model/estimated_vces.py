@@ -369,13 +369,13 @@ def main() -> None:
             m
             for m in master_plan
             if int(m["platform"]) == v.platform
-            and abs(float(m["mid_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
+            and abs(float(m["midpoint_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
         ]
         same_type = [m for m in near if m["type"] == v.type]
-        match = min(same_type, key=lambda m: abs(float(m["mid_ft"]) - mid), default=None)
+        match = min(same_type, key=lambda m: abs(float(m["midpoint_ft"]) - mid), default=None)
         notes = []
         if match is None and near:
-            other = min(near, key=lambda m: abs(float(m["mid_ft"]) - mid))
+            other = min(near, key=lambda m: abs(float(m["midpoint_ft"]) - mid))
             notes.append(
                 f"The Master Plan has a {other['width_in']} in. {other['type']} here instead."
             )
@@ -559,7 +559,7 @@ def directory_vces(
         known[int(str(v["platform"]))].append((mid, str(v["type"])))
     for m in master_plan:
         if int(m["platform"]) in DIRECTORY_PLATFORMS:
-            known[int(m["platform"])].append((float(m["mid_ft"]), m["type"]))
+            known[int(m["platform"])].append((float(m["midpoint_ft"]), m["type"]))
 
     positions: defaultdict[int, list[tuple[float, str]]] = defaultdict(list)
     for level, (scale, offset) in INITIAL_CALIBRATIONS.items():
@@ -592,10 +592,10 @@ def directory_vces(
     for m in master_plan:
         p = int(m["platform"])
         if p in DIRECTORY_PLATFORMS and not any(
-            t == m["type"] and abs(float(m["mid_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
+            t == m["type"] and abs(float(m["midpoint_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
             for mid, t in positions[p]
         ):
-            positions[p].append((float(m["mid_ft"]), m["type"]))
+            positions[p].append((float(m["midpoint_ft"]), m["type"]))
 
     out: list[dict[str, object]] = []
     for p in DIRECTORY_PLATFORMS:
@@ -605,9 +605,9 @@ def directory_vces(
                 for m in master_plan
                 if int(m["platform"]) == p
                 and m["type"] == type_
-                and abs(float(m["mid_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
+                and abs(float(m["midpoint_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
             ]
-            match = min(same, key=lambda m: abs(float(m["mid_ft"]) - mid), default=None)
+            match = min(same, key=lambda m: abs(float(m["midpoint_ft"]) - mid), default=None)
             length = typical(type_, "length")
             out.append(
                 {

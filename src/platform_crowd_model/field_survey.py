@@ -13,10 +13,10 @@ Platforms are ordered by priority:
 platform 3 first, as the ETA report's focus, then platform 11, which has no width data,
 then the rest.
 
-`position_ft` is in the Master Plan's frame: feet east of its plans' west edge,
+`midpoint_ft` is in the Master Plan's frame: feet east of its plans' west edge,
 which cuts across the platforms under the West End Concourse.
 
-Writes `data/vces_field_survey.csv`; the columns after `position_ft` are for surveyors.
+Writes `data/vces_field_survey.csv`; the columns after `midpoint_ft` are for surveyors.
 """
 
 import csv
@@ -90,7 +90,7 @@ def main() -> None:
                     "expected_width_status": v["width_status"],
                     "directory_level": "",
                     "directory_map_x": "",
-                    "position_ft": round((int(v["west_end_ft"]) + int(v["east_end_ft"])) / 2),
+                    "midpoint_ft": round((int(v["west_end_ft"]) + int(v["east_end_ft"])) / 2),
                 }
             )
         # The directory's map has west on the left, so west to east is ascending x.
@@ -101,7 +101,7 @@ def main() -> None:
         # The Master Plan's positions are feet east of its plans' west edge.
         in_plan = sorted(
             (v for v in master_plan if int(v["platform"]) == platform),
-            key=lambda v: int(v["mid_ft"]),
+            key=lambda v: int(v["midpoint_ft"]),
         )
         for n, v in enumerate(on_map, 1):
             rows.append(
@@ -115,7 +115,7 @@ def main() -> None:
                     "expected_width_status": "",
                     "directory_level": v["level"],
                     "directory_map_x": v["map_x"],
-                    "position_ft": "",
+                    "midpoint_ft": "",
                 }
             )
         for n, v in enumerate(in_plan, 1):
@@ -131,7 +131,7 @@ def main() -> None:
                     "expected_width_status": "master plan",
                     "directory_level": "",
                     "directory_map_x": "",
-                    "position_ft": v["mid_ft"],
+                    "midpoint_ft": v["midpoint_ft"],
                 }
             )
     with OUT_CSV.open("w", newline="") as f:

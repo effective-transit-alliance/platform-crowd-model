@@ -633,7 +633,7 @@ the 2022 directory, and the Master Plan,
 each sorted west to east, since they can't all be aligned reliably,
 starting with platform 3, the ETA report's focus,
 then platform 11, which has no width data.
-Surveyors fill in the columns after `position_ft`, feet east of the Master Plan's plans' west edge:
+Surveyors fill in the columns after `midpoint_ft`, feet east of the Master Plan's plans' west edge:
 
 - `found`: yes, no, or the `vce_name` of another row it duplicates.
   Add rows for VCEs neither source lists.
