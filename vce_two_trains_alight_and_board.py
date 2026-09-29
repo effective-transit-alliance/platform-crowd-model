@@ -15,10 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
-import numpy as np
 import openpyxl
 import typer
-from numpy.typing import NDArray
 from openpyxl.cell import Cell
 from openpyxl.chart import Reference, ScatterChart
 from openpyxl.chart.series_factory import SeriesFactory
@@ -404,7 +402,7 @@ class Params:
     e.g. an escalator running the other way.
     """
 
-    vce_widths: NDArray[np.floating]
+    vce_widths: list[float]
     """Widths (in feet) of each VCE (vertical circulation element)."""
 
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
@@ -573,7 +571,7 @@ def calc_workbook(
     )
     door_rate = assumptions.doors_per_train * assumptions.door_flow_rate
 
-    vce_widths = params.vce_widths[0, :]
+    vce_widths = params.vce_widths
 
     if print_time_series:
         print("vce_widths = ", vce_widths)
@@ -1057,27 +1055,7 @@ def main(
         platform_length=900,
         headway=CLOSE_HEADWAY,
         total_vce_width=42.5,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
     params_p3300 = Params(
         platform=3,
@@ -1085,27 +1063,7 @@ def main(
         platform_length=900,
         headway=NORMAL_HEADWAY,
         total_vce_width=42.5,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
     params_p3recon120 = Params(
         platform=3,
@@ -1114,27 +1072,7 @@ def main(
         platform_length=900,
         headway=CLOSE_HEADWAY,
         total_vce_width=44.75,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
     params_p3recon300 = Params(
         platform=3,
@@ -1143,27 +1081,7 @@ def main(
         platform_length=900,
         headway=NORMAL_HEADWAY,
         total_vce_width=44.75,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
     params_p60 = Params(
         platform=6,
@@ -1171,27 +1089,7 @@ def main(
         platform_length=1100,
         headway=0,
         total_vce_width=48.168,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
     params_p10120 = Params(
         platform=10,
@@ -1199,27 +1097,7 @@ def main(
         platform_length=1100,
         headway=CLOSE_HEADWAY,
         total_vce_width=70.58,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
     params_p11120 = Params(
         platform=11,
@@ -1227,27 +1105,7 @@ def main(
         platform_length=1100,
         headway=CLOSE_HEADWAY,
         total_vce_width=43.58,
-        vce_widths=(
-            1
-            / 12
-            * np.transpose(
-                np.array(
-                    [
-                        [60, 1],
-                        [60, 1],
-                        [40, 1],
-                        [54, 1],
-                        [40, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                        [54, 1],
-                    ]
-                )
-            )
-        ),
+        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
     params_p30 = dataclasses.replace(params_p3120, headway=0)
     params_p3recon0 = dataclasses.replace(params_p3recon120, headway=0)
