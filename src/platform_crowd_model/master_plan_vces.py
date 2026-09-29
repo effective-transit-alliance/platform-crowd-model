@@ -13,7 +13,7 @@ PCIP Phase 2 drawings (November 2020) to within about 4 ft,
 and the gray wedges on the right are the 7th Ave subway.
 The draft's plans and tables don't always agree, though.
 Where they list the same sequence of stairs and escalators, they're matched,
-keeping both their statuses (new or existing), which sometimes differ.
+keeping both their ages (new or existing), which sometimes differ.
 Other platforms are skipped and reported.
 The plan is only used for positions; widths come from the tables,
 since the plan is too small to measure widths from.
@@ -97,7 +97,7 @@ e.g. an escalator next to a stair, which the tables list escalator first.
 @dataclass
 class Rect:
     type: str
-    status: str
+    age: str
     x0: float
     y0: float
     x1: float
@@ -129,11 +129,11 @@ def vce_rects(page: pymupdf.Page) -> list[Rect]:
         fill = drawing.get("fill")
         if fill is None:
             continue
-        for (type_, status), color in FILLS.items():
+        for (type_, age), color in FILLS.items():
             if all(abs(a - b) < 0.01 for a, b in zip(fill, color, strict=True)):
                 r = drawing["rect"]
                 if r.x0 < LEGEND_MIN_X:
-                    rects.append(Rect(type_, status, r.x0, r.y0, r.x1, r.y1))
+                    rects.append(Rect(type_, age, r.x0, r.y0, r.x1, r.y1))
     return rects
 
 
@@ -221,8 +221,8 @@ def main() -> None:
                         "vce_number": w["vce_number"],
                         "width_in": w["width_in"],
                         "type": w["type"],
-                        "table_status": w["status"],
-                        "plan_status": r.status,
+                        "age_in_table": w["age"],
+                        "age_in_drawing": r.age,
                         "west_end_ft": round((r.x0 - WEST_EDGE_X) / PDF_UNITS_PER_FOOT),
                         "east_end_ft": round((r.x1 - WEST_EDGE_X) / PDF_UNITS_PER_FOOT),
                     }
@@ -252,7 +252,7 @@ def write_existing(vces: list[dict[str, int | str]]) -> None:
     Combine the VCEs marked existing, by either the table or the plan,
     across the alternatives, by type and position.
     """
-    existing = [v for v in vces if "existing" in (v["table_status"], v["plan_status"])]
+    existing = [v for v in vces if "existing" in (v["age_in_table"], v["age_in_drawing"])]
     combined: list[dict[str, int | str]] = []
     for v in sorted(existing, key=lambda v: (-int(v["platform"]), int(v["west_end_ft"]))):
         mid = (int(v["west_end_ft"]) + int(v["east_end_ft"])) / 2

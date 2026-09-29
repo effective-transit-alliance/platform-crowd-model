@@ -435,7 +435,7 @@ Widths are in inches, listed in the tables' order, which is west to east along t
 extracts each VCE's approximate position from the draft's platform-level plans
 ([p. 17](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=23), [p. 29](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=35),
 [p. 41](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=47), and [p. 53](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=59)).
-They're vector drawings with each VCE drawn as a rectangle color-coded by type and status,
+They're vector drawings with each VCE drawn as a rectangle color-coded by type and age,
 and a scale bar to convert to feet.
 The script matches the `n`th VCE from the west on each platform to the `n`th VCE in its table,
 since the plans are too small to measure widths from,
