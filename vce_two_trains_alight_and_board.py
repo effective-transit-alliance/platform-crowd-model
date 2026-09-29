@@ -45,15 +45,15 @@ def alight_rate(k: float, t: float, t0: float, u: float) -> float:
         return 0
 
 
-def platform_clearance(karr: float, a: float, w: float, qmax: float) -> float:
+def platform_clearance(karr: float, a: float, w: float, max_pax_in_stair_queues: float) -> float:
     """
     :param a: usable platform area
     :param w: total width of vertical circulation elements
     :param: karr: number of people waiting to get onto a stairwell
-    :param: qmax: number of people that can fit around stair thresholds
+    :param: max_pax_in_stair_queues: number of people that can fit around stair thresholds
     :return: platform egress rate on stairs
     """
-    if karr <= qmax:
+    if karr <= max_pax_in_stair_queues:
         return min(
             karr,
             min(17 * w / 60, (111 * a / max(1, karr) - 162) / (a / max(1, karr)) ** 2),
