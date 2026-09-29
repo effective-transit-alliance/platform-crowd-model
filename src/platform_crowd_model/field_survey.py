@@ -21,6 +21,7 @@ Writes `data/vces_field_survey.csv`; the columns after `midpoint_ft` are for sur
 
 import csv
 
+from platform_crowd_model.estimated_vces import PCIP_PHASE_2_VCE_SOURCE
 from platform_crowd_model.paths import DATA_DIR
 
 DIRECTORY_CSV = DATA_DIR / "vces_njt_directory.csv"
@@ -83,7 +84,7 @@ def main() -> None:
                     "platform": platform,
                     "track_numbers": TRACKS[platform],
                     "source": "PCIP Phase 2 existing plan"
-                    if v["source"].startswith("PCIP")
+                    if v["source"] == PCIP_PHASE_2_VCE_SOURCE
                     else "2022 directory, positioned",
                     "expected_type": v["type"],
                     "expected_width_in": v["master_plan_width_in"] or v["estimated_width_in"],

@@ -60,6 +60,9 @@ PAGE = 45
 """1-indexed PDF page of sheet A-001, "Existing Plan Overall"."""
 SOURCE = f"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page {PAGE}"
 
+PCIP_PHASE_2_VCE_SOURCE = "pcip_phase_2"
+"""`data/vces.csv`'s `source` for VCEs measured on this sheet (`SOURCE`)."""
+
 PDF_UNITS_PER_FOOT = (507.2 - 290.9) / 120
 """From the centers of the scale bar's 0' and 120' labels."""
 
@@ -395,7 +398,7 @@ def main() -> None:
                 "estimated_width_in": round(v.width_in),
                 "master_plan_width_in": match["width_in"] if match else "",
                 "width_source": "master_plan" if match else "estimated",
-                "source": SOURCE,
+                "source": PCIP_PHASE_2_VCE_SOURCE,
                 "notes": " ".join(notes),
             }
         )
@@ -433,10 +436,11 @@ MASTER_PLAN_EAST_ENDS_SOURCE = (
     "platform-level plans' platform outlines"
 )
 
-DIRECTORY_SOURCE = (
-    "NJ Transit's Penn Station directory, January 2022, "
-    "positioned by calibrating its map against platforms 1 to 8"
-)
+DIRECTORY_VCE_SOURCE = "njt_directory"
+"""
+`data/vces.csv`'s `source` for VCEs from NJ Transit's Penn Station directory (January 2022),
+positioned by calibrating its map against platforms 1 to 8.
+"""
 
 UNMATCHED_ICON_COST_FT = 60
 """
@@ -622,7 +626,7 @@ def directory_vces(
                     # Where the Master Plan's alternatives disagree, e.g. 66/72, the narrowest.
                     "master_plan_width_in": match["width_in"].split("/")[0] if match else "",
                     "width_source": "master_plan" if match else "typical",
-                    "source": DIRECTORY_SOURCE,
+                    "source": DIRECTORY_VCE_SOURCE,
                     "notes": "Its position is only approximate; the directory isn't to scale.",
                 }
             )

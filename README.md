@@ -572,6 +572,9 @@ and measures each VCE's width and position into
 - VCEs matching a Master Plan VCE of the same type within 15 ft
   have `width_source` `master_plan`, with the Master Plan's width.
   The rest, 45 of 61, are `estimated`, with only the sheet's width.
+- Their `source` is `pcip_phase_2`.
+  Platforms 9 to 11's VCEs, which aren't on the sheet,
+  have `source` `njt_directory`: they're from NJ Transit's directory, as described below.
 - For the 10 matched stairs, the sheet's widths differ from the Master Plan's by up to 14 in.
   (a median of 4 in.), and for the 6 matched escalators, by up to 9 in.
 - Escalators' treads are their steps, narrower than their balustrades.
