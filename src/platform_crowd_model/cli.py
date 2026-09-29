@@ -1,10 +1,19 @@
-"""The `platform-crowd-model` command."""
+"""
+The `platform-crowd-model` command.
+
+`platform-crowd-model run` runs the model,
+and `platform-crowd-model data ...` regenerates `data/` from each source.
+Each data command imports its module only when run.
+"""
 
 from typing import Annotated
 
 from typer import Option, Typer
 
 app = Typer(no_args_is_help=True)
+
+data_app = Typer(help="Regenerate `data/` from each source.", no_args_is_help=True)
+app.add_typer(data_app, name="data")
 
 
 @app.command()
@@ -26,3 +35,11 @@ def run(
 @app.callback()
 def callback() -> None:
     """Model platform crowding and alighting and boarding at NY Penn Station."""
+
+
+@data_app.command()
+def platforms_osm() -> None:
+    """Measure each platform from OpenStreetMap, writing `data/platforms_osm.csv`."""
+    from platform_crowd_model import platforms_osm
+
+    platforms_osm.main()

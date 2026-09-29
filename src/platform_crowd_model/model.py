@@ -13,8 +13,11 @@ from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import timedelta
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
+
+from platform_crowd_model.paths import DATA_DIR
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -404,16 +407,28 @@ def annotated_field_values(
         yield attr, value, field
 
 
+PLATFORMS_OSM = DATA_DIR / "platforms_osm.csv"
+"""
+Each platform's outline's area, from OpenStreetMap,
+via `platform-crowd-model data platforms-osm`.
+"""
+
+
+@cache
+def platform_areas() -> dict[int, int]:
+    """Each platform's area (sq ft), from `PLATFORMS_OSM`."""
+    with PLATFORMS_OSM.open() as f:
+        return {
+            int(row["platform"]): int(row["area_sq_ft"])
+            for row in csv.DictReader(f)
+            if row["platform"] and row["level"] == "-3"
+        }
+
+
 @dataclass
 class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
     """Which platform it is, e.g. 3."""
-
-    platform_width: Annotated[int, Field(name="Platform Width", units="ft")]
-    """Platform width (in feet)."""
-
-    platform_length: Annotated[int, Field(name="Platform Length", units="ft")]
-    """Platform length (in feet)."""
 
     headway: Annotated[timedelta, Field(name="Headway", units="s")]
     """
@@ -452,6 +467,14 @@ class Params:
     def filename_prefix(self) -> str:
         """Prefix of the filenames to save the time series and charts in, e.g. `platform3_recon`."""
         return f"platform{self.platform}" + (f"_{self.modifier}" if self.modifier else "")
+
+    @property
+    def platform_area(self) -> Annotated[int, Field(name="Platform Area", units="ft^2")]:
+        """
+        Platform area (in square feet), from OpenStreetMap's outline of it,
+        which accounts for platforms tapering.
+        """
+        return platform_areas()[self.platform]
 
     @property
     def nfpa_130_exit_capacity(
@@ -592,9 +615,7 @@ def simulate(
     e.g. when only the summary is needed.
     """
     assumptions = params.assumptions
-    usable_area = (
-        params.platform_width * params.platform_length * assumptions.usable_platform_area_multiplier
-    )
+    usable_area = params.platform_area * assumptions.usable_platform_area_multiplier
     door_rate = assumptions.doors_per_train * assumptions.door_flow_rate
 
     vce_widths = params.vce_widths
@@ -1049,16 +1070,12 @@ def main(update_readme: bool = False, charts: bool = False) -> None:
     # recon indicates that a platform was modelled accounting for penn reconstruction plans
     params_p3120 = Params(
         platform=3,
-        platform_width=18,
-        platform_length=900,
         headway=CLOSE_HEADWAY,
         total_vce_width=42.5,
         vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
     params_p3300 = Params(
         platform=3,
-        platform_width=18,
-        platform_length=900,
         headway=NORMAL_HEADWAY,
         total_vce_width=42.5,
         vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
@@ -1066,8 +1083,6 @@ def main(update_readme: bool = False, charts: bool = False) -> None:
     params_p3recon120 = Params(
         platform=3,
         modifier="recon",
-        platform_width=18,
-        platform_length=900,
         headway=CLOSE_HEADWAY,
         total_vce_width=44.75,
         vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
@@ -1075,32 +1090,24 @@ def main(update_readme: bool = False, charts: bool = False) -> None:
     params_p3recon300 = Params(
         platform=3,
         modifier="recon",
-        platform_width=18,
-        platform_length=900,
         headway=NORMAL_HEADWAY,
         total_vce_width=44.75,
         vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
     params_p60 = Params(
         platform=6,
-        platform_width=15,
-        platform_length=1100,
         headway=timedelta(0),
         total_vce_width=48.168,
         vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
     params_p10120 = Params(
         platform=10,
-        platform_width=42,
-        platform_length=1100,
         headway=CLOSE_HEADWAY,
         total_vce_width=70.58,
         vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
     params_p11120 = Params(
         platform=11,
-        platform_width=18,
-        platform_length=1100,
         headway=CLOSE_HEADWAY,
         total_vce_width=43.58,
         vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
