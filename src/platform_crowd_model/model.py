@@ -1110,6 +1110,8 @@ def simulate(
     boarders_on_platform = [0.0 for _ in trains]
     total_pax_on_platform: float = 0
     time_series = TimeSeries()
+    gone_up: float = 0
+    """Arriving passengers who've gone up, for `check_conservation`."""
 
     max_pax_in_stair_queues = (
         # Nobody queues to go up the escalator that only goes down.
@@ -1200,6 +1202,7 @@ def simulate(
         for i, vce_up_rate in enumerate(vce_up_rates):
             vce_queues[i] = max(0, vce_queues[i] - vce_up_rate)
         up_rate = sum(vce_up_rates)
+        gone_up += up_rate
         arriving_pax_on_platform -= up_rate
         if arriving_pax_on_platform < 0:
             arriving_pax_on_platform = 0
@@ -1396,7 +1399,52 @@ def simulate(
             and all(dwell is not None for dwell in summary.dwells)
         ):
             break
+    check_conservation(
+        params,
+        arriving=[
+            ("went up", gone_up),
+            ("are still aboard", sum(remaining_arrivals)),
+            ("are still on the platform", arriving_pax_on_platform),
+        ],
+        departing=[
+            ("boarded", sum(new_pax)),
+            ("are still upstairs", sum(boarders_upstairs)),
+            ("are still walking to their cars", sum(boarders_walking_totals)),
+            ("are still waiting at their cars", sum(map(sum, car_waiting))),
+        ],
+    )
     return time_series, summary
+
+
+CONSERVATION_TOLERANCE = 1e-6
+"""How far off `check_conservation`'s totals can be (pax), for floating-point rounding."""
+
+
+def check_conservation(
+    params: Params, arriving: list[tuple[str, float]], departing: list[tuple[str, float]]
+) -> None:
+    """
+    Check that a finished simulation neither created nor lost passengers:
+    everywhere the arriving passengers are, e.g. gone up, still aboard, or on the platform,
+    adds up to everyone who arrived,
+    and likewise for the departing passengers.
+    It only adds up where passengers are once per run, so it's cheap enough to check every run,
+    including every `best_stopping_position` candidate and the `README.md` snapshot test's.
+
+    :param arriving: how many of the arriving passengers are in each place, by its description
+    :param departing: how many of the departing passengers are in each place, by its description
+    """
+    for who, places, expected in (
+        ("arriving", arriving, params.trains * params.arriving_pax_per_train),
+        ("departing", departing, params.trains * params.assumptions.departing_pax_per_train),
+    ):
+        total = sum(pax for _place, pax in places)
+        if abs(total - expected) > CONSERVATION_TOLERANCE:
+            breakdown = ", ".join(f"{pax:.6g} {place}" for place, pax in places)
+            raise RuntimeError(
+                f"{params.filename_prefix} with a {params.headway} headway"
+                f" has {total:.6g} {who} passengers, not {expected}: {breakdown}"
+            )
 
 
 RESULTS_COLUMNS = [
