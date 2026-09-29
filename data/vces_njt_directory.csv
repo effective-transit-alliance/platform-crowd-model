@@ -1,4 +1,4 @@
-platform,tracks,level,type,map_x,map_y
+platform,track_numbers,level,type,map_x,map_y
 1,1/2,lower,stair,1266,2460
 1,1/2,lower,elevator,1315,2460
 1,1/2,lower,stair,1376,2459

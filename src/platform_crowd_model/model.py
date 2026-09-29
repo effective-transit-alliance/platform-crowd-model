@@ -559,7 +559,9 @@ def platform_lengths() -> dict[int, int]:
 def platform_tracks() -> dict[int, int]:
     """How many tracks each platform serves, from `PLATFORM_LENGTHS`."""
     with PLATFORM_LENGTHS.open() as f:
-        return {int(row["platform"]): len(row["tracks"].split("/")) for row in csv.DictReader(f)}
+        return {
+            int(row["platform"]): len(row["track_numbers"].split("/")) for row in csv.DictReader(f)
+        }
 
 
 @cache

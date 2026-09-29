@@ -81,7 +81,7 @@ def main() -> None:
                 {
                     "vce_name": v["vce_name"],
                     "platform": platform,
-                    "tracks": TRACKS[platform],
+                    "track_numbers": TRACKS[platform],
                     "source": "PCIP Phase 2 existing plan"
                     if v["source"].startswith("PCIP")
                     else "2022 directory, positioned",
@@ -108,7 +108,7 @@ def main() -> None:
                 {
                     "vce_name": f"P{platform}-D{n}",
                     "platform": platform,
-                    "tracks": TRACKS[platform],
+                    "track_numbers": TRACKS[platform],
                     "source": "2022 directory",
                     "expected_type": v["type"],
                     "expected_width_in": "",
@@ -123,7 +123,7 @@ def main() -> None:
                 {
                     "vce_name": f"P{platform}-M{n}",
                     "platform": platform,
-                    "tracks": TRACKS[platform],
+                    "track_numbers": TRACKS[platform],
                     "source": "Master Plan",
                     "expected_type": v["type"],
                     # Alternatives sometimes disagree, e.g. `44/48`.

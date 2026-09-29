@@ -168,7 +168,7 @@ def main() -> None:
         out.append(
             {
                 "platform": TRACKS_TO_PLATFORM[tracks],
-                "tracks": tracks,
+                "track_numbers": tracks,
                 "level": "lower" if cy > LOWER_LEVEL_MIN_Y else "upper",
                 "type": icon.type,
                 "map_x": round((icon.rect.x0 + icon.rect.x1) / 2),

@@ -1,4 +1,4 @@
-vce_name,platform,tracks,source,expected_type,expected_width_in,expected_width_status,directory_level,directory_map_x,midpoint_ft,found,type,clear_width_in,escalator_step_width_in,escalator_direction_am_peak,escalator_direction_pm_peak,nearest_column_number,distance_from_east_end_ft,leads_to,obstructions,photos,notes
+vce_name,platform,track_numbers,source,expected_type,expected_width_in,expected_width_status,directory_level,directory_map_x,midpoint_ft,found,type,clear_width_in,escalator_step_width_in,escalator_direction_am_peak,escalator_direction_pm_peak,nearest_column_number,distance_from_east_end_ft,leads_to,obstructions,photos,notes
 P3-S1,3,5/6,PCIP Phase 2 existing plan,stair,107,estimated,,,-72,,,,,,,,,,,,
 P3-S2,3,5/6,PCIP Phase 2 existing plan,stair,120,estimated,,,1,,,,,,,,,,,,
 P3-S3,3,5/6,PCIP Phase 2 existing plan,escalator,37,estimated,,,275,,,,,,,,,,,,
