@@ -71,8 +71,9 @@ The model is the one ETA's report
 [Penn Station Can Handle the Load](https://www.etany.org/penn-station-can-handle-the-load) used,
 as of the [`penn-station-can-handle-the-load`](https://github.com/effective-transit-alliance/platform-crowd-model/tree/penn-station-can-handle-the-load) tag.
 Later changes to the model aren't reflected in the report.
-This version gives the same results as that tag,
-and has [several bugs](#known-bugs); this describes how it currently works, bugs included.
+Since then, several bugs have been fixed,
+each summarized in the [results' history](#history);
+this describes how it works now.
 
 The sources cited below are:
 
@@ -102,52 +103,53 @@ each using the passenger counts left by the one before.
      from the Moynihan Station environmental assessment
      ([Table 4.4-10, p. 4.4-22](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22);
      [Table 4.4-19, p. 4.4-47](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=47)).
-   - It has 40 doors, as a 10-car train does,
-     though its passengers fill a 12-car train
-     (see [its known bug](#trains-have-a-12-car-trains-passengers-but-a-10-car-trains-doors)).
+   - It has 48 doors, as a 12-car train does.
      (A 12-car LIRR train has more doors, and LIRR platforms are generally wider.)
 2. **Going upstairs.**
    Arriving passengers leave the platform
    via the vertical circulation elements (VCEs), i.e. the stairs and escalators.
    - All VCEs are treated as stairs, except one per platform, which is excluded.
-   - The flow up comes from Fruin's ascending stair equation
-     ([Fruin, p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)):
-     `P = (111M − 162)/M²` pax/min per foot of VCE width,
-     where `M` is the platform's usable area per arriving passenger on it.
-   - It's capped at LOS E capacity, 17 pax/min/ft
-     ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)).
-   - While the stair queues are full, it's at least the LOS C/D boundary, 10 pax/min/ft.
-     The stair queues hold 20 ft of queue in front of the VCEs at 5 sq ft/pax
-     (the TCQSM's stair queuing space, [p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
-   - Once the remaining arriving passengers fit in the stair queues,
-     the flow tapers off as the platform empties.
+   - They queue at the stairs, which discharge them at LOS E capacity,
+     17 pax/min per foot of VCE width
+     ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)),
+     as long as anyone is queued
+     ([TCQSM, p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
+   - So there's no gradual taper: the stairs stay at capacity until the platform is clear.
+   - The report's "taper time" is when the remaining arriving passengers fit in the stair queues,
+     20 ft of queue in front of the VCEs at 5 sq ft/pax
+     (the TCQSM's stair queuing space).
+     It's now always about 15 s before the clear time,
+     but it's kept in the results table to compare with the report.
+   - The few seconds of walking from the doors to the stairs are ignored.
 3. **Coming downstairs.**
-   Departing passengers upstairs come down to the platform.
+   Departing passengers queue upstairs and come down to the platform.
    - The trains' passengers split the VCE width
-     in proportion to how many of each are still upstairs.
-   - Stairs carry at most 12 pax/min/ft in both directions combined,
-     so passengers come down with whatever the upward flow leaves of that.
-   - Their flow is also limited by Fruin's ascending stair equation,
-     applied to a 5,000 sq ft concourse, minus the upward flow.
+     in proportion to how many of each are still upstairs,
+     and each train's share of the stairs carries the same share of the upward flow.
+   - Nobody comes down while the upward flow is worse than LOS C, 10 pax/min/ft.
+   - Otherwise, both directions share LOS E capacity, 17 pax/min/ft,
+     so passengers come down with whatever their share of the upward flow leaves of that.
 4. **Boarding.**
-   Departing passengers on the platform board a train once it has arrived,
-   using whatever door capacity alighting leaves that second.
+   Departing passengers on the platform board a train
+   once every arriving passenger has alighted from it,
+   at 1 pax/s per single-door equivalent.
 
 ### Crowding
 
 - **On the platform**, the space per passenger is the usable platform area
   (75% of the platform's area) divided by everyone on the platform.
-  It's graded with Fruin's walkway LOS
-  (A > 35, B > 25, C > 15, D > 10, E > 5 sq ft/pax, or else F;
-  [Fruin, p. 7](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=7)).
+  It's graded with Fruin's LOS for queuing and waiting areas
+  (A > 13, B > 10, C > 7, D > 3, E > 2 sq ft/pax, or else F;
+  [TCQSM, Exhibit 10-32, p. 10-55](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59)),
+  since most passengers on the platform are waiting, either to board or in the stair queues.
 - **On the stairs**, the upward flow is graded with Fruin's stair LOS
-  (A ≤ 5, B ≤ 7, C ≤ 9.5, D ≤ 13, E ≤ 17 pax/min/ft, or else F;
+  (A ≤ 5, B ≤ 7, C ≤ 10, D ≤ 13, E ≤ 17 pax/min/ft, or else F;
   [Fruin, pp. 12–14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12)).
 
 ### Scenarios
 
-- Each train has 400 departing passengers:
-  200 already on the platform and 200 upstairs.
+- Each train has 400 departing passengers, all waiting upstairs,
+  who start coming down 2 minutes before it's scheduled.
 - On every platform, 4 trains are scheduled 0, 2, or 5 minutes apart,
   alternating between the platform's two tracks,
   so each train after the first two can only arrive
@@ -174,7 +176,6 @@ Each is marked by which way it biases the results:
 **optimistic** (less crowding than reality), **pessimistic** (more),
 **neutral** (neither, e.g. it only simplifies the bookkeeping),
 or **unclear** (it could go either way).
-The [known bugs](#known-bugs) are listed separately.
 
 ### Platform
 
@@ -190,7 +191,7 @@ The [known bugs](#known-bugs) are listed separately.
 
 - **Pessimistic:** All VCEs are treated as stairs, even escalators, which have higher capacities.
 - **Pessimistic:** One VCE per platform is excluded, e.g. an escalator running the other way.
-- **Optimistic:** All VCEs act as one pooled stair:
+- **Optimistic:** All VCEs act as one pooled queue:
   passengers spread across them in proportion to their widths,
   with no preference for any exit, e.g. toward 7th Avenue.
 - **Unclear:** Stair capacity is linear in width,
@@ -213,13 +214,11 @@ The [known bugs](#known-bugs) are listed separately.
 
 ### Departing Passengers
 
-- **Optimistic:** Each train has 400 departing passengers, all present at the start:
-  200 on the platform and 200 upstairs.
-  None arrive during the simulation, even for the fourth train with 5-minute headways,
-  whose passengers wait 15 minutes for it.
-  (See [its known bug](#departing-passengers-wait-on-the-platform-long-before-their-train).)
-- **Pessimistic:** Departing passengers come downstairs even before their train arrives,
-  and wait for it on the platform, adding to the crowding.
+- **Optimistic:** Each train has 400 departing passengers, all waiting upstairs,
+  who start coming down 2 minutes before it's scheduled, like when its track is announced.
+  None arrive later, and the 2 minutes isn't from any source.
+- **Pessimistic:** Departing passengers come downstairs as soon as they can,
+  even before their train arrives, and wait for it on the platform, adding to the crowding.
 
 ### Simulation
 
@@ -232,137 +231,9 @@ The [known bugs](#known-bugs) are listed separately.
   not the departing passengers,
   and ignores walking time.
 
-## Known Bugs
-
-These are errors in the model, as opposed to simplifications,
-each checked against its source.
-Some of them partly cancel out,
-which is how the model reproduces the ETA report's results despite them,
-so neither those results nor the ones below should be read as either conservative or optimistic.
-
-The bugs in the downward flow bias crowding and boarding in opposite directions:
-slower downward flow keeps departing passengers upstairs longer,
-so there's less crowding on the platform (optimistic),
-but they board later (pessimistic).
-
-### Fruin's stair equation is in the wrong units
-
-Fruin's `P` is in pax/min per foot of stair width
-([p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)),
-but the model uses it as pax/s across all of the stairs,
-both for the upward flow and for the downward flow.
-That scales the flow by 60 s/min divided by the total VCE width,
-so it overstates the flow on platforms with less than 60 ft of VCEs,
-e.g. by about 1.4x for platform 3's 42.5 ft (optimistic),
-and understates it on wider ones,
-e.g. by about 15% for platform 10's 70.58 ft (pessimistic).
-
-### Fruin's stair equation is applied to the platform's density
-
-Fruin's equation relates stair flow to the space per passenger *on the stair*,
-but the model applies it to the platform's usable area per arriving passenger,
-so the upward flow falls as the platform empties,
-even though whoever is left can walk straight onto an empty stair (pessimistic).
-E.g. on platform 3 with trains 2 minutes apart, the flow is:
-
-- At capacity, 12.04 pax/s, for only 32 s, around the most crowded moment,
-  when there are about 6 to 7 sq ft per arriving passenger.
-- Then from Fruin's equation, falling from 12 to 7 pax/s as the platform empties.
-- Then at its floor, 10 pax/min/ft or 7.08 pax/s,
-  while more arriving passengers are on the platform than fit in the stair queues (170).
-- Then from Fruin's equation again, now about 1% of the arriving passengers left per second,
-  e.g. 1.5 pax/s with 168 left and 0.2 pax/s with 23 left,
-  so the last arriving passengers take many minutes to clear the platform.
-
-The TCQSM's stair queuing procedure instead has the stairs discharge at capacity
-as long as anyone is queued ([p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
-
-### The whole upward flow is subtracted from each train's share of the stairs
-
-Each train's downward flow is its share of the stairs' capacity minus the upward flow,
-but the whole upward flow is subtracted from each train's share,
-not its share of the upward flow,
-so the upward flow is counted twice,
-slowing the downward flow (optimistic for crowding, pessimistic for boarding).
-
-### Bidirectional flow stops at 12 pax/min/ft, not 10
-
-The ETA report says there's no bidirectional flow on stairs worse than LOS C,
-i.e. above 10 pax/min/ft, the LOS C/D boundary,
-but the model lets passengers come down with whatever the upward flow leaves out of 12 pax/min/ft,
-speeding the downward flow (pessimistic for crowding, optimistic for boarding).
-
-### Downward flow is capped at 12 pax/min/ft even when nobody is going up
-
-Once the upward flow is light, the report's rule about flow in both directions no longer applies,
-so passengers should be able to come down at up to LOS E capacity, 17 pax/min/ft,
-but the model still caps them at 12 (optimistic for crowding, pessimistic for boarding).
-
-### Descending passengers use Fruin's ascending equation
-
-Fruin gives a separate equation for descending stairs, `P = (128M − 206)/M²`
-([p. 9](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9)),
-with about 15% more flow,
-but the model uses the ascending one for passengers coming down
-(optimistic for crowding, pessimistic for boarding).
-
-### Downward flow slows as a fixed concourse empties
-
-The downward flow applies Fruin's equation to a fixed 5,000 sq ft concourse
-divided by the departing passengers still upstairs,
-with the same [units bug](#fruins-stair-equation-is-in-the-wrong-units) as the upward flow.
-So it's held down while many are waiting,
-and slows as they come down, so the last ones take many minutes to
-(optimistic for crowding, pessimistic for boarding).
-The 5,000 sq ft isn't sourced,
-and a queue at the top of the stairs, like the one at the bottom, would discharge at capacity.
-
-### Passengers board while others are still alighting
-
-The ETA report says nobody boards until everyone has alighted,
-but the model lets passengers board with whatever door capacity alighting leaves each second,
-i.e. in the last second of alighting (optimistic, by about a second).
-
-### Platform crowding is graded as a walkway
-
-The model grades the platform's space per passenger with Fruin's LOS for walkways
-([p. 7](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=7)),
-but most passengers on a platform are standing and waiting, to board or in the stair queues,
-and the TCQSM grades station platforms with Fruin's LOS for queuing and waiting areas
-(A > 13, B > 10, C > 7, D > 3, E > 2 sq ft/pax, or else F;
-[Exhibit 10-32, p. 10-55](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59)).
-So the platform's grades are much worse than they should be (pessimistic).
-
-### Departing passengers wait on the platform long before their train
-
-Every train's departing passengers are there from the start,
-200 on the platform and 200 upstairs, who come down as soon as the stairs allow,
-even for the fourth train with 5-minute headways, which isn't due for 15 minutes.
-The ETA report put them all there at the start, but with only 2 trains.
-At Penn Station, passengers wait in the concourse until their track is announced,
-so this fills the platform with passengers who wouldn't be there yet (pessimistic for crowding),
-but has them already at the doors when later trains arrive,
-so those trains' dwells are only as long as alighting and boarding take (optimistic for dwells).
-
-### Trains have a 12-car train's passengers but a 10-car train's doors
-
-Every train carries 1,620 passengers, a seated 12-car NJ Transit train,
-but has only 40 doors, as a 10-car train does, instead of a 12-car train's 48,
-so its passengers take longer to alight and board (pessimistic).
-Platform 3's tracks only fit 10 cars,
-so its trains should instead carry 1,350 passengers (pessimistic too).
-
-### The stair LOS C/D boundary is 9.5 pax/min/ft, not 10
-
-Fruin puts the stair LOS C/D boundary at 10 pax/min/ft
-([pp. 12–14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12)),
-as does the ETA report, but the model uses 9.5.
-This only affects the stair LOS grades, not the flows.
-
 ## Limitations
 
-Beyond its bugs,
-the model is much simpler than a pedestrian microsimulation,
+The model is much simpler than a pedestrian microsimulation,
 like those typically used in detailed station planning,
 and several of its simplifications overstate platform capacity.
 
@@ -381,25 +252,28 @@ its baseline, i.e. today's VCEs,
 needed up to 7.9 minutes of passenger service time,
 the time for passengers to alight, cross the platform, and reach the VCEs
 ([Table 2, p. 4-43](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=54)).
-This model can't be compared with that until its [bugs](#known-bugs) are fixed:
-it takes over 15 minutes to clear platform 3,
-because of its [tapering stair flow](#fruins-stair-equation-is-applied-to-the-platforms-density).
+This model clears platform 3's arriving passengers in 4:29,
+so it's likely substantially optimistic,
+though the two aren't exactly comparable:
+7.9 minutes is the worst case across all platforms and simulation runs.
 
 The FRA attributes long clearance times to things this model leaves out
 ([p. 3-33](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=44)):
 queues at the base of VCEs, uneven use of VCEs, and platform clutter
 reducing the usable width.
 
-### Stairs Are One Pooled Stair
+### Stairs Are One Pooled Queue
 
-The model treats all of the VCEs as one stair,
-which is optimistic for a whole platform:
+Like the TCQSM and NFPA 130 for platform clearance
+([TCQSM, p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)),
+the model treats all of the VCEs as one queue discharging at capacity until it's empty.
+This is optimistic for a whole platform:
 
 - **Stairs empty unevenly.**
   Stairs near the ends of the platform, or far from the busiest doors,
   run out of passengers while others still have a queue,
   so the total flow drops below capacity before the platform clears.
-  This is likely the model's largest optimistic bias once its bugs are fixed.
+  This is likely the model's largest optimistic bias.
 - **Passengers prefer some exits**, e.g. toward 7th Avenue, as the ETA report notes,
   concentrating queues at fewer stairs.
 - **Walking from the doors to the stairs takes no time.**
@@ -411,7 +285,7 @@ but needs each VCE's position and width on each platform.
 
 ### Platform Crowding Is Graded Against the Whole Platform
 
-Even with the [right LOS table](#platform-crowding-is-graded-as-a-walkway),
+Though the model now grades the platform with the queuing LOS,
 the TCQSM's platform sizing procedure ([p. 10-56](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=60))
 only applies the queuing LOS to passengers *waiting* to board, and adds separate areas for:
 
@@ -420,7 +294,7 @@ only applies the queuing LOS to passengers *waiting* to board, and adds separate
 - An 18 in. buffer along each platform edge
 
 The model lumps everyone into one area,
-which would be optimistic with the queuing LOS,
+which is optimistic with the queuing LOS,
 especially while arriving passengers are walking to the stairs.
 
 ### Usable Platform Area
@@ -473,27 +347,85 @@ This table is generated by `./vce_two_trains_alight_and_board.py --update-readme
 <!-- results-table:start -->
 | Platform | Headway | VCE width | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max up rate (pax/s) | Max pax on platform | Max density (pax/m²) |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 3 | 0:00 | 42.5 ft | 0:00, 0:00, 14:02, 14:02 | 14:02, 14:02, 0:51, 0:51 | 19:22 | 28:43 | 28:46 | 3:58 | 12.04 | 3628 | 3.21 (F) |
-| 3 (recon) | 0:00 | 44.75 ft | 0:00, 0:00, 13:55, 13:55 | 13:55, 13:55, 0:51, 0:51 | 19:03 | 28:29 | 28:31 | 3:23 | 12.68 | 3615 | 3.20 (F) |
-| 6 | 0:00 | 48.168 ft | 0:00, 0:00, 13:56, 13:56 | 13:56, 13:56, 0:51, 0:51 | 18:49 | 28:36 | 28:35 | 2:29 | 13.65 | 3600 | 3.13 (F) |
-| 10 | 0:00 | 70.58 ft | 0:00, 0:00, 24:14, 24:14 | 24:14, 24:14, 0:51, 0:51 | 28:28 | 57:49 | 50:24 | 0:00 | 11.76 | 3614 | 1.12 (E) |
-| 11 | 0:00 | 43.58 ft | 0:00, 0:00, 15:28, 15:28 | 15:28, 15:28, 0:51, 0:51 | 20:59 | 32:27 | 31:50 | 2:33 | 12.35 | 3644 | 2.64 (F) |
-| 3 | 2:00 | 42.5 ft | 0:00, 2:00, 14:45, 14:45 | 14:45, 12:45, 0:51, 0:51 | 20:05 | 29:26 | 29:29 | 2:31 | 12.04 | 3610 | 3.20 (F) |
-| 3 (recon) | 2:00 | 44.75 ft | 0:00, 2:00, 14:39, 14:39 | 14:39, 12:39, 0:51, 0:51 | 19:47 | 29:13 | 29:15 | 1:57 | 12.68 | 3596 | 3.19 (F) |
-| 6 | 2:00 | 48.168 ft | 0:00, 2:00, 14:45, 14:45 | 14:45, 12:45, 0:51, 0:51 | 19:38 | 29:25 | 29:23 | 1:15 | 13.65 | 3579 | 3.11 (F) |
-| 10 | 2:00 | 70.58 ft | 0:00, 2:00, 24:16, 24:16 | 24:16, 22:16, 0:51, 0:51 | 28:30 | 57:51 | 50:25 | 0:00 | 11.76 | 3567 | 1.11 (E) |
-| 11 | 2:00 | 43.58 ft | 0:00, 2:00, 16:20, 16:20 | 16:20, 14:20, 0:51, 0:51 | 21:51 | 33:19 | 32:42 | 1:17 | 12.35 | 3624 | 2.63 (F) |
-| 3 | 5:00 | 42.5 ft | 0:00, 5:00, 16:57, 16:57 | 16:57, 11:57, 0:51, 0:51 | 22:17 | 31:38 | 31:40 | 1:59 | 12.04 | 3610 | 3.20 (F) |
-| 3 (recon) | 5:00 | 44.75 ft | 0:00, 5:00, 16:59, 16:59 | 16:59, 11:59, 0:51, 0:51 | 22:07 | 31:33 | 31:35 | 1:42 | 12.68 | 3596 | 3.19 (F) |
-| 6 | 5:00 | 48.168 ft | 0:00, 5:00, 17:05, 17:05 | 17:05, 12:05, 0:51, 0:51 | 21:58 | 31:45 | 31:43 | 1:15 | 13.65 | 3579 | 3.11 (F) |
-| 10 | 5:00 | 70.58 ft | 0:00, 5:00, 27:15, 27:15 | 27:15, 22:15, 0:51, 0:51 | 31:29 | 60:50 | 53:25 | 0:00 | 11.76 | 3567 | 1.11 (E) |
-| 11 | 5:00 | 43.58 ft | 0:00, 5:00, 18:23, 18:23 | 18:23, 13:23, 0:51, 0:51 | 23:54 | 35:22 | 34:45 | 1:17 | 12.35 | 3624 | 2.63 (F) |
+| 3 | 0:00 | 42.5 ft | 0:00, 0:00, 4:41, 4:41 | 4:41, 4:41, 0:43, 0:43 | 8:55 | 9:10 | 5:24 | 8:58 | 12.04 | 4288 | 3.80 (E) |
+| 3 (recon) | 0:00 | 44.75 ft | 0:00, 0:00, 4:21, 4:21 | 4:21, 4:21, 0:43, 0:43 | 8:22 | 8:37 | 5:04 | 8:30 | 12.68 | 4343 | 3.85 (E) |
+| 6 | 0:00 | 48.168 ft | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 7:40 | 7:55 | 1:26 | 7:54 | 13.65 | 6229 | 5.42 (F) |
+| 10 | 0:00 | 70.58 ft | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 5:09 | 5:24 | 1:26 | 5:24 | 20.00 | 5740 | 1.78 (D) |
+| 11 | 0:00 | 43.58 ft | 0:00, 0:00, 4:31, 4:31 | 4:31, 4:31, 0:43, 0:43 | 8:39 | 8:54 | 5:14 | 8:44 | 12.35 | 4314 | 3.13 (D) |
+| 3 | 2:00 | 42.5 ft | 0:00, 2:00, 4:00, 8:23 | 0:43, 6:23, 4:23, 0:43 | 10:23 | 10:38 | 9:06 | 8:57 | 12.04 | 1623 | 1.44 (C) |
+| 3 (recon) | 2:00 | 44.75 ft | 0:00, 2:00, 4:00, 7:57 | 0:43, 5:57, 3:57, 0:43 | 9:50 | 10:05 | 8:40 | 8:30 | 12.68 | 1602 | 1.42 (C) |
+| 6 | 2:00 | 48.168 ft | 0:00, 2:00, 4:00, 7:24 | 0:43, 5:24, 3:24, 0:43 | 9:08 | 9:23 | 8:07 | 7:52 | 13.65 | 1570 | 1.37 (C) |
+| 10 | 2:00 | 70.58 ft | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 7:06 | 7:21 | 6:43 | 5:24 | 20.00 | 1360 | 0.42 (A) |
+| 11 | 2:00 | 43.58 ft | 0:00, 2:00, 4:00, 8:10 | 0:43, 6:10, 4:10, 0:43 | 10:07 | 10:22 | 10:22 | 8:44 | 12.35 | 1613 | 1.17 (C) |
+| 3 | 5:00 | 42.5 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 17:00 | 17:15 | 15:43 | 8:56 | 12.04 | 1611 | 1.43 (C) |
+| 3 (recon) | 5:00 | 44.75 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:53 | 17:08 | 15:43 | 8:28 | 12.68 | 1589 | 1.41 (C) |
+| 6 | 5:00 | 48.168 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:44 | 16:59 | 15:43 | 7:52 | 13.65 | 1556 | 1.35 (C) |
+| 10 | 5:00 | 70.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:06 | 16:21 | 15:43 | 5:24 | 20.00 | 1340 | 0.42 (A) |
+| 11 | 5:00 | 43.58 ft | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:57 | 17:12 | 15:43 | 8:44 | 12.35 | 1600 | 1.16 (C) |
 <!-- results-table:end -->
 
 ### History
 
-As bugs are fixed, the results table above is updated,
+As bugs were fixed, the results table above was updated,
 and each fix's effect is summarized here.
 
 - **Original model**, as of the [`penn-station-can-handle-the-load`](https://github.com/effective-transit-alliance/platform-crowd-model/tree/penn-station-can-handle-the-load) tag the ETA report used:
   reproduces the report's platform 3 numbers to within a few seconds.
+- **Fixed the stair equation's units:**
+  Fruin's `P` is pax/min per foot of width, but was used as pax/s across all stairs,
+  scaling stair flow by 60 / VCE width, e.g. overstating it by about 1.4x on platform 3.
+  Platform 3 with 2-minute headways now peaks at 10.13 pax/s (10.47 with Penn Reconstruction)
+  and never reaches capacity, tapering at 411 s (392 s) instead of 361 s (353 s).
+- **Replaced the platform-density taper with a stair queue:**
+  Fruin's equation relates flow to the space per passenger on the stair, not on the platform,
+  so it held the stairs below capacity while the platform was crowded,
+  and slowed them as it emptied, so they never fully cleared.
+  Now queued stairs discharge at LOS E capacity until empty.
+  Platform 3 with 2-minute headways is at capacity for 269 s (255 s with Penn Reconstruction),
+  tapers at 254 s (241 s), and clears at 269 s (256 s), where it never cleared before.
+  The platform peaks at 1521 passengers (1496) instead of 2274 (2219).
+- **Stopped double counting the upward flow against downward flow:**
+  each train's share of the stairs had the whole upward flow subtracted from it.
+  This barely matters: 0.1 more departing passengers come down on platform 3.
+- **Stopped flow in both directions on stairs at 10 pax/min/ft, not 12,**
+  per the report and the LOS C/D boundary.
+  No effect yet, since the concourse-density limit on downward flow always binds first.
+- **Used Fruin's descending stair equation for passengers coming downstairs,**
+  instead of the ascending one, giving about 15% more downward flow.
+  On platform 3, 379.0 of 400 departing passengers come down within 600 s instead of 368.9,
+  and on platform 10, all now board, by 548 s.
+- **Put the stair LOS C/D boundary at 10 pax/min/ft, not 9.5,** per the TRB paper and the report.
+  No effect on results.
+- **Graded platform crowding with Fruin's queuing LOS instead of his walkway LOS,**
+  since most passengers on a platform are standing and waiting.
+  At its most crowded, platform 3 is now LOS C instead of E, and platform 6 is D instead of F.
+- **Stopped boarding until everyone has alighted,** per the report,
+  instead of boarding with the doors left over in the last second of alighting.
+  Boarding starts 1 s later, so the platform peaks at up to 26 more passengers.
+- **Replaced the concourse-density limit on downward flow with a queue:**
+  departing passengers upstairs come down with whatever stair capacity the upward flow leaves,
+  instead of slowing as a fixed 5,000 sq ft concourse empties.
+  Every scenario now finishes boarding: platform 3 with 2-minute headways by 325 s
+  (309 s with Penn Reconstruction), where about 20 of 400 never boarded before.
+- **Let passengers come down at up to LOS E capacity, 17 pax/min/ft, when few are going up,**
+  since the report's 10 pax/min/ft rule only applies to flow in both directions.
+  Platform 3 with 2-minute headways finishes boarding by 302 s instead of 325 s
+  (287 s instead of 309 s with Penn Reconstruction).
+- **Gave each train a 12-car train's 48 doors instead of a 10-car train's 40,**
+  to match its 1,620 passengers, a seated 12-car train.
+  Passengers alight sooner, so the platform peaks at up to 96 more passengers,
+  e.g. 1623 instead of 1538 on platform 3 with trains 2 minutes apart,
+  and departing passengers finish boarding up to 8 s sooner.
+  Platform 3's tracks only fit 10 cars, though, so its trains are still too long.
+- **Had each train's departing passengers start coming down 2 minutes before it's scheduled,**
+  all 400 from upstairs, like when its track is announced,
+  instead of every train's being there from the start, 200 of them already on the platform.
+  The simulation now starts at -2:00, when the first train's passengers start coming down.
+  With 5-minute headways, every train's passengers are on the platform by the time it arrives:
+  on platform 3, every dwell is 0:43, instead of 3:20 for the first train,
+  and it peaks at 1611 passengers instead of 2411.
+  With 2-minute headways, the second train's passengers can't come down
+  until the first train's arriving passengers have cleared the stairs,
+  so its dwell is 6:23 instead of 3:35 on platform 3, but the first train's is 0:43 instead of 5:35.
+  On platform 6, all 4 trains are scheduled at once,
+  so all 1,600 departing passengers come down at -2:00, and it peaks at 6229 passengers (LOS F).
