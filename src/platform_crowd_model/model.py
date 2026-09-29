@@ -11,6 +11,7 @@ import typing
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
@@ -20,21 +21,32 @@ from typer import Option
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
-SECONDS_PER_MINUTE = 60
+SECONDS_PER_MINUTE = timedelta(minutes=1).total_seconds()
+"""
+Computed once, since converting a `timedelta` each time in `stair_flow`,
+which runs several times each simulated second,
+makes the simulation about 40% slower.
+"""
+
+TIME_STEP = timedelta(seconds=1)
+"""
+How much time each step of the simulation covers.
+Every rate is per second, so this must stay 1 s.
+"""
 
 SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
 
-CLOSE_HEADWAY = 120
-"""Time between two trains' arrivals in the closely spaced scenarios (s), from the ETA report."""
+CLOSE_HEADWAY = timedelta(minutes=2)
+"""Time between two trains' arrivals in the closely spaced scenarios, from the ETA report."""
 
-MAX_SIMULATION_LENGTH = 7200
+MAX_SIMULATION_LENGTH = timedelta(hours=2)
 """
 The simulation runs until the last train departs and the platform clears,
-but stops with an error if that takes longer than this (s), which means something's wrong.
+but stops with an error if that takes longer than this, which means something's wrong.
 """
 
-NORMAL_HEADWAY = 300
-"""Time between two trains' arrivals in the normal scenarios (s), from the ETA report."""
+NORMAL_HEADWAY = timedelta(minutes=5)
+"""Time between two trains' arrivals in the normal scenarios, from the ETA report."""
 
 
 @dataclass(frozen=True)
@@ -74,8 +86,8 @@ class Assumptions:
     """Passengers boarding each train, from the ETA report."""
 
     departing_pax_lead_time: Annotated[
-        int, Field(name="Departing Passengers Lead Time", units="s")
-    ] = 120
+        timedelta, Field(name="Departing Passengers Lead Time", units="s")
+    ] = timedelta(minutes=2)
     """
     How long before its scheduled arrival a train's departing passengers
     start coming down to the platform, all at once, like when its track is announced.
@@ -184,11 +196,11 @@ def stair_flow(flow_per_width: float, width: float) -> float:
 
 
 def alight_rate(
-    pax_aboard: float, time: float, arrival_time: float | None, max_rate: float
+    pax_aboard: float, time: timedelta, arrival_time: timedelta | None, max_rate: float
 ) -> float:
     """
     :param pax_aboard: number of people waiting to get off train
-    :param time: time pass counter (s)
+    :param time: time pass counter
     :param arrival_time: train arrival time, or `None` if it hasn't been scheduled yet
     :param max_rate: maximum alighting rate across all doors (pax/s)
     :return: egress rate from train to platform across all doors (pax/s)
@@ -251,8 +263,8 @@ def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
 def board_rate(
     max_rate: float,
     off_rate: float,
-    time: float,
-    arrival_time: float | None,
+    time: timedelta,
+    arrival_time: timedelta | None,
     boarders: float,
 ) -> float:
     """
@@ -261,8 +273,8 @@ def board_rate(
 
     :param max_rate: maximum boarding rate across all doors (pax/s)
     :param off_rate: train alight rate (pax/s)
-    :param time: time (s)
-    :param arrival_time: train arrival time (s), or `None` if it hasn't been scheduled yet
+    :param time: time
+    :param arrival_time: train arrival time, or `None` if it hasn't been scheduled yet
     :param boarders: number of passengers waiting on platform to board
     :return: train ingress rate across all doors (pax/s)
     """
@@ -369,7 +381,11 @@ def annotated_field_values(
     """
 
     for attr, field in annotated_field_names(obj.__class__):
-        yield attr, getattr(obj, attr), field
+        value = getattr(obj, attr)
+        # CSVs and charts can't hold `timedelta`s, so give them in seconds, per `Field.units`.
+        if isinstance(value, timedelta):
+            value = round(value.total_seconds())
+        yield attr, value, field
 
 
 @dataclass
@@ -383,9 +399,9 @@ class Params:
     platform_length: Annotated[int, Field(name="Platform Length", units="ft")]
     """Platform length (in feet)."""
 
-    headway: Annotated[int, Field(name="Headway", units="s")]
+    headway: Annotated[timedelta, Field(name="Headway", units="s")]
     """
-    Time (in seconds) between trains' scheduled arrivals.
+    Time between trains' scheduled arrivals.
     The first arrives at 0 s, on one track, and the second on the other.
     """
 
@@ -431,12 +447,14 @@ class Params:
     @property
     def emergency_egress_time(
         self,
-    ) -> Annotated[float, Field(name="Emergency Egress Time", units="s")]:
+    ) -> Annotated[timedelta, Field(name="Emergency Egress Time", units="s")]:
         """
-        Time (in seconds) for everyone on both trains to go upstairs
+        Time for everyone on both trains to go upstairs
         at `Assumptions.emergency_stair_flow`.
         """
-        return 2 * self.assumptions.arriving_pax_per_train / self.los_f_egress_rate
+        return timedelta(
+            seconds=2 * self.assumptions.arriving_pax_per_train / self.los_f_egress_rate
+        )
 
 
 @dataclass
@@ -445,8 +463,8 @@ class Instant:
     An instant in the simulation.
     """
 
-    time: Annotated[int, Field(name="Time", units="s")]
-    """Time (in seconds)."""
+    time: Annotated[timedelta, Field(name="Time", units="s")]
+    """Time since the first train's scheduled arrival."""
 
     off_rate: Annotated[float, Field(name="Alighting Rate", units="pax/s")]
     """Alighting rate from every train (in pax/s)."""
@@ -493,30 +511,30 @@ class Summary:
     max_up_rate: float
     """Highest upstairs rate (pax/s)."""
 
-    secs_at_capacity: int
-    """Seconds the upstairs rate is at the VCEs' LOS E capacity (17 pax/min/ft)."""
+    time_at_capacity: timedelta
+    """How long the upstairs rate is at the VCEs' LOS E capacity (17 pax/min/ft)."""
 
-    taper_time: int | None
+    taper_time: timedelta | None
     """
     Last second the arriving passengers on the platform exceed what fits in the stair queues,
     i.e. when they start to taper off, or `None` if they never do.
     """
 
-    clear_time: int | None
+    clear_time: timedelta | None
     """First second after the last arrival when all arriving passengers have left the platform."""
 
-    arrival_times: list[int | None]
-    """When each train arrives (s), or `None` if it doesn't within the simulation."""
+    arrival_times: list[timedelta | None]
+    """When each train arrives, or `None` if it doesn't within the simulation."""
 
-    dwells: list[int | None]
+    dwells: list[timedelta | None]
     """
-    Each train's dwell (s):
+    Each train's dwell:
     from its arrival until all of its arriving passengers have alighted
     and all of its departing passengers have boarded,
     or `None` if that doesn't happen within the simulation.
     """
 
-    boarded_time: int | None
+    boarded_time: timedelta | None
     """First second when all departing passengers have boarded, or `None` if they never do."""
 
     max_pax_on_platform: float
@@ -569,7 +587,7 @@ def simulate(
     # Initialize counters
     arriving_pax_on_platform: float = 0
     trains = range(params.trains)
-    arrival_times: list[int | None] = [
+    arrival_times: list[timedelta | None] = [
         train * params.headway if train < 2 else None for train in trains
     ]
     """
@@ -582,9 +600,9 @@ def simulate(
         train * params.headway - assumptions.departing_pax_lead_time for train in trains
     ]
     """When each train's departing passengers start coming down to the platform."""
-    start_time = min(0, *release_times)
+    start_time = min(timedelta(0), *release_times)
     """
-    When the simulation starts (s): before the first train arrives at 0 s,
+    When the simulation starts: before the first train arrives at 0 s,
     once its departing passengers start coming down.
     """
     boarders_upstairs = [0.0 for _ in trains]
@@ -598,7 +616,7 @@ def simulate(
     capacity = stair_flow(assumptions.stair_capacity, params.total_vce_width)
     summary = Summary(
         max_up_rate=0,
-        secs_at_capacity=0,
+        time_at_capacity=timedelta(0),
         taper_time=None,
         clear_time=None,
         arrival_times=arrival_times,
@@ -612,10 +630,11 @@ def simulate(
         print("Elapsed_Time", *(f"Train_{train + 1}_Pax" for train in trains))
 
     time_after = start_time
-    for time_after in itertools.count(start_time):
+    for step in itertools.count():
+        time_after = start_time + step * TIME_STEP
         if time_after - start_time >= MAX_SIMULATION_LENGTH:
             raise RuntimeError(
-                f"{params.filename_prefix} hasn't finished after {MAX_SIMULATION_LENGTH} s"
+                f"{params.filename_prefix} hasn't finished after {MAX_SIMULATION_LENGTH}"
             )
         for train in trains:
             if release_times[train] == time_after:
@@ -683,14 +702,14 @@ def simulate(
             arriving_pax_on_platform = 0
         if print_time_series:
             print(
-                time_after,
+                round(time_after.total_seconds()),
                 *(remaining_arrivals[train] + new_pax[train] for train in trains),
                 arriving_pax_on_platform,
                 up_rate,
             )
         summary.max_up_rate = max(summary.max_up_rate, up_rate)
         if up_rate >= capacity - 1e-9:
-            summary.secs_at_capacity += 1
+            summary.time_at_capacity += TIME_STEP
         if arriving_pax_on_platform > max_pax_in_stair_queues:
             summary.taper_time = time_after
         if (
@@ -771,7 +790,8 @@ def simulate(
     if print_time_series:
         print(
             f"LOS F egress rate is {params.los_f_egress_rate} pax/s. "
-            f"Emergency egress time is {params.emergency_egress_time} seconds."
+            "Emergency egress time is "
+            f"{round(params.emergency_egress_time.total_seconds())} seconds."
         )
     return time_series, summary
 
@@ -848,7 +868,7 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
             *(f"Train {train + 1} {column}" for train in trains for column in TRAIN_COLUMNS),
         ],
         [
-            [instant.time, *itertools.chain.from_iterable(train_values)]
+            [round(instant.time.total_seconds()), *itertools.chain.from_iterable(train_values)]
             for instant, train_values in zip(time_series.instants, time_series.trains, strict=True)
         ],
     )
@@ -856,7 +876,7 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
     # Only `--charts` needs `matplotlib`, so don't slow down every other run importing it.
     from matplotlib.figure import Figure
 
-    times = [instant.time for instant in time_series.instants]
+    times = [instant.time.total_seconds() for instant in time_series.instants]
 
     def column(attr: str) -> tuple[str, list[float]]:
         """The name and values of `Instant`'s `attr` each second."""
@@ -885,7 +905,7 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
         ("Net Platform Flow Rate", "Net Flow Rate (pax/s)", [column("net_pax_flow_rate")]),
     ]
     fig = Figure(figsize=(12, 3 * len(charts)), layout="constrained")
-    fig.suptitle(f"Platform {params.name}, {params.headway} s headway")
+    fig.suptitle(f"Platform {params.name}, {round(params.headway.total_seconds())} s headway")
     axes = fig.subplots(len(charts), 1, sharex=True, squeeze=False)[:, 0]
     for ax, (title, y_label, series) in zip(axes, charts, strict=True):
         for color, (label, values) in zip(SERIES_COLORS, series, strict=False):
@@ -922,16 +942,16 @@ def run_model(params: Params, charts: bool) -> str:
                 f"{params.filename_prefix}"
                 f"_{params.assumptions.arriving_pax_per_train}"
                 f"_{params.assumptions.arriving_pax_per_train}"
-                f"_{headway}s"
+                f"_{round(headway.total_seconds())}s"
             ),
         )
 
-    def fmt_time(t: int | None) -> str:
-        """`t` seconds as `m:ss`."""
+    def fmt_time(t: timedelta | None) -> str:
+        """`t` as `m:ss`."""
         if t is None:
             return "never"
-        minutes, seconds = divmod(t, SECONDS_PER_MINUTE)
-        return f"{minutes}:{seconds:02}"
+        minutes, rest = divmod(t, timedelta(minutes=1))
+        return f"{minutes}:{rest.seconds:02}"
 
     return (
         f"| {params.name} | {fmt_time(headway)} | {params.total_vce_width} ft"
@@ -939,7 +959,7 @@ def run_model(params: Params, charts: bool) -> str:
         f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
         f" | {fmt_time(summary.boarded_time)}"
-        f" | {fmt_time(summary.secs_at_capacity)} | {summary.max_up_rate:.2f}"
+        f" | {fmt_time(summary.time_at_capacity)} | {summary.max_up_rate:.2f}"
         f" | {summary.max_pax_on_platform:.0f}"
         f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
         f" ({platform_crowd_los(summary.min_space_per_pax, params.assumptions)}) |"
@@ -997,7 +1017,7 @@ def main(
         platform=6,
         platform_width=15,
         platform_length=1100,
-        headway=0,
+        headway=timedelta(0),
         total_vce_width=48.168,
         vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
@@ -1017,13 +1037,13 @@ def main(
         total_vce_width=43.58,
         vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
     )
-    params_p30 = dataclasses.replace(params_p3120, headway=0)
-    params_p3recon0 = dataclasses.replace(params_p3recon120, headway=0)
+    params_p30 = dataclasses.replace(params_p3120, headway=timedelta(0))
+    params_p3recon0 = dataclasses.replace(params_p3recon120, headway=timedelta(0))
     params_p6120 = dataclasses.replace(params_p60, headway=CLOSE_HEADWAY)
     params_p6300 = dataclasses.replace(params_p60, headway=NORMAL_HEADWAY)
-    params_p100 = dataclasses.replace(params_p10120, headway=0)
+    params_p100 = dataclasses.replace(params_p10120, headway=timedelta(0))
     params_p10300 = dataclasses.replace(params_p10120, headway=NORMAL_HEADWAY)
-    params_p110 = dataclasses.replace(params_p11120, headway=0)
+    params_p110 = dataclasses.replace(params_p11120, headway=timedelta(0))
     params_p11300 = dataclasses.replace(params_p11120, headway=NORMAL_HEADWAY)
     if charts:
         OUTPUT_DIR.mkdir(exist_ok=True)
