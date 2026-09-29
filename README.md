@@ -99,7 +99,8 @@ each using the passenger counts left by the one before.
    Once a train arrives, its passengers step off onto the platform
    at 1 pax/s per single-door equivalent.
    - Every train is as long as its platform's tracks and the platform itself allow, up to 12 cars,
-     per [this track map](https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg):
+     per [this track map](https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg),
+     recorded in [`data/platform_max_cars.csv`](./data/platform_max_cars.csv):
      10 cars on platform 3, and 12 on platforms 6, 10, and 11.
    - Every car is a full, seated NJ Transit MultiLevel car with 135 passengers,
      from the Moynihan Station environmental assessment,

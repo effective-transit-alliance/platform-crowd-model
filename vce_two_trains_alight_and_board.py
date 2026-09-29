@@ -487,6 +487,12 @@ VCE_DATA = Path(__file__).parent / "data" / "estimated_vce_widths.csv"
 PLATFORM_LENGTHS = Path(__file__).parent / "data" / "platform_lengths.csv"
 """Each platform's length, from the Moynihan Station EA's Table 4.4-10."""
 
+PLATFORM_MAX_CARS = Path(__file__).parent / "data" / "platform_max_cars.csv"
+"""
+Cars in the longest train that fits on each platform's tracks, from
+https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
+"""
+
 OSM_PLATFORMS = Path(__file__).parent / "data" / "osm_platforms.csv"
 """Each platform's outline's area, from OpenStreetMap, via `scripts/extract_osm_platforms.py`."""
 
@@ -496,6 +502,20 @@ def platform_lengths() -> dict[int, int]:
     """Each platform's length (ft), from `PLATFORM_LENGTHS`."""
     with PLATFORM_LENGTHS.open() as f:
         return {int(row["platform"]): int(row["length_ft"]) for row in csv.DictReader(f)}
+
+
+@cache
+def platform_tracks() -> dict[int, int]:
+    """How many tracks each platform serves, from `PLATFORM_LENGTHS`."""
+    with PLATFORM_LENGTHS.open() as f:
+        return {int(row["platform"]): len(row["tracks"].split("/")) for row in csv.DictReader(f)}
+
+
+@cache
+def platform_max_cars() -> dict[int, int]:
+    """Cars in the longest train that fits on each platform's tracks, from `PLATFORM_MAX_CARS`."""
+    with PLATFORM_MAX_CARS.open() as f:
+        return {int(row["platform"]): int(row["max_cars"]) for row in csv.DictReader(f)}
 
 
 @cache
@@ -727,12 +747,6 @@ class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
     """Which platform it is, 1 to 11, whose dimensions are in `data/`."""
 
-    platform_max_cars: Annotated[int, Field(name="Platform Max Cars", units="car")]
-    """
-    Cars in the longest train that fits on the platform's tracks, from
-    https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
-    """
-
     headway: Annotated[int, Field(name="Headway", units="s")]
     """
     Time (in seconds) between trains' scheduled arrivals.
@@ -744,12 +758,6 @@ class Params:
 
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
     """Trains arriving, alternating between the platform's tracks."""
-
-    tracks: Annotated[int, Field(name="Tracks", units="track")] = 2
-    """
-    Tracks the platform serves: 2 for an island platform,
-    or 1 for platform 9, which only serves track 17.
-    """
 
     platform_east_end: float | None = None
     """
@@ -784,6 +792,19 @@ class Params:
     def filename_prefix(self) -> str:
         """Prefix of the filename to save the spreadsheet in, e.g. `platform3_recon`."""
         return f"platform{self.platform}" + (f"_{self.modifier}" if self.modifier else "")
+
+    @property
+    def platform_max_cars(self) -> Annotated[int, Field(name="Platform Max Cars", units="car")]:
+        """Cars in the longest train that fits on its tracks, from `PLATFORM_MAX_CARS`."""
+        return platform_max_cars()[self.platform]
+
+    @property
+    def tracks(self) -> Annotated[int, Field(name="Tracks", units="track")]:
+        """
+        Tracks the platform serves, from `PLATFORM_LENGTHS`: 2 for an island platform,
+        or 1 for platform 9, which only serves track 17.
+        """
+        return platform_tracks()[self.platform]
 
     @property
     def cars(self) -> Annotated[int, Field(name="Cars per Train", units="car")]:
@@ -1660,24 +1681,22 @@ def main(
 ) -> None:
     """Run every scenario and print a table of their results."""
 
-    def platform_params(platform: int, max_cars: int, east_end: float, tracks: int = 2) -> Params:
+    def platform_params(platform: int, east_end: float) -> Params:
         """`platform` with each VCE's position, before choosing a headway."""
         return Params(
             platform=platform,
-            platform_max_cars=max_cars,
             headway=0,
             vces=platform_vces(platform),
             platform_east_end=east_end,
-            tracks=tracks,
         )
 
     # East ends are from the PCIP Phase 2 existing plan, like each VCE's position,
     # which shows platforms 1 and 2 extending farther east than the rest.
     # Platforms 9 to 11's east ends are from the Master Plan's platform outlines.
-    platform_3 = platform_params(3, max_cars=10, east_end=719)
+    platform_3 = platform_params(3, east_end=719)
     platforms = [
-        platform_params(1, max_cars=9, east_end=910),
-        platform_params(2, max_cars=9, east_end=910),
+        platform_params(1, east_end=910),
+        platform_params(2, east_end=910),
         platform_3,
         # Platform 3 accounting for Penn Reconstruction's plans.
         dataclasses.replace(
@@ -1685,14 +1704,14 @@ def main(
             modifier="recon",
             vces=penn_reconstruction_platform_3_vces(),
         ),
-        platform_params(4, max_cars=13, east_end=762),
-        platform_params(5, max_cars=17, east_end=818),
-        platform_params(6, max_cars=17, east_end=849),
-        platform_params(7, max_cars=17, east_end=820),
-        platform_params(8, max_cars=13, east_end=778),
-        platform_params(9, max_cars=12, east_end=882, tracks=1),
-        platform_params(10, max_cars=12, east_end=965),
-        platform_params(11, max_cars=12, east_end=965),
+        platform_params(4, east_end=762),
+        platform_params(5, east_end=818),
+        platform_params(6, east_end=849),
+        platform_params(7, east_end=820),
+        platform_params(8, east_end=778),
+        platform_params(9, east_end=882),
+        platform_params(10, east_end=965),
+        platform_params(11, east_end=965),
     ]
     # Group the results by headway first, then by platform.
     scenarios = [
