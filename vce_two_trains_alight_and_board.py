@@ -307,7 +307,6 @@ def board_rate(
     r_off: float,
     sim_t: float,
     arr_t: float,
-    dep_t: float,
     boarders: float,
 ) -> float:
     """
@@ -319,11 +318,10 @@ def board_rate(
     :param r_off: train alight rate (pax/s)
     :param sim_t: time (s)
     :param arr_t: train arrival time (s)
-    :param dep_t: train departure time (s)
     :param boarders: number of passengers waiting on platform to board
     :return: train ingress rate across all doors (pax/s)
     """
-    if arr_t < sim_t < dep_t:
+    if arr_t < sim_t:
         return min(r_max - r_off, boarders)
     else:
         return 0
@@ -750,7 +748,6 @@ def calc_workbook(
             train1_off_rate,
             time_after,
             params.train1_arrival_time,
-            assumptions.simulation_length,
             train1_boarders_on_plat,
         )
         train2_on_rate = board_rate(
@@ -758,7 +755,6 @@ def calc_workbook(
             train2_off_rate,
             time_after,
             params.train2_arrival_time,
-            assumptions.simulation_length,
             train2_boarders_on_plat,
         )
 
