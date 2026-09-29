@@ -1,9 +1,3 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.14"
-# dependencies = ["pymupdf"]
-# ///
-
 """
 Estimate the widths and positions of every VCE on platforms 1 to 8
 by measuring their treads on a scaled vector drawing,
@@ -50,17 +44,17 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import cache
-from pathlib import Path
 
 import pymupdf
 
-REPO = Path(__file__).resolve().parent.parent
-MASTER_PLAN_CSV = REPO / "data" / "master_plan_existing_vces.csv"
-DIRECTORY_CSV = REPO / "data" / "njt_directory_vces.csv"
-MASTER_PLAN_EAST_ENDS_CSV = REPO / "data" / "master_plan_platform_east_ends.csv"
-EAST_ENDS_CSV = REPO / "data" / "platform_east_ends.csv"
-OUT_CSV = REPO / "data" / "estimated_vce_widths.csv"
-PDF_CACHE = REPO / ".cache" / "pcip-2-conceptual-design-preliminary-drawings.pdf"
+from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
+
+MASTER_PLAN_CSV = DATA_DIR / "master_plan_existing_vces.csv"
+DIRECTORY_CSV = DATA_DIR / "njt_directory_vces.csv"
+MASTER_PLAN_EAST_ENDS_CSV = DATA_DIR / "master_plan_platform_east_ends.csv"
+EAST_ENDS_CSV = DATA_DIR / "platform_east_ends.csv"
+OUT_CSV = DATA_DIR / "estimated_vce_widths.csv"
+PDF_CACHE = CACHE_DIR / "pcip-2-conceptual-design-preliminary-drawings.pdf"
 PDF_URL = "https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf"
 PAGE = 45
 """1-indexed PDF page of sheet A-001, "Existing Plan Overall"."""
@@ -180,7 +174,7 @@ class Vce:
 
 def pdf() -> pymupdf.Document:
     if not PDF_CACHE.exists():
-        PDF_CACHE.parent.mkdir(exist_ok=True)
+        CACHE_DIR.mkdir(exist_ok=True)
         request = urllib.request.Request(
             PDF_URL, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Firefox/130.0"}
         )

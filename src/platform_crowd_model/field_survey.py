@@ -1,9 +1,3 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.14"
-# dependencies = []
-# ///
-
 """
 Make a blank field survey sheet for measuring every platform's VCEs in person,
 prefilled with the VCEs expected from the PCIP Phase 2 existing plan
@@ -25,13 +19,13 @@ Writes `data/field_survey.csv`; the columns after `position_ft` are for surveyor
 """
 
 import csv
-from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
-DIRECTORY_CSV = REPO / "data" / "njt_directory_vces.csv"
-MASTER_PLAN_CSV = REPO / "data" / "master_plan_existing_vces.csv"
-SHEET_CSV = REPO / "data" / "estimated_vce_widths.csv"
-OUT_CSV = REPO / "data" / "field_survey.csv"
+from platform_crowd_model.paths import DATA_DIR
+
+DIRECTORY_CSV = DATA_DIR / "njt_directory_vces.csv"
+MASTER_PLAN_CSV = DATA_DIR / "master_plan_existing_vces.csv"
+SHEET_CSV = DATA_DIR / "estimated_vce_widths.csv"
+OUT_CSV = DATA_DIR / "field_survey.csv"
 
 PLATFORM_ORDER = [3, 11, 1, 2, 4, 5, 6, 7, 8, 9, 10]
 

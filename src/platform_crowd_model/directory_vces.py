@@ -1,9 +1,3 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.14"
-# dependencies = ["pymupdf"]
-# ///
-
 """
 Extract the stairs, escalators, and elevators to each platform
 from NJ Transit's January 2022 Penn Station directory,
@@ -25,14 +19,14 @@ import csv
 import urllib.request
 from collections import Counter
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 import pymupdf
 
-REPO = Path(__file__).resolve().parent.parent
-OUT_CSV = REPO / "data" / "njt_directory_vces.csv"
-PDF_CACHE = REPO / ".cache" / "NY-Penn-Station-Directory_011022.pdf"
+from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
+
+OUT_CSV = DATA_DIR / "njt_directory_vces.csv"
+PDF_CACHE = CACHE_DIR / "NY-Penn-Station-Directory_011022.pdf"
 PDF_URL = (
     "https://content.njtransit.com/sites/default/files/NY%20Penn%20Station%20Directory_011022.pdf"
 )
@@ -79,7 +73,7 @@ class Icon:
 
 def pdf() -> pymupdf.Document:
     if not PDF_CACHE.exists():
-        PDF_CACHE.parent.mkdir(exist_ok=True)
+        CACHE_DIR.mkdir(exist_ok=True)
         request = urllib.request.Request(
             PDF_URL, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Firefox/130.0"}
         )

@@ -1,9 +1,3 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.14"
-# dependencies = []
-# ///
-
 """
 Measure each of Penn Station's platforms from OpenStreetMap,
 the data OpenRailwayMap draws, via the Overpass API.
@@ -27,12 +21,12 @@ import json
 import math
 import urllib.parse
 import urllib.request
-from pathlib import Path
 from typing import Any
 
-REPO = Path(__file__).resolve().parent.parent
-CACHE = REPO / ".cache" / "osm_platforms.json"
-OUT_CSV = REPO / "data" / "osm_platforms.csv"
+from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
+
+CACHE = CACHE_DIR / "osm_platforms.json"
+OUT_CSV = DATA_DIR / "osm_platforms.csv"
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
@@ -55,7 +49,7 @@ METERS_PER_DEGREE_LATITUDE = 111_320
 
 def fetch() -> dict[str, Any]:
     if not CACHE.exists():
-        CACHE.parent.mkdir(exist_ok=True)
+        CACHE_DIR.mkdir(exist_ok=True)
         request = urllib.request.Request(
             OVERPASS_URL,
             data=urllib.parse.urlencode({"data": QUERY}).encode(),

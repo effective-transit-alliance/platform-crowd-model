@@ -1,9 +1,3 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.14"
-# dependencies = ["pymupdf"]
-# ///
-
 """
 Extract the approximate positions of each platform's VCEs
 from the platform-level plans in the NY Penn Station Master Plan's Alternatives Report
@@ -36,16 +30,16 @@ import csv
 import sys
 import urllib.request
 from dataclasses import dataclass
-from pathlib import Path
 
 import pymupdf
 
-REPO = Path(__file__).resolve().parent.parent
-WIDTHS_CSV = REPO / "data" / "master_plan_vce_widths.csv"
-POSITIONS_CSV = REPO / "data" / "master_plan_vce_positions.csv"
-EXISTING_CSV = REPO / "data" / "master_plan_existing_vces.csv"
-EAST_ENDS_CSV = REPO / "data" / "master_plan_platform_east_ends.csv"
-PDF_CACHE = REPO / ".cache" / "PSMP-Alternatives-Report.pdf"
+from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
+
+WIDTHS_CSV = DATA_DIR / "master_plan_vce_widths.csv"
+POSITIONS_CSV = DATA_DIR / "master_plan_vce_positions.csv"
+EXISTING_CSV = DATA_DIR / "master_plan_existing_vces.csv"
+EAST_ENDS_CSV = DATA_DIR / "master_plan_platform_east_ends.csv"
+PDF_CACHE = CACHE_DIR / "PSMP-Alternatives-Report.pdf"
 PDF_URL = (
     "https://liamblank.com/wp-content/uploads/2026/07/"
     "R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf"
@@ -120,7 +114,7 @@ class Rect:
 
 def pdf() -> pymupdf.Document:
     if not PDF_CACHE.exists():
-        PDF_CACHE.parent.mkdir(exist_ok=True)
+        CACHE_DIR.mkdir(exist_ok=True)
         request = urllib.request.Request(
             PDF_URL, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Firefox/130.0"}
         )

@@ -18,8 +18,7 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
-import typer
-from typer import Option
+from platform_crowd_model.paths import DATA_DIR, REPO
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -496,9 +495,6 @@ class Vce:
     """Where it ends along the platform (ft east of the Master Plan's plans' west edge)."""
 
 
-DATA_DIR = Path(__file__).parents[2] / "data"
-"""The repo's `data/`, with each platform's VCEs and dimensions."""
-
 VCE_DATA = DATA_DIR / "estimated_vce_widths.csv"
 
 PLATFORM_LENGTHS = DATA_DIR / "platform_lengths.csv"
@@ -513,11 +509,14 @@ https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
 PLATFORM_EAST_ENDS = DATA_DIR / "platform_east_ends.csv"
 """
 Where each platform ends to the east (ft east of the Master Plan's plans' west edge),
-via `scripts/estimate_vce_widths.py`.
+via `platform-crowd-model data estimated-vces`.
 """
 
 OSM_PLATFORMS = DATA_DIR / "osm_platforms.csv"
-"""Each platform's outline's area, from OpenStreetMap, via `scripts/extract_osm_platforms.py`."""
+"""
+Each platform's outline's area, from OpenStreetMap,
+via `platform-crowd-model data osm-platforms`.
+"""
 
 
 @cache
@@ -1398,7 +1397,7 @@ RESULTS_COLUMNS = [
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
-README = Path(__file__).parents[2] / "README.md"
+README = REPO / "README.md"
 RESULTS_START = "<!-- results-table:start -->"
 RESULTS_END = "<!-- results-table:end -->"
 """The README's results table is between these markers, so `--update-readme` can replace it."""
@@ -1655,16 +1654,13 @@ def run_model(params: Params, charts: bool) -> str:
     )
 
 
-def main(
-    update_readme: Annotated[
-        bool, Option(help="Replace the results table in the README with this run's.")
-    ] = False,
-    charts: Annotated[
-        bool,
-        Option(help="Also print each scenario's time series and save its CSVs and charts."),
-    ] = False,
-) -> None:
-    """Run every scenario and print a table of their results."""
+def main(update_readme: bool = False, charts: bool = False) -> None:
+    """
+    Run every scenario and print a table of their results.
+
+    :param update_readme: also replace the results table in the README with this run's
+    :param charts: also print each scenario's time series and save its CSVs and charts
+    """
 
     def platform_params(platform: int) -> Params:
         """`platform` with each VCE's position, before choosing a headway."""
@@ -1715,8 +1711,3 @@ def main(
     print(table)
     if update_readme:
         update_readme_results(table)
-
-
-def cli() -> None:
-    """Run `main` as a command-line program."""
-    typer.run(main)
