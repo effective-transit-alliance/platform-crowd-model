@@ -1,4 +1,4 @@
-osm_way,ref,name,railway,level,outline,length_ft,area_sq_ft,width_ft
+osm_way,platform,name,railway,level,outline,length_ft,area_sq_ft,width_ft
 839499312,,,,,yes,131,1242,9.5
 739454531,,34th Street - Penn Station,platform,-1,yes,660,7976,12.1
 739454532,,34th Street - Penn Station,platform,-1,yes,660,7954,12.0

@@ -581,9 +581,9 @@ def platform_areas() -> dict[int, int]:
     """Each platform's area (sq ft), from `OSM_PLATFORMS`."""
     with OSM_PLATFORMS.open() as f:
         return {
-            int(row["ref"]): int(row["area_sq_ft"])
+            int(row["platform"]): int(row["area_sq_ft"])
             for row in csv.DictReader(f)
-            if row["ref"] and row["level"] == "-3"
+            if row["platform"] and row["level"] == "-3"
         }
 
 

@@ -88,7 +88,7 @@ def main() -> None:
         rows.append(
             {
                 "osm_way": way["id"],
-                "ref": tags.get("ref", ""),
+                "platform": tags.get("ref", ""),
                 "name": tags.get("name", ""),
                 "railway": tags.get("railway", ""),
                 "level": tags.get("level", tags.get("layer", "")),
@@ -98,7 +98,7 @@ def main() -> None:
                 "width_ft": "" if area is None else round(area / length, 1),
             }
         )
-    rows.sort(key=lambda row: (row["ref"], row["name"], row["osm_way"]))
+    rows.sort(key=lambda row: (row["platform"], row["name"], row["osm_way"]))
     with OUT_CSV.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
