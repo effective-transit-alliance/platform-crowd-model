@@ -32,14 +32,6 @@ SECONDS_PER_MINUTE = 60
 
 SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
 
-FRUIN_ASCENDING_STAIR_COEFFICIENTS = (111, 162)
-"""
-`(a, b)` in Fruin's equation for ascending stair flow, `P = (aM - b)/M^2`,
-where `P` is the flow (pax/min per ft of stair width)
-and `M` is the space per passenger on the stair (ft^2/pax).
-Fruin, p. 9: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=9
-"""
-
 CLOSE_HEADWAY = 120
 """Time between two trains' arrivals in the closely spaced scenarios (s), from the ETA report."""
 
@@ -58,9 +50,7 @@ class Assumptions:
     """
     Everything the model assumes, shared by every scenario,
     as opposed to the facts about each scenario in `Params`.
-    The defaults are the model's current assumptions,
-    the same as in the `penn-station-can-handle-the-load` tag that the ETA report used,
-    including some that are bugs, documented in the README's "Known Bugs";
+    The defaults are the model's current assumptions;
     override any of them to see how sensitive the results are to it,
     e.g. `Assumptions(stair_capacity=15)`.
     """
@@ -91,22 +81,22 @@ class Assumptions:
     ] = 400
     """Passengers boarding each train, from the ETA report."""
 
-    departing_pax_on_platform_per_train: Annotated[
-        int, Field(name="Departing Passengers on Platform per Train", units="pax")
-    ] = 200
+    departing_pax_lead_time: Annotated[
+        int, Field(name="Departing Passengers Lead Time", units="s")
+    ] = 120
     """
-    Of `departing_pax_per_train`, those already on the platform at the start.
-    The rest start upstairs, all at once, with none arriving during the simulation.
-    From the ETA report.
+    How long before its scheduled arrival a train's departing passengers
+    start coming down to the platform, all at once, like when its track is announced.
+    Until then, they all wait in the concourse, off the platform and the stairs,
+    with none arriving later.
+    Not from any source.
     """
 
-    doors_per_train: Annotated[int, Field(name="Doors per Train", units="door")] = 40
+    doors_per_train: Annotated[int, Field(name="Doors per Train", units="door")] = 48
     """
     Doors (single-door equivalents) on each train on the platform side.
-    A 10-car NJ Transit MultiLevel with 4 per car, the worst case.
+    A 12-car NJ Transit MultiLevel with 4 per car, like `arriving_pax_per_train`.
     A 12-car LIRR train has more and better doors.
-    A bug: `arriving_pax_per_train` is a 12-car train's, which has 48 doors.
-    See `README.md#trains-have-a-12-car-trains-passengers-but-a-10-car-trains-doors`.
     """
 
     door_flow_rate: Annotated[float, Field(name="Door Flow Rate", units="pax/s/door")] = 1.0
@@ -123,46 +113,28 @@ class Assumptions:
     Fruin, p. 14: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14
     """
 
-    stair_queue_min_flow: Annotated[
-        float, Field(name="Stair Queue Minimum Flow", units="pax/min/ft")
-    ] = 10
-    """
-    Minimum upward stair flow while more arriving passengers are on the platform
-    than fit in the stair queues, the LOS C/D boundary.
-    From the ETA report.
-    """
-
     stair_queue_space: Annotated[float, Field(name="Stair Queue Space", units="ft^2/pax")] = 5
     """
     Space per passenger queued at the stairs.
+    Only used to report when the arriving passengers fit in the stair queues (the taper time).
     TCQSM p. 10-51: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
     """
 
     stair_queue_length: Annotated[float, Field(name="Stair Queue Length", units="ft")] = 20
     """
-    Length of the queue in front of each stair.
-    While more arriving passengers are on the platform than fit in these queues,
-    the upward flow is at least `stair_queue_min_flow`;
-    once they fit, they start to taper off.
+    Length of the queue in front of each stair,
+    used to report when the arriving passengers start to taper off.
     From the ETA report.
     """
 
     bidirectional_stair_flow_limit: Annotated[
         float, Field(name="Bidirectional Stair Flow Limit", units="pax/min/ft")
-    ] = 12
+    ] = 10
     """
-    Total stair flow in both directions, which the upward flow leaves for the downward flow.
-    A bug: the ETA report says there's no bidirectional flow on stairs worse than LOS C,
-    i.e. above 10 pax/min/ft.
-    See `README.md#bidirectional-flow-stops-at-12-paxminft-not-10`.
-    """
-
-    concourse_area: Annotated[float, Field(name="Concourse Area", units="ft^2")] = 5000
-    """
-    Area of the concourse upstairs holding the departing passengers who haven't come down yet.
-    A bug: their flow down comes from Fruin's equation applied to this area,
-    so it slows as the concourse empties.
-    See `README.md#downward-flow-slows-as-a-fixed-concourse-empties`.
+    Nobody comes down while the upward flow exceeds this.
+    The ETA report says there's no bidirectional flow on stairs worse than LOS C,
+    i.e. above the LOS C/D boundary, 10 pax/min/ft.
+    Otherwise, both directions share `stair_capacity`.
     """
 
     emergency_stair_flow: Annotated[
@@ -178,25 +150,24 @@ class Assumptions:
     """
 
     platform_los_min_space: tuple[tuple[str, float], ...] = (
-        ("A", 35),
-        ("B", 25),
-        ("C", 15),
-        ("D", 10),
-        ("E", 5),
+        ("A", 13),
+        ("B", 10),
+        ("C", 7),
+        ("D", 3),
+        ("E", 2),
     )
     """
-    Fruin's LOS for walkways:
+    Fruin's LOS for queuing and waiting areas:
     each grade needs more than this space per passenger (ft^2/pax), or else F.
-    Fruin, p. 7: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=7
-    A bug: most passengers on a platform are standing and waiting, not walking,
-    so the TCQSM grades platforms with Fruin's LOS for queuing and waiting areas.
-    See `README.md#platform-crowding-is-graded-as-a-walkway`.
+    Most passengers on a platform are standing and waiting, not walking,
+    so the TCQSM grades platforms with these, not Fruin's LOS for walkways.
+    TCQSM, Exhibit 10-32, p. 10-55: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59
     """
 
     stair_los_max_flow: tuple[tuple[str, float], ...] = (
         ("A", 5),
         ("B", 7),
-        ("C", 9.5),
+        ("C", 10),
         ("D", 13),
     )
     """
@@ -204,8 +175,6 @@ class Assumptions:
     each grade allows at most this flow (pax/min per ft of width),
     then E up to `stair_capacity`, or else F.
     Fruin, pp. 12-14: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12
-    A bug: Fruin puts the C/D boundary at 10, not 9.5.
-    See `README.md#the-stair-los-cd-boundary-is-95-paxminft-not-10`.
     """
 
 
@@ -222,17 +191,6 @@ def stair_flow(rate: float, w: float) -> float:
     return rate * w / SECONDS_PER_MINUTE
 
 
-def fruin_ascending_stair_flow(m: float) -> float:
-    """
-    Fruin's equation for ascending stair flow.
-
-    :param m: space per passenger (ft^2/pax)
-    :return: stair flow per foot of width (pax/min/ft)
-    """
-    a, b = FRUIN_ASCENDING_STAIR_COEFFICIENTS
-    return (a * m - b) / m**2
-
-
 def alight_rate(k: float, t: float, t0: float | None, u: float) -> float:
     """
     :param k: number of people waiting to get off train
@@ -247,56 +205,36 @@ def alight_rate(k: float, t: float, t0: float | None, u: float) -> float:
         return 0
 
 
-def platform_clearance(
-    karr: float, area: float, w: float, max_pax_in_stair_queues: float, assumptions: Assumptions
-) -> float:
+def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float:
     """
-    Two bugs: Fruin's equation is used as if it gives pax/s across all of the stairs,
-    not pax/min per ft of width, and with the platform's space per passenger,
-    not the stair's.
-    See the README's "Known Bugs".
+    Arriving passengers queue at the stairs,
+    which discharge them at `Assumptions.stair_capacity` as long as anyone is queued.
 
-    :param karr: number of arriving passengers on the platform heading upstairs
-    :param area: usable platform area (ft^2)
+    Fruin's stair equation relates flow to the space per passenger *on the stair*,
+    which a queued stair holds near its critical density,
+    so it doesn't apply to the space per passenger on the platform.
+    The few seconds of walking from the doors to the stairs are ignored.
+
+    :param karr: number of arriving passengers on the platform (pax)
     :param w: total width of vertical circulation elements (ft)
-    :param max_pax_in_stair_queues: number of people that fit in the stair queues
     :return: platform egress rate on stairs (pax/s)
     """
-    flow = min(
-        stair_flow(assumptions.stair_capacity, w),
-        fruin_ascending_stair_flow(area / max(1, karr)),
-    )
-    if karr <= max_pax_in_stair_queues:
-        return min(karr, flow)
-    else:
-        return max(stair_flow(assumptions.stair_queue_min_flow, w), flow)
+    return min(karr, stair_flow(assumptions.stair_capacity, w))
 
 
 def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumptions) -> float:
     """
-    Several bugs: the whole upward flow is subtracted from each train's share of the stairs,
-    Fruin's ascending equation is used for descending passengers
-    with the same units bug as `platform_clearance`,
-    and it's applied to a fixed concourse area.
-    See the README's "Known Bugs".
+    Departing passengers queue upstairs and come down with whatever stair capacity
+    the upward flow leaves, unless it exceeds `Assumptions.bidirectional_stair_flow_limit`.
 
-    :param kdep: number of departing passengers upstairs
+    :param kdep: number of departing passengers upstairs (pax)
     :param w: this train's share of the total width of vertical circulation elements (ft)
-    :param r_up: upward stair flow (pax/s)
+    :param r_up: upward stair flow on this train's share of the stairs (pax/s)
     :return: platform ingress rate on stairs (pax/s)
     """
-    if kdep > 0:
-        return min(
-            kdep,
-            min(
-                max(0, stair_flow(assumptions.bidirectional_stair_flow_limit, w) - r_up),
-                max(
-                    0, fruin_ascending_stair_flow(assumptions.concourse_area / max(1, kdep)) - r_up
-                ),
-            ),
-        )
-    else:
+    if r_up > stair_flow(assumptions.bidirectional_stair_flow_limit, w):
         return 0
+    return min(kdep, stair_flow(assumptions.stair_capacity, w) - r_up)
 
 
 def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
@@ -320,9 +258,8 @@ def board_rate(
     boarders: float,
 ) -> float:
     """
-    A bug: boarding uses whatever door capacity alighting leaves in the same second,
-    though the ETA report says nobody boards until everyone has alighted.
-    See the README's "Known Bugs".
+    Nobody boards until everyone has alighted, per the ETA report,
+    i.e. the second after `r_off` is last nonzero.
 
     :param r_max: maximum boarding rate across all doors (pax/s)
     :param r_off: train alight rate (pax/s)
@@ -331,8 +268,8 @@ def board_rate(
     :param boarders: number of passengers waiting on platform to board
     :return: train ingress rate across all doors (pax/s)
     """
-    if arr_t is not None and arr_t < sim_t:
-        return min(r_max - r_off, boarders)
+    if arr_t is not None and arr_t < sim_t and r_off == 0:
+        return min(r_max, boarders)
     else:
         return 0
 
@@ -647,12 +584,18 @@ def calc_workbook(
     """
     remaining_arrivals = [float(assumptions.arriving_pax_per_train) for _ in trains]
     new_pax = [0.0 for _ in trains]
-    boarders_upstairs = [
-        float(assumptions.departing_pax_per_train - assumptions.departing_pax_on_platform_per_train)
-        for _ in trains
+    release_times = [
+        train * params.headway - assumptions.departing_pax_lead_time for train in trains
     ]
-    boarders_on_plat = [float(assumptions.departing_pax_on_platform_per_train) for _ in trains]
-    total_pax_on_platform = sum(boarders_on_plat)
+    """When each train's departing passengers start coming down to the platform."""
+    start_time = min(0, *release_times)
+    """
+    When the simulation starts (s): before the first train arrives at 0 s,
+    once its departing passengers start coming down.
+    """
+    boarders_upstairs = [0.0 for _ in trains]
+    boarders_on_plat = [0.0 for _ in trains]
+    total_pax_on_platform: float = 0
     wb = openpyxl.Workbook()
     trains_sheet = wb.create_sheet("Trains")
     """Each train's passengers, alighting, boarding, and departing passengers each second."""
@@ -710,14 +653,21 @@ def calc_workbook(
                 return FIRST_DATA_COLUMN + i
         raise AttributeError(Instant, attr_name)
 
-    time_after = 0
-    for time_after in itertools.count():
-        if time_after >= MAX_SIMULATION_LENGTH:
+    def row_for(time: int) -> int:
+        """The spreadsheets' row for `time`."""
+        return time - start_time + FIRST_DATA_ROW
+
+    time_after = start_time
+    for time_after in itertools.count(start_time):
+        if time_after - start_time >= MAX_SIMULATION_LENGTH:
             raise RuntimeError(
                 f"{params.filename_prefix} hasn't finished after {MAX_SIMULATION_LENGTH} s"
             )
+        for train in trains:
+            if release_times[train] == time_after:
+                boarders_upstairs[train] = float(assumptions.departing_pax_per_train)
         if write_workbook:
-            writable_cell(trains_sheet, row=time_after + 2, column=1).value = time_after
+            writable_cell(trains_sheet, row=row_for(time_after), column=1).value = time_after
         off_rates: list[float] = []
         for train in trains:
             off_rate = alight_rate(
@@ -733,22 +683,22 @@ def calc_workbook(
         total_pax_on_platform += sum(off_rates)
         arriving_pax_waiting_on_plat += sum(off_rates)
         plat_egress_rate = platform_clearance(
-            arriving_pax_waiting_on_plat,
-            eff_area,
-            params.total_vce_width,
-            max_pax_in_stair_queues,
-            assumptions,
+            arriving_pax_waiting_on_plat, params.total_vce_width, assumptions
         )
         arriving_pax_waiting_on_plat -= plat_egress_rate
         if arriving_pax_waiting_on_plat < 0:
             arriving_pax_waiting_on_plat = 0
         total_pax_on_platform -= plat_egress_rate
+        # Each train's boarders get a share of the stairs,
+        # and so a share of the upward flow on them.
+        boarder_fracs = [
+            boarder_fraction(boarders_upstairs[train], boarders_upstairs) for train in trains
+        ]
         plat_ingress_rates = [
             platform_ingress(
                 boarders_upstairs[train],
-                params.total_vce_width
-                * boarder_fraction(boarders_upstairs[train], boarders_upstairs),
-                plat_egress_rate,
+                params.total_vce_width * boarder_fracs[train],
+                plat_egress_rate * boarder_fracs[train],
                 assumptions,
             )
             for train in trains
@@ -802,7 +752,11 @@ def calc_workbook(
             and arriving_pax_waiting_on_plat < 1
         ):
             summary.clear_time = time_after
-        if summary.boarded_time is None and sum(boarders_upstairs) + sum(boarders_on_plat) < 1:
+        if (
+            summary.boarded_time is None
+            and time_after >= max(release_times)
+            and sum(boarders_upstairs) + sum(boarders_on_plat) < 1
+        ):
             summary.boarded_time = time_after
         for train in trains:
             arrival_time = arrival_times[train]
@@ -855,14 +809,14 @@ def calc_workbook(
                 ):
                     writable_cell(
                         trains_sheet,
-                        row=instant.time + 2,
+                        row=row_for(instant.time),
                         column=2 + len(TRAIN_COLUMNS) * train + j,
                     ).value = value
 
             for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
                 column = FIRST_DATA_COLUMN + i
                 writable_cell(sheet, row=1, column=column).value = field.description
-                writable_cell(sheet, row=instant.time + 2, column=column).value = value
+                writable_cell(sheet, row=row_for(instant.time), column=column).value = value
 
         # Stop once the last train has departed and the platform has cleared.
         if (
@@ -873,7 +827,7 @@ def calc_workbook(
             break
     if not write_workbook:
         return wb, summary
-    simulation_length = time_after + 1
+    simulation_length = time_after - start_time + 1
 
     def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
         chart = ScatterChart()
@@ -881,8 +835,8 @@ def calc_workbook(
         chart.style = 13
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = simulation_length
+        chart.x_axis.scaling.min = start_time
+        chart.x_axis.scaling.max = time_after
         chart.legend = None
 
         max_row = simulation_length + FIRST_DATA_ROW - 1
@@ -903,8 +857,8 @@ def calc_workbook(
         chart.style = 13
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = simulation_length
+        chart.x_axis.scaling.min = start_time
+        chart.x_axis.scaling.max = time_after
         chart.y_axis.scaling.min = 0
         chart.y_axis.scaling.max = 50
         chart.legend = None
@@ -934,8 +888,8 @@ def calc_workbook(
         chart.style = 13
         chart.x_axis.title = x_title
         chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = 0
-        chart.x_axis.scaling.max = simulation_length
+        chart.x_axis.scaling.min = start_time
+        chart.x_axis.scaling.max = time_after
         assert chart.legend is not None
         chart.legend.position = "b"
 
