@@ -524,12 +524,12 @@ class Vce:
     """`stair` or `escalator`."""
 
 
-VCE_DATA = DATA_DIR / "estimated_vce_widths.csv"
+VCE_DATA = DATA_DIR / "vces.csv"
 
-PLATFORM_LENGTHS = DATA_DIR / "platform_lengths.csv"
+PLATFORM_LENGTHS = DATA_DIR / "platform_lengths_moynihan_ea.csv"
 """Each platform's length, from the Moynihan Station EA's Table 4.4-10."""
 
-PLATFORM_MAX_CARS = DATA_DIR / "platform_max_cars.csv"
+PLATFORM_MAX_CARS = DATA_DIR / "platform_max_cars_track_map.csv"
 """
 Cars in the longest train that fits on each platform's tracks, from
 https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
@@ -541,7 +541,7 @@ Where each platform ends to the east (ft east of the Master Plan's plans' west e
 via `platform-crowd-model data estimated-vces`.
 """
 
-OSM_PLATFORMS = DATA_DIR / "osm_platforms.csv"
+OSM_PLATFORMS = DATA_DIR / "platforms_osm.csv"
 """
 Each platform's outline's area, from OpenStreetMap,
 via `platform-crowd-model data osm-platforms`.
@@ -590,7 +590,7 @@ def platform_areas() -> dict[int, int]:
 @cache
 def platform_vces(platform: int) -> tuple[Vce, ...]:
     """
-    Every VCE on `platform`, from `data/estimated_vce_widths.csv`,
+    Every VCE on `platform`, from `data/vces.csv`,
     with the Master Plan's width where it has one, or else the estimated width.
     """
     with VCE_DATA.open() as f:

@@ -110,7 +110,7 @@ each using the passenger counts left by the one before.
    at 1 pax/s per single-door equivalent.
    - Every train is as long as its platform's tracks and the platform itself allow, up to 12 cars,
      per [this track map](https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg),
-     recorded in [`data/platform_max_cars.csv`](./data/platform_max_cars.csv):
+     recorded in [`data/platform_max_cars_track_map.csv`](./data/platform_max_cars_track_map.csv):
      10 cars on platform 3, and 12 on platforms 6, 10, and 11.
    - Every car is a full, seated NJ Transit MultiLevel car with 135 passengers,
      from the Moynihan Station environmental assessment,
@@ -132,7 +132,7 @@ each using the passenger counts left by the one before.
      since 32 in. treads carry close to 40 in. treads' capacity
      ([TCQSM, Exhibit 10-31, p. 10-52](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=56)).
    - Each VCE's width and position are from
-     [`data/estimated_vce_widths.csv`](./data/estimated_vce_widths.csv)
+     [`data/vces.csv`](./data/vces.csv)
      (see [Estimated Widths](#estimated-widths)).
      - The train's doors are spread evenly along it,
        and it stops wherever on the platform the longest of the trains' dwells is shortest,
@@ -418,7 +418,7 @@ with the West End Concourse's expansion and Moynihan Train Hall.
 A stair-by-stair model needs each VCE's width and position on each platform.
 The best public source of widths found so far is the NY Penn Station Master Plan's
 tables of VCE widths for each platform under each reconstruction alternative,
-transcribed in [`data/master_plan_vce_widths.csv`](./data/master_plan_vce_widths.csv):
+transcribed in [`data/vce_widths_master_plan.csv`](./data/vce_widths_master_plan.csv):
 
 - Alternatives 1 and 2 from the [August 2020 draft Alternatives Report](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf)
   ([p. 16](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=22) and [p. 28](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=34)).
@@ -439,7 +439,7 @@ They're vector drawings with each VCE drawn as a rectangle color-coded by type a
 and a scale bar to convert to feet.
 The script matches the `n`th VCE from the west on each platform to the `n`th VCE in its table,
 since the plans are too small to measure widths from,
-and writes [`data/master_plan_vce_positions.csv`](./data/master_plan_vce_positions.csv),
+and writes [`data/vce_positions_master_plan.csv`](./data/vce_positions_master_plan.csv),
 with positions in feet east of the plans' west edge,
 which cuts across every platform at the same place, under the West End Concourse.
 The plans have west on the left:
@@ -452,9 +452,9 @@ and on 16 of the 44 platforms, they list different stairs and escalators, so tho
 
 Since each alternative keeps a different subset of the existing VCEs,
 the script also combines the existing VCEs across alternatives by position into
-[`data/master_plan_existing_vces.csv`](./data/master_plan_existing_vces.csv),
+[`data/vces_existing_master_plan.csv`](./data/vces_existing_master_plan.csv),
 and measures each platform's east end from its outline, averaged across the alternatives, into
-[`data/master_plan_platform_east_ends.csv`](./data/master_plan_platform_east_ends.csv).
+[`data/platform_east_ends_master_plan.csv`](./data/platform_east_ends_master_plan.csv).
 It finds all 5 of the existing VCEs the Master Plan counts on platform 3,
 matching both the final report's count and the 2 escalators and 3 stairs in the
 [Moynihan Station EA's Table 4.4-10](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22),
@@ -517,7 +517,7 @@ labeled with the platform's tracks.
 `uv run platform-crowd-model data directory-vces`
 ([`directory_vces.py`](./src/platform_crowd_model/directory_vces.py))
 extracts and classifies these icons into
-[`data/njt_directory_vces.csv`](./data/njt_directory_vces.csv),
+[`data/vces_njt_directory.csv`](./data/vces_njt_directory.csv),
 matching each of the map's 104 track labels to a distinct icon.
 Compared with the Master Plan final report's counts of existing VCEs:
 
@@ -561,7 +561,7 @@ No such drawing of platforms 9 to 11 was found.
 ([`estimated_vces.py`](./src/platform_crowd_model/estimated_vces.py))
 finds every run of treads on the platforms, merges a stair's flights,
 and measures each VCE's width and position into
-[`data/estimated_vce_widths.csv`](./data/estimated_vce_widths.csv):
+[`data/vces.csv`](./data/vces.csv):
 
 - Positions are in the Master Plan's frame, feet east of its plans' west edge.
   The two drawings register to within about 1.2 ft:
@@ -625,7 +625,7 @@ or else the median width of that type on platforms 1 to 8, marked `typical`.
 ### Field Survey
 
 Since no public source has every VCE's width,
-[`data/field_survey.csv`](./data/field_survey.csv) is a sheet for measuring them in person,
+[`data/vces_field_survey.csv`](./data/vces_field_survey.csv) is a sheet for measuring them in person,
 made by `uv run platform-crowd-model data field-survey`
 ([`field_survey.py`](./src/platform_crowd_model/field_survey.py)).
 It lists each platform's VCEs expected from the PCIP Phase 2 plan (platforms 1 to 8),
@@ -715,10 +715,10 @@ Notes:
 
 Each platform's length is from the Moynihan Station EA's Table 4.4-10
 ([p. 4.4-22](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22)),
-in [`data/platform_lengths.csv`](./data/platform_lengths.csv),
+in [`data/platform_lengths_moynihan_ea.csv`](./data/platform_lengths_moynihan_ea.csv),
 the only source found with written platform lengths.
 Its area is from its outline in OpenStreetMap, which OpenRailwayMap draws,
-in [`data/osm_platforms.csv`](./data/osm_platforms.csv),
+in [`data/platforms_osm.csv`](./data/platforms_osm.csv),
 written by `uv run platform-crowd-model data osm-platforms`
 ([`osm_platforms.py`](./src/platform_crowd_model/osm_platforms.py)),
 since platforms taper toward their ends.
@@ -877,7 +877,7 @@ and each fix's effect is summarized here.
   so its dwell is 6:23 instead of 3:35 on platform 3, but the first train's is 0:43 instead of 5:35.
   On platform 6, all 4 trains are scheduled at once,
   so all 1,600 departing passengers come down at -2:00, and it peaks at 6229 passengers (LOS F).
-- **Used each VCE's width from [`data/estimated_vce_widths.csv`](./data/estimated_vce_widths.csv)**
+- **Used each VCE's width from [`data/vces.csv`](./data/vces.csv)**
   on platforms 3 and 6, instead of the ETA report's totals,
   still with arriving passengers spread across the VCEs in proportion to their widths.
   Platform 3's VCEs total 43 ft instead of 42.5 ft,

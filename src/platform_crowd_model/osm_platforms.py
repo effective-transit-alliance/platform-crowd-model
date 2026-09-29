@@ -13,7 +13,7 @@ Positions are projected onto a local plane in feet, which is accurate to well un
 The raw Overpass response is cached in `.cache/osm_platforms.json`;
 delete it to fetch the current data.
 
-Writes `data/osm_platforms.csv`.
+Writes `data/platforms_osm.csv`.
 """
 
 import csv
@@ -26,7 +26,7 @@ from typing import Any
 from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
 
 CACHE = CACHE_DIR / "osm_platforms.json"
-OUT_CSV = DATA_DIR / "osm_platforms.csv"
+OUT_CSV = DATA_DIR / "platforms_osm.csv"
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 

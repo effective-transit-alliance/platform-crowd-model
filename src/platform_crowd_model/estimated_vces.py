@@ -1,7 +1,7 @@
 """
 Estimate the widths and positions of every VCE on platforms 1 to 8
 by measuring their treads on a scaled vector drawing,
-and compare them with the Master Plan's (`data/master_plan_existing_vces.csv`).
+and compare them with the Master Plan's (`data/vces_existing_master_plan.csv`).
 
 NJ Transit's PCIP Phase 2 drawings (November 2020) include an existing concourse-level plan
 (sheet A-001, PDF page 45) drawn at 1" = 40', with each stair's and escalator's treads as lines,
@@ -30,10 +30,10 @@ NJ Transit's January 2022 station directory and the Master Plan instead;
 see `directory_vces`.
 Their widths are the Master Plan's, or else typical of platforms 1 to 8, marked `typical`.
 
-Writes `data/estimated_vce_widths.csv`,
+Writes `data/vces.csv`,
 and `data/platform_east_ends.csv`: each platform's east end in the Master Plan's frame,
 from this sheet's outlines on platforms 1 to 8,
-and from the Master Plan's (`data/master_plan_platform_east_ends.csv`) on platforms 9 to 11.
+and from the Master Plan's (`data/platform_east_ends_master_plan.csv`) on platforms 9 to 11.
 """
 
 import bisect
@@ -49,11 +49,11 @@ import pymupdf
 
 from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
 
-MASTER_PLAN_CSV = DATA_DIR / "master_plan_existing_vces.csv"
-DIRECTORY_CSV = DATA_DIR / "njt_directory_vces.csv"
-MASTER_PLAN_EAST_ENDS_CSV = DATA_DIR / "master_plan_platform_east_ends.csv"
+MASTER_PLAN_CSV = DATA_DIR / "vces_existing_master_plan.csv"
+DIRECTORY_CSV = DATA_DIR / "vces_njt_directory.csv"
+MASTER_PLAN_EAST_ENDS_CSV = DATA_DIR / "platform_east_ends_master_plan.csv"
 EAST_ENDS_CSV = DATA_DIR / "platform_east_ends.csv"
-OUT_CSV = DATA_DIR / "estimated_vce_widths.csv"
+OUT_CSV = DATA_DIR / "vces.csv"
 PDF_CACHE = CACHE_DIR / "pcip-2-conceptual-design-preliminary-drawings.pdf"
 PDF_URL = "https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf"
 PAGE = 45
@@ -535,7 +535,7 @@ def directory_vces(
 ) -> list[dict[str, object]]:
     """
     Every VCE on `DIRECTORY_PLATFORMS`, from NJ Transit's station directory
-    (`data/njt_directory_vces.csv`), whose map is schematic and not to scale.
+    (`data/vces_njt_directory.csv`), whose map is schematic and not to scale.
 
     Each level's map is calibrated to feet with a piecewise-linear, nondecreasing fit,
     matching each platform's icons in order to its VCEs in `estimated` on platforms 1 to 8,

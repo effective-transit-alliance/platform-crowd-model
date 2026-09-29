@@ -1,10 +1,10 @@
 """
 Make a blank field survey sheet for measuring every platform's VCEs in person,
-prefilled with the VCEs expected from `data/estimated_vce_widths.csv`,
+prefilled with the VCEs expected from `data/vces.csv`,
 from the PCIP Phase 2 existing plan on platforms 1 to 8
 and positioned from the directory on platforms 9 to 11,
-NJ Transit's January 2022 station directory (`data/njt_directory_vces.csv`),
-and the Master Plan (`data/master_plan_existing_vces.csv`).
+NJ Transit's January 2022 station directory (`data/vces_njt_directory.csv`),
+and the Master Plan (`data/vces_existing_master_plan.csv`).
 
 The sources don't reconcile, and the directory can't be aligned with the others,
 so each platform lists every source's VCEs, each sorted west to east,
@@ -16,17 +16,17 @@ then the rest.
 `position_ft` is in the Master Plan's frame: feet east of its plans' west edge,
 which cuts across the platforms under the West End Concourse.
 
-Writes `data/field_survey.csv`; the columns after `position_ft` are for surveyors.
+Writes `data/vces_field_survey.csv`; the columns after `position_ft` are for surveyors.
 """
 
 import csv
 
 from platform_crowd_model.paths import DATA_DIR
 
-DIRECTORY_CSV = DATA_DIR / "njt_directory_vces.csv"
-MASTER_PLAN_CSV = DATA_DIR / "master_plan_existing_vces.csv"
-SHEET_CSV = DATA_DIR / "estimated_vce_widths.csv"
-OUT_CSV = DATA_DIR / "field_survey.csv"
+DIRECTORY_CSV = DATA_DIR / "vces_njt_directory.csv"
+MASTER_PLAN_CSV = DATA_DIR / "vces_existing_master_plan.csv"
+SHEET_CSV = DATA_DIR / "vces.csv"
+OUT_CSV = DATA_DIR / "vces_field_survey.csv"
 
 PLATFORM_ORDER = [3, 11, 1, 2, 4, 5, 6, 7, 8, 9, 10]
 

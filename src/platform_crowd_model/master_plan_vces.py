@@ -1,7 +1,7 @@
 """
 Extract the approximate positions of each platform's VCEs
 from the platform-level plans in the NY Penn Station Master Plan's Alternatives Report
-(August 2020 draft), and match them to the widths in `data/master_plan_vce_widths.csv`.
+(August 2020 draft), and match them to the widths in `data/vce_widths_master_plan.csv`.
 
 The plans are vector drawings, with each VCE drawn as a rectangle filled with one of four colors:
 new or existing, stair or escalator.
@@ -18,11 +18,11 @@ Other platforms are skipped and reported.
 The plan is only used for positions; widths come from the tables,
 since the plan is too small to measure widths from.
 
-Writes `data/master_plan_vce_positions.csv`,
-and `data/master_plan_existing_vces.csv`,
+Writes `data/vce_positions_master_plan.csv`,
+and `data/vces_existing_master_plan.csv`,
 which combines the existing VCEs across all of the alternatives,
 since each alternative keeps a different subset of them,
-and `data/master_plan_platform_east_ends.csv`,
+and `data/platform_east_ends_master_plan.csv`,
 each platform's east end from its outline, averaged across the alternatives.
 """
 
@@ -35,10 +35,10 @@ import pymupdf
 
 from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
 
-WIDTHS_CSV = DATA_DIR / "master_plan_vce_widths.csv"
-POSITIONS_CSV = DATA_DIR / "master_plan_vce_positions.csv"
-EXISTING_CSV = DATA_DIR / "master_plan_existing_vces.csv"
-EAST_ENDS_CSV = DATA_DIR / "master_plan_platform_east_ends.csv"
+WIDTHS_CSV = DATA_DIR / "vce_widths_master_plan.csv"
+POSITIONS_CSV = DATA_DIR / "vce_positions_master_plan.csv"
+EXISTING_CSV = DATA_DIR / "vces_existing_master_plan.csv"
+EAST_ENDS_CSV = DATA_DIR / "platform_east_ends_master_plan.csv"
 PDF_CACHE = CACHE_DIR / "PSMP-Alternatives-Report.pdf"
 PDF_URL = (
     "https://liamblank.com/wp-content/uploads/2026/07/"

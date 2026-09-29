@@ -45,8 +45,8 @@ def run(
 def master_plan_vces() -> None:
     """
     Extract each VCE's position from the Master Plan's platform-level plans,
-    writing `data/master_plan_vce_positions.csv`, `data/master_plan_existing_vces.csv`,
-    and `data/master_plan_platform_east_ends.csv`.
+    writing `data/vce_positions_master_plan.csv`, `data/vces_existing_master_plan.csv`,
+    and `data/platform_east_ends_master_plan.csv`.
     """
     from platform_crowd_model import master_plan_vces
 
@@ -57,7 +57,7 @@ def master_plan_vces() -> None:
 def directory_vces() -> None:
     """
     Extract each platform's VCEs from NJ Transit's January 2022 station directory,
-    writing `data/njt_directory_vces.csv`.
+    writing `data/vces_njt_directory.csv`.
     """
     from platform_crowd_model import directory_vces
 
@@ -68,7 +68,7 @@ def directory_vces() -> None:
 def estimated_vces() -> None:
     """
     Estimate every VCE's width and position from the PCIP Phase 2 plan and the directory,
-    writing `data/estimated_vce_widths.csv` and `data/platform_east_ends.csv`.
+    writing `data/vces.csv` and `data/platform_east_ends.csv`.
     Run `master-plan-vces` and `directory-vces` first.
     """
     from platform_crowd_model import estimated_vces
@@ -78,7 +78,7 @@ def estimated_vces() -> None:
 
 @data_app.command("osm-platforms")
 def osm_platforms() -> None:
-    """Measure each platform from OpenStreetMap, writing `data/osm_platforms.csv`."""
+    """Measure each platform from OpenStreetMap, writing `data/platforms_osm.csv`."""
     from platform_crowd_model import osm_platforms
 
     osm_platforms.main()
@@ -88,7 +88,7 @@ def osm_platforms() -> None:
 def field_survey() -> None:
     """
     Make the field survey sheet for measuring every VCE in person,
-    writing `data/field_survey.csv`.
+    writing `data/vces_field_survey.csv`.
     Run `estimated-vces` first.
     """
     from platform_crowd_model import field_survey

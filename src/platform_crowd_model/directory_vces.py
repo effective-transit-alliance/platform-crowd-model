@@ -12,7 +12,7 @@ Icons without a track label, e.g. those to another concourse level, are skipped.
 The map is schematic and not to scale, so it has no widths, and positions are only approximate,
 and it may show a VCE more than once, e.g. once on each level it passes.
 
-Writes `data/njt_directory_vces.csv`.
+Writes `data/vces_njt_directory.csv`.
 """
 
 import csv
@@ -25,7 +25,7 @@ import pymupdf
 
 from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
 
-OUT_CSV = DATA_DIR / "njt_directory_vces.csv"
+OUT_CSV = DATA_DIR / "vces_njt_directory.csv"
 PDF_CACHE = CACHE_DIR / "NY-Penn-Station-Directory_011022.pdf"
 PDF_URL = (
     "https://content.njtransit.com/sites/default/files/NY%20Penn%20Station%20Directory_011022.pdf"
