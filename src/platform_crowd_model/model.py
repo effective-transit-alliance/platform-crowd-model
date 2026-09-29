@@ -187,8 +187,18 @@ class Assumptions:
     stair_capacity: Annotated[float, Field(name="Stair Capacity", units="pax/min/ft")] = 17
     """
     Stair capacity, the LOS E/F boundary.
-    Applied to all VCEs, even escalators.
     Fruin, p. 14: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14
+    """
+
+    escalator_capacities: tuple[tuple[float, float], ...] = ((32, 72), (0, 34))
+    """
+    Each escalator's capacity (pax/min) by the narrowest tread width (in.) it applies to,
+    widest first.
+    The TCQSM's nominal capacities at 90 ft/min, the typical incline speed:
+    34 pax/min for 24 in. treads, and 72 pax/min for 40 in. treads,
+    which 32 in. treads come close to, since people stagger themselves on alternate steps.
+    TCQSM p. 10-51 and Exhibit 10-31, p. 10-52:
+    https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
     """
 
     stair_queue_space: Annotated[float, Field(name="Stair Queue Space", units="ft^2/pax")] = 5
@@ -273,27 +283,45 @@ def alight_rate(
         return 0
 
 
-def platform_clearance(
-    arriving_pax_on_platform: float, vce_width: float, assumptions: Assumptions
-) -> float:
+def vce_capacity(vce: Vce, assumptions: Assumptions) -> float:
     """
-    Arriving passengers queue at each stair,
-    which discharges them at `Assumptions.stair_capacity` as long as anyone is queued.
+    `vce`'s capacity (pax/s) in one direction:
+    `Assumptions.stair_capacity` for a stair,
+    or `Assumptions.escalator_capacities` for an escalator.
+    """
+    if vce.type != "escalator":
+        return stair_flow(assumptions.stair_capacity, vce.width)
+    tread_width = vce.width * 12
+    return (
+        next(
+            capacity
+            for min_tread_width, capacity in assumptions.escalator_capacities
+            if tread_width >= min_tread_width
+        )
+        / SECONDS_PER_MINUTE
+    )
+
+
+def platform_clearance(arriving_pax_on_platform: float, capacity: float) -> float:
+    """
+    Arriving passengers queue at each VCE,
+    which discharges them at its capacity as long as anyone is queued.
 
     Fruin's stair equation relates flow to the space per passenger *on the stair*,
     which a queued stair holds near its critical density,
     so it doesn't apply to the space per passenger on the platform.
 
     :param arriving_pax_on_platform: number of arriving passengers queued at this VCE (pax)
-    :param vce_width: this VCE's width (ft)
+    :param capacity: this VCE's capacity, per `vce_capacity` (pax/s)
     :return: this VCE's upward flow (pax/s)
     """
-    return min(arriving_pax_on_platform, stair_flow(assumptions.stair_capacity, vce_width))
+    return min(arriving_pax_on_platform, capacity)
 
 
 def platform_ingress(
     departing_pax_upstairs: float,
     widths: list[float],
+    capacities: list[float],
     up_rates: list[float],
     directions: list[Direction],
     assumptions: Assumptions,
@@ -304,6 +332,7 @@ def platform_ingress(
 
     :param departing_pax_upstairs: number of departing passengers upstairs (pax)
     :param widths: this train's share of each VCE's width (ft)
+    :param capacities: this train's share of each VCE's capacity, per `vce_capacity` (pax/s)
     :param up_rates: upward flow on this train's share of each VCE (pax/s)
     :param directions: which way each VCE runs now
     :return: platform ingress rate down each VCE (pax/s)
@@ -312,8 +341,10 @@ def platform_ingress(
         0
         if direction == "up"
         or up_rate > stair_flow(assumptions.bidirectional_stair_flow_limit, width)
-        else stair_flow(assumptions.stair_capacity, width) - up_rate
-        for width, up_rate, direction in zip(widths, up_rates, directions, strict=True)
+        else capacity - up_rate
+        for width, capacity, up_rate, direction in zip(
+            widths, capacities, up_rates, directions, strict=True
+        )
     ]
     total = sum(available)
     if total <= 0:
@@ -382,14 +413,16 @@ def platform_crowd_los(space: float, assumptions: Assumptions) -> str:
     return "F"
 
 
-def egress_crowd_los(vce_width: float, up_rate: float, assumptions: Assumptions) -> str:
+def egress_crowd_los(capacity: float, up_rate: float, assumptions: Assumptions) -> str:
     """
-    :param vce_width: VCE width (ft)
+    A VCE's LOS, per `Assumptions.stair_los_max_flow` and `stair_capacity`,
+    as fractions of its capacity, so an escalator's are the same fractions of its capacity.
+
+    :param capacity: the VCE's capacity, per `vce_capacity` (pax/s)
     :param up_rate: upward flow on it (pax/s)
-    :return: its LOS, per `Assumptions.stair_los_max_flow` and `stair_capacity`
     """
     for grade, max_flow in (*assumptions.stair_los_max_flow, ("E", assumptions.stair_capacity)):
-        if up_rate <= stair_flow(max_flow, vce_width):
+        if up_rate <= capacity * max_flow / assumptions.stair_capacity:
             return grade
     return "F"
 
@@ -397,7 +430,7 @@ def egress_crowd_los(vce_width: float, up_rate: float, assumptions: Assumptions)
 def worst_egress_los(vces: tuple[Vce, ...], up_rates: list[float], assumptions: Assumptions) -> str:
     """The worst of each VCE's `egress_crowd_los`."""
     return max(
-        egress_crowd_los(vce.width, up_rate, assumptions)
+        egress_crowd_los(vce_capacity(vce, assumptions), up_rate, assumptions)
         for vce, up_rate in zip(vces, up_rates, strict=True)
     )
 
@@ -1028,8 +1061,8 @@ def simulate(
     vce_queues = [0.0 for _ in params.vces]
     """Arriving passengers queued at each VCE."""
     doors = doors_to_vces(params)
-    vce_capacities = [stair_flow(assumptions.stair_capacity, vce.width) for vce in params.vces]
-    """Each VCE's upward capacity (pax/s), for choosing VCEs."""
+    vce_capacities = [vce_capacity(vce, assumptions) for vce in params.vces]
+    """Each VCE's capacity in one direction (pax/s)."""
     roles = vce_roles(params.vces)
     directions: list[Direction] = [
         "both" if role == "stair" else "down" if role == "down" else "up" for role in roles
@@ -1158,8 +1191,8 @@ def simulate(
             vce_queues[i] += reaching
             walking_totals[i] = subtract(walking_totals[i], reaching)
         vce_up_rates = [
-            platform_clearance(queue, vce.width, assumptions)
-            for vce, queue in zip(params.vces, vce_queues, strict=True)
+            platform_clearance(queue, capacity)
+            for capacity, queue in zip(vce_capacities, vce_queues, strict=True)
         ]
         for i, vce_up_rate in enumerate(vce_up_rates):
             vce_queues[i] = max(0, vce_queues[i] - vce_up_rate)
@@ -1178,6 +1211,7 @@ def simulate(
             platform_ingress(
                 boarders_upstairs[train],
                 [vce.width * boarder_fractions[train] for vce in params.vces],
+                [capacity * boarder_fractions[train] for capacity in vce_capacities],
                 [vce_up_rate * boarder_fractions[train] for vce_up_rate in vce_up_rates],
                 directions,
                 assumptions,
@@ -1253,8 +1287,8 @@ def simulate(
         summary.max_up_rate = max(summary.max_up_rate, up_rate)
         # Capacity of the VCEs going up now, not counting escalators going down.
         capacity = sum(
-            stair_flow(assumptions.stair_capacity, vce.width)
-            for vce, direction in zip(params.vces, directions, strict=True)
+            capacity
+            for capacity, direction in zip(vce_capacities, directions, strict=True)
             if direction != "down"
         )
         if up_rate >= capacity - 1e-9:
