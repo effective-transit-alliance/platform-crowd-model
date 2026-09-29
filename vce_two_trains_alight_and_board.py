@@ -182,30 +182,34 @@ class Assumptions:
 # platform crowd
 
 
-def stair_flow(rate: float, w: float) -> float:
+def stair_flow(flow_per_width: float, width: float) -> float:
     """
-    :param rate: stair flow per foot of width (pax/min/ft)
-    :param w: total stair width (ft)
+    :param flow_per_width: stair flow per foot of width (pax/min/ft)
+    :param width: total stair width (ft)
     :return: total stair flow (pax/s)
     """
-    return rate * w / SECONDS_PER_MINUTE
+    return flow_per_width * width / SECONDS_PER_MINUTE
 
 
-def alight_rate(k: float, t: float, t0: float | None, u: float) -> float:
+def alight_rate(
+    pax_aboard: float, time: float, arrival_time: float | None, max_rate: float
+) -> float:
     """
-    :param k: number of people waiting to get off train
-    :param t: time pass counter (s)
-    :param t0: train arrival time, or `None` if it hasn't been scheduled yet
-    :param u: maximum alighting rate across all doors (pax/s)
+    :param pax_aboard: number of people waiting to get off train
+    :param time: time pass counter (s)
+    :param arrival_time: train arrival time, or `None` if it hasn't been scheduled yet
+    :param max_rate: maximum alighting rate across all doors (pax/s)
     :return: egress rate from train to platform across all doors (pax/s)
     """
-    if t0 is not None and t > t0:
-        return min(k, u)
+    if arrival_time is not None and time > arrival_time:
+        return min(pax_aboard, max_rate)
     else:
         return 0
 
 
-def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float:
+def platform_clearance(
+    arriving_pax_on_platform: float, vce_width: float, assumptions: Assumptions
+) -> float:
     """
     Arriving passengers queue at the stairs,
     which discharge them at `Assumptions.stair_capacity` as long as anyone is queued.
@@ -215,26 +219,28 @@ def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float
     so it doesn't apply to the space per passenger on the platform.
     The few seconds of walking from the doors to the stairs are ignored.
 
-    :param karr: number of arriving passengers on the platform (pax)
-    :param w: total width of vertical circulation elements (ft)
+    :param arriving_pax_on_platform: number of arriving passengers on the platform (pax)
+    :param vce_width: total width of vertical circulation elements (ft)
     :return: platform egress rate on stairs (pax/s)
     """
-    return min(karr, stair_flow(assumptions.stair_capacity, w))
+    return min(arriving_pax_on_platform, stair_flow(assumptions.stair_capacity, vce_width))
 
 
-def platform_ingress(kdep: float, w: float, r_up: float, assumptions: Assumptions) -> float:
+def platform_ingress(
+    departing_pax_upstairs: float, vce_width: float, up_rate: float, assumptions: Assumptions
+) -> float:
     """
     Departing passengers queue upstairs and come down with whatever stair capacity
     the upward flow leaves, unless it exceeds `Assumptions.bidirectional_stair_flow_limit`.
 
-    :param kdep: number of departing passengers upstairs (pax)
-    :param w: this train's share of the total width of vertical circulation elements (ft)
-    :param r_up: upward stair flow on this train's share of the stairs (pax/s)
+    :param departing_pax_upstairs: number of departing passengers upstairs (pax)
+    :param vce_width: this train's share of the total width of vertical circulation elements (ft)
+    :param up_rate: upward stair flow on this train's share of the stairs (pax/s)
     :return: platform ingress rate on stairs (pax/s)
     """
-    if r_up > stair_flow(assumptions.bidirectional_stair_flow_limit, w):
+    if up_rate > stair_flow(assumptions.bidirectional_stair_flow_limit, vce_width):
         return 0
-    return min(kdep, stair_flow(assumptions.stair_capacity, w) - r_up)
+    return min(departing_pax_upstairs, stair_flow(assumptions.stair_capacity, vce_width) - up_rate)
 
 
 def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
@@ -251,60 +257,60 @@ def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
 
 
 def board_rate(
-    r_max: float,
-    r_off: float,
-    sim_t: float,
-    arr_t: float | None,
+    max_rate: float,
+    off_rate: float,
+    time: float,
+    arrival_time: float | None,
     boarders: float,
 ) -> float:
     """
     Nobody boards until everyone has alighted, per the ETA report,
-    i.e. the second after `r_off` is last nonzero.
+    i.e. the second after `off_rate` is last nonzero.
 
-    :param r_max: maximum boarding rate across all doors (pax/s)
-    :param r_off: train alight rate (pax/s)
-    :param sim_t: time (s)
-    :param arr_t: train arrival time (s), or `None` if it hasn't been scheduled yet
+    :param max_rate: maximum boarding rate across all doors (pax/s)
+    :param off_rate: train alight rate (pax/s)
+    :param time: time (s)
+    :param arrival_time: train arrival time (s), or `None` if it hasn't been scheduled yet
     :param boarders: number of passengers waiting on platform to board
     :return: train ingress rate across all doors (pax/s)
     """
-    if arr_t is not None and arr_t < sim_t and r_off == 0:
-        return min(r_max, boarders)
+    if arrival_time is not None and arrival_time < time and off_rate == 0:
+        return min(max_rate, boarders)
     else:
         return 0
 
 
-def space_per_pax(k: float, a: float) -> float:
+def space_per_pax(pax_on_platform: float, area: float) -> float:
     """
-    :param k: people on platform (pax)
-    :param a: usable platform area (ft^2)
+    :param pax_on_platform: people on platform (pax)
+    :param area: usable platform area (ft^2)
     :return: space per passenger (ft^2/pax)
     """
-    if k > 0:
-        return a / k
+    if pax_on_platform > 0:
+        return area / pax_on_platform
     else:
-        return a
+        return area
 
 
-def platform_crowd_los(inst_crowding: float, assumptions: Assumptions) -> str:
+def platform_crowd_los(space: float, assumptions: Assumptions) -> str:
     """
-    :param inst_crowding: space per passenger on the platform (ft^2/pax)
+    :param space: space per passenger on the platform (ft^2/pax)
     :return: its LOS, per `Assumptions.platform_los_min_space`
     """
     for grade, min_space in assumptions.platform_los_min_space:
-        if inst_crowding > min_space:
+        if space > min_space:
             return grade
     return "F"
 
 
-def egress_crowd_los(w: float, plat_egress_rate: float, assumptions: Assumptions) -> str:
+def egress_crowd_los(vce_width: float, up_rate: float, assumptions: Assumptions) -> str:
     """
-    :param w: total width of vertical circulation elements (ft)
-    :param plat_egress_rate: upward stair flow (pax/s)
+    :param vce_width: total width of vertical circulation elements (ft)
+    :param up_rate: upward stair flow (pax/s)
     :return: its LOS, per `Assumptions.stair_los_max_flow` and `stair_capacity`
     """
     for grade, max_flow in (*assumptions.stair_los_max_flow, ("E", assumptions.stair_capacity)):
-        if plat_egress_rate <= stair_flow(max_flow, w):
+        if up_rate <= stair_flow(max_flow, vce_width):
             return grade
     return "F"
 
@@ -562,18 +568,18 @@ def calc_workbook(
     e.g. when only the summary is needed.
     """
     assumptions = params.assumptions
-    eff_area = (
+    usable_area = (
         params.platform_width * params.platform_length * assumptions.usable_platform_area_multiplier
     )
     door_rate = assumptions.doors_per_train * assumptions.door_flow_rate
 
-    www = params.vce_widths[0, :]
+    vce_widths = params.vce_widths[0, :]
 
     if print_time_series:
-        print("www = ", www)
+        print("vce_widths = ", vce_widths)
 
     # Initialize counters
-    arriving_pax_waiting_on_plat: float = 0
+    arriving_pax_on_platform: float = 0
     trains = range(params.trains)
     arrival_times: list[int | None] = [
         train * params.headway if train < 2 else None for train in trains
@@ -594,7 +600,7 @@ def calc_workbook(
     once its departing passengers start coming down.
     """
     boarders_upstairs = [0.0 for _ in trains]
-    boarders_on_plat = [0.0 for _ in trains]
+    boarders_on_platform = [0.0 for _ in trains]
     total_pax_on_platform: float = 0
     wb = openpyxl.Workbook()
     trains_sheet = wb.create_sheet("Trains")
@@ -641,7 +647,7 @@ def calc_workbook(
         dwells=[None for _ in trains],
         boarded_time=None,
         max_pax_on_platform=total_pax_on_platform,
-        min_space_per_pax=space_per_pax(total_pax_on_platform, eff_area),
+        min_space_per_pax=space_per_pax(total_pax_on_platform, usable_area),
     )
 
     if print_time_series:
@@ -681,67 +687,65 @@ def calc_workbook(
                 remaining_arrivals[train] = 0
             off_rates.append(off_rate)
         total_pax_on_platform += sum(off_rates)
-        arriving_pax_waiting_on_plat += sum(off_rates)
-        plat_egress_rate = platform_clearance(
-            arriving_pax_waiting_on_plat, params.total_vce_width, assumptions
-        )
-        arriving_pax_waiting_on_plat -= plat_egress_rate
-        if arriving_pax_waiting_on_plat < 0:
-            arriving_pax_waiting_on_plat = 0
-        total_pax_on_platform -= plat_egress_rate
+        arriving_pax_on_platform += sum(off_rates)
+        up_rate = platform_clearance(arriving_pax_on_platform, params.total_vce_width, assumptions)
+        arriving_pax_on_platform -= up_rate
+        if arriving_pax_on_platform < 0:
+            arriving_pax_on_platform = 0
+        total_pax_on_platform -= up_rate
         # Each train's boarders get a share of the stairs,
         # and so a share of the upward flow on them.
-        boarder_fracs = [
+        boarder_fractions = [
             boarder_fraction(boarders_upstairs[train], boarders_upstairs) for train in trains
         ]
-        plat_ingress_rates = [
+        down_rates = [
             platform_ingress(
                 boarders_upstairs[train],
-                params.total_vce_width * boarder_fracs[train],
-                plat_egress_rate * boarder_fracs[train],
+                params.total_vce_width * boarder_fractions[train],
+                up_rate * boarder_fractions[train],
                 assumptions,
             )
             for train in trains
         ]
         for train in trains:
-            boarders_on_plat[train] += plat_ingress_rates[train]
-            total_pax_on_platform += plat_ingress_rates[train]
+            boarders_on_platform[train] += down_rates[train]
+            total_pax_on_platform += down_rates[train]
         on_rates = [
             board_rate(
                 door_rate,
                 off_rates[train],
                 time_after,
                 arrival_times[train],
-                boarders_on_plat[train],
+                boarders_on_platform[train],
             )
             for train in trains
         ]
 
         for train in trains:
-            boarders_on_plat[train] -= on_rates[train]
+            boarders_on_platform[train] -= on_rates[train]
             total_pax_on_platform -= on_rates[train]
-            boarders_upstairs[train] -= plat_ingress_rates[train]
+            boarders_upstairs[train] -= down_rates[train]
             new_pax[train] += on_rates[train]
 
-        inst_crowding = space_per_pax(total_pax_on_platform, eff_area)
+        space = space_per_pax(total_pax_on_platform, usable_area)
         if total_pax_on_platform < 0:
             total_pax_on_platform = 0
         for train in trains:
-            if boarders_on_plat[train] < 0:
-                boarders_on_plat[train] = 0
-        if arriving_pax_waiting_on_plat < 0:
-            arriving_pax_waiting_on_plat = 0
+            if boarders_on_platform[train] < 0:
+                boarders_on_platform[train] = 0
+        if arriving_pax_on_platform < 0:
+            arriving_pax_on_platform = 0
         if print_time_series:
             print(
                 time_after,
                 *(remaining_arrivals[train] + new_pax[train] for train in trains),
-                arriving_pax_waiting_on_plat,
-                plat_egress_rate,
+                arriving_pax_on_platform,
+                up_rate,
             )
-        summary.max_up_rate = max(summary.max_up_rate, plat_egress_rate)
-        if plat_egress_rate >= capacity - 1e-9:
+        summary.max_up_rate = max(summary.max_up_rate, up_rate)
+        if up_rate >= capacity - 1e-9:
             summary.secs_at_capacity += 1
-        if arriving_pax_waiting_on_plat > max_pax_in_stair_queues:
+        if arriving_pax_on_platform > max_pax_in_stair_queues:
             summary.taper_time = time_after
         if (
             summary.clear_time is None
@@ -749,13 +753,13 @@ def calc_workbook(
                 arrival_time is not None and time_after > arrival_time
                 for arrival_time in arrival_times
             )
-            and arriving_pax_waiting_on_plat < 1
+            and arriving_pax_on_platform < 1
         ):
             summary.clear_time = time_after
         if (
             summary.boarded_time is None
             and time_after >= max(release_times)
-            and sum(boarders_upstairs) + sum(boarders_on_plat) < 1
+            and sum(boarders_upstairs) + sum(boarders_on_platform) < 1
         ):
             summary.boarded_time = time_after
         for train in trains:
@@ -765,37 +769,37 @@ def calc_workbook(
                 and arrival_time is not None
                 and time_after > arrival_time
                 and remaining_arrivals[train] < 1
-                and boarders_upstairs[train] + boarders_on_plat[train] < 1
+                and boarders_upstairs[train] + boarders_on_platform[train] < 1
             ):
                 summary.dwells[train] = time_after - arrival_time
                 # The next train on its track arrives once it's scheduled and this one departs.
                 if train + 2 < params.trains:
                     arrival_times[train + 2] = max((train + 2) * params.headway, time_after)
         summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
-        summary.min_space_per_pax = min(summary.min_space_per_pax, inst_crowding)
+        summary.min_space_per_pax = min(summary.min_space_per_pax, space)
 
         if write_workbook:
             net_pax_flow_rate: float = 0
-            for rate in plat_ingress_rates:
+            for rate in down_rates:
                 net_pax_flow_rate += rate
             for rate in off_rates:
                 net_pax_flow_rate += rate
-            net_pax_flow_rate -= plat_egress_rate
+            net_pax_flow_rate -= up_rate
             for rate in on_rates:
                 net_pax_flow_rate -= rate
             instant = Instant(
                 time=time_after,
-                arriving_pax_waiting_on_platform=arriving_pax_waiting_on_plat,
+                arriving_pax_waiting_on_platform=arriving_pax_on_platform,
                 off_rate=sum(off_rates),
                 on_rate=sum(on_rates),
-                down_rate=sum(plat_ingress_rates),
-                departing_pax_on_platform=sum(boarders_on_plat),
+                down_rate=sum(down_rates),
+                departing_pax_on_platform=sum(boarders_on_platform),
                 total_pax_on_platform=total_pax_on_platform,
-                platform_crowding=inst_crowding,
-                up_rate=plat_egress_rate,
+                platform_crowding=space,
+                up_rate=up_rate,
                 net_pax_flow_rate=net_pax_flow_rate,
-                platform_crowd_los=platform_crowd_los(inst_crowding, assumptions),
-                egress_los=egress_crowd_los(params.total_vce_width, plat_egress_rate, assumptions),
+                platform_crowd_los=platform_crowd_los(space, assumptions),
+                egress_los=egress_crowd_los(params.total_vce_width, up_rate, assumptions),
             )
 
             for train in trains:
@@ -804,7 +808,7 @@ def calc_workbook(
                         remaining_arrivals[train] + new_pax[train],
                         off_rates[train],
                         on_rates[train],
-                        boarders_on_plat[train],
+                        boarders_on_platform[train],
                     )
                 ):
                     writable_cell(
