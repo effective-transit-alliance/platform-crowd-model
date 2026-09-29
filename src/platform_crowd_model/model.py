@@ -1,5 +1,3 @@
-#!/usr/bin/env -S uv run
-
 """
 This is a recursive peak-hour platform clearance calculator.
 model from https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf
@@ -15,22 +13,29 @@ from collections import defaultdict
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from datetime import timedelta
 from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
-import openpyxl
 import typer
-from openpyxl.cell import Cell
-from openpyxl.chart import Reference, ScatterChart
-from openpyxl.chart.series_factory import SeriesFactory
-from openpyxl.worksheet.worksheet import Worksheet
 from typer import Option
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
-SECONDS_PER_MINUTE = 60
+SECONDS_PER_MINUTE = timedelta(minutes=1).total_seconds()
+"""
+Computed once, since converting a `timedelta` each time in `stair_flow`,
+which runs several times each simulated second,
+makes the simulation about 40% slower.
+"""
+
+TIME_STEP = timedelta(seconds=1)
+"""
+How much time each step of the simulation covers.
+Every rate is per second, so this must stay 1 s.
+"""
 
 SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
 
@@ -41,24 +46,24 @@ Exit capacity of stairs and stopped escalators for evacuating a platform (pax/mi
 TCQSM p. 10-51: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
 """
 
-NFPA_130_PLATFORM_EVACUATION_TIME = 240
+NFPA_130_PLATFORM_EVACUATION_TIME = timedelta(minutes=4)
 """
 Time within which NFPA 130 requires a platform's occupants,
-including those on trains, to be able to evacuate it (s).
+including those on trains, to be able to evacuate it.
 TCQSM p. 10-3: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=7
 """
 
-CLOSE_HEADWAY = 120
-"""Time between two trains' arrivals in the closely spaced scenarios (s), from the ETA report."""
+CLOSE_HEADWAY = timedelta(minutes=2)
+"""Time between two trains' arrivals in the closely spaced scenarios, from the ETA report."""
 
-MAX_SIMULATION_LENGTH = 7200
+MAX_SIMULATION_LENGTH = timedelta(hours=2)
 """
 The simulation runs until the last train departs and the platform clears,
-but stops with an error if that takes longer than this (s), which means something's wrong.
+but stops with an error if that takes longer than this, which means something's wrong.
 """
 
-NORMAL_HEADWAY = 300
-"""Time between two trains' arrivals in the normal scenarios (s), from the ETA report."""
+NORMAL_HEADWAY = timedelta(minutes=5)
+"""Time between two trains' arrivals in the normal scenarios, from the ETA report."""
 
 
 @dataclass(frozen=True)
@@ -111,8 +116,8 @@ class Assumptions:
     """Passengers boarding each train, from the ETA report."""
 
     departing_pax_lead_time: Annotated[
-        int, Field(name="Departing Passengers Lead Time", units="s")
-    ] = 120
+        timedelta, Field(name="Departing Passengers Lead Time", units="s")
+    ] = timedelta(minutes=2)
     """
     How long before its scheduled arrival a train's departing passengers
     start coming down to the platform, all at once, like when its track is announced.
@@ -248,30 +253,34 @@ class Assumptions:
 # platform crowd
 
 
-def stair_flow(rate: float, w: float) -> float:
+def stair_flow(flow_per_width: float, width: float) -> float:
     """
-    :param rate: stair flow per foot of width (pax/min/ft)
-    :param w: total stair width (ft)
+    :param flow_per_width: stair flow per foot of width (pax/min/ft)
+    :param width: total stair width (ft)
     :return: total stair flow (pax/s)
     """
-    return rate * w / SECONDS_PER_MINUTE
+    return flow_per_width * width / SECONDS_PER_MINUTE
 
 
-def alight_rate(k: float, t: float, t0: float | None, u: float) -> float:
+def alight_rate(
+    pax_aboard: float, time: timedelta, arrival_time: timedelta | None, max_rate: float
+) -> float:
     """
-    :param k: number of people waiting to get off train
-    :param t: time pass counter (s)
-    :param t0: train arrival time, or `None` if it hasn't been scheduled yet
-    :param u: maximum alighting rate across all doors (pax/s)
+    :param pax_aboard: number of people waiting to get off train
+    :param time: time pass counter
+    :param arrival_time: train arrival time, or `None` if it hasn't been scheduled yet
+    :param max_rate: maximum alighting rate across all doors (pax/s)
     :return: egress rate from train to platform across all doors (pax/s)
     """
-    if t0 is not None and t > t0:
-        return min(k, u)
+    if arrival_time is not None and time > arrival_time:
+        return min(pax_aboard, max_rate)
     else:
         return 0
 
 
-def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float:
+def platform_clearance(
+    arriving_pax_on_platform: float, vce_width: float, assumptions: Assumptions
+) -> float:
     """
     Arriving passengers queue at each stair,
     which discharges them at `Assumptions.stair_capacity` as long as anyone is queued.
@@ -280,15 +289,15 @@ def platform_clearance(karr: float, w: float, assumptions: Assumptions) -> float
     which a queued stair holds near its critical density,
     so it doesn't apply to the space per passenger on the platform.
 
-    :param karr: number of arriving passengers queued at this VCE (pax)
-    :param w: this VCE's width (ft)
+    :param arriving_pax_on_platform: number of arriving passengers queued at this VCE (pax)
+    :param vce_width: this VCE's width (ft)
     :return: this VCE's upward flow (pax/s)
     """
-    return min(karr, stair_flow(assumptions.stair_capacity, w))
+    return min(arriving_pax_on_platform, stair_flow(assumptions.stair_capacity, vce_width))
 
 
 def platform_ingress(
-    kdep: float,
+    departing_pax_upstairs: float,
     widths: list[float],
     up_rates: list[float],
     directions: list[Direction],
@@ -298,7 +307,7 @@ def platform_ingress(
     Departing passengers queue upstairs and come down each VCE with whatever capacity
     its upward flow leaves, unless that exceeds `Assumptions.bidirectional_stair_flow_limit`.
 
-    :param kdep: number of departing passengers upstairs (pax)
+    :param departing_pax_upstairs: number of departing passengers upstairs (pax)
     :param widths: this train's share of each VCE's width (ft)
     :param up_rates: upward flow on this train's share of each VCE (pax/s)
     :param directions: which way each VCE runs now
@@ -306,15 +315,16 @@ def platform_ingress(
     """
     available = [
         0
-        if direction == "up" or r_up > stair_flow(assumptions.bidirectional_stair_flow_limit, width)
-        else stair_flow(assumptions.stair_capacity, width) - r_up
-        for width, r_up, direction in zip(widths, up_rates, directions, strict=True)
+        if direction == "up"
+        or up_rate > stair_flow(assumptions.bidirectional_stair_flow_limit, width)
+        else stair_flow(assumptions.stair_capacity, width) - up_rate
+        for width, up_rate, direction in zip(widths, up_rates, directions, strict=True)
     ]
     total = sum(available)
     if total <= 0:
         return [0 for _ in available]
     # If fewer are upstairs than can come down, they spread across the VCEs by capacity.
-    return [rate * min(1, kdep / total) for rate in available]
+    return [rate * min(1, departing_pax_upstairs / total) for rate in available]
 
 
 def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
@@ -331,60 +341,60 @@ def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
 
 
 def board_rate(
-    r_max: float,
-    r_off: float,
-    sim_t: float,
-    arr_t: float | None,
+    max_rate: float,
+    off_rate: float,
+    time: timedelta,
+    arrival_time: timedelta | None,
     boarders: float,
 ) -> float:
     """
     Nobody boards until everyone has alighted, per the ETA report,
-    i.e. the second after `r_off` is last nonzero.
+    i.e. the second after `off_rate` is last nonzero.
 
-    :param r_max: maximum boarding rate across all doors (pax/s)
-    :param r_off: train alight rate (pax/s)
-    :param sim_t: time (s)
-    :param arr_t: train arrival time (s), or `None` if it hasn't been scheduled yet
+    :param max_rate: maximum boarding rate across all doors (pax/s)
+    :param off_rate: train alight rate (pax/s)
+    :param time: time
+    :param arrival_time: train arrival time, or `None` if it hasn't been scheduled yet
     :param boarders: number of passengers waiting on platform to board
     :return: train ingress rate across all doors (pax/s)
     """
-    if arr_t is not None and arr_t < sim_t and r_off == 0:
-        return min(r_max, boarders)
+    if arrival_time is not None and arrival_time < time and off_rate == 0:
+        return min(max_rate, boarders)
     else:
         return 0
 
 
-def space_per_pax(k: float, a: float) -> float:
+def space_per_pax(pax_on_platform: float, area: float) -> float:
     """
-    :param k: people on platform (pax)
-    :param a: usable platform area (ft^2)
+    :param pax_on_platform: people on platform (pax)
+    :param area: usable platform area (ft^2)
     :return: space per passenger (ft^2/pax)
     """
-    if k > 0:
-        return a / k
+    if pax_on_platform > 0:
+        return area / pax_on_platform
     else:
-        return a
+        return area
 
 
-def platform_crowd_los(inst_crowding: float, assumptions: Assumptions) -> str:
+def platform_crowd_los(space: float, assumptions: Assumptions) -> str:
     """
-    :param inst_crowding: space per passenger on the platform (ft^2/pax)
+    :param space: space per passenger on the platform (ft^2/pax)
     :return: its LOS, per `Assumptions.platform_los_min_space`
     """
     for grade, min_space in assumptions.platform_los_min_space:
-        if inst_crowding > min_space:
+        if space > min_space:
             return grade
     return "F"
 
 
-def egress_crowd_los(w: float, plat_egress_rate: float, assumptions: Assumptions) -> str:
+def egress_crowd_los(vce_width: float, up_rate: float, assumptions: Assumptions) -> str:
     """
-    :param w: VCE width (ft)
-    :param plat_egress_rate: upward flow on it (pax/s)
+    :param vce_width: VCE width (ft)
+    :param up_rate: upward flow on it (pax/s)
     :return: its LOS, per `Assumptions.stair_los_max_flow` and `stair_capacity`
     """
     for grade, max_flow in (*assumptions.stair_los_max_flow, ("E", assumptions.stair_capacity)):
-        if plat_egress_rate <= stair_flow(max_flow, w):
+        if up_rate <= stair_flow(max_flow, vce_width):
             return grade
     return "F"
 
@@ -392,8 +402,8 @@ def egress_crowd_los(w: float, plat_egress_rate: float, assumptions: Assumptions
 def worst_egress_los(vces: tuple[Vce, ...], up_rates: list[float], assumptions: Assumptions) -> str:
     """The worst of each VCE's `egress_crowd_los`."""
     return max(
-        egress_crowd_los(vce.width, r_up, assumptions)
-        for vce, r_up in zip(vces, up_rates, strict=True)
+        egress_crowd_los(vce.width, up_rate, assumptions)
+        for vce, up_rate in zip(vces, up_rates, strict=True)
     )
 
 
@@ -459,7 +469,11 @@ def annotated_field_values(
     """
 
     for attr, field in annotated_field_names(obj.__class__):
-        yield attr, getattr(obj, attr), field
+        value = getattr(obj, attr)
+        # CSVs and charts can't hold `timedelta`s, so give them in seconds, per `Field.units`.
+        if isinstance(value, timedelta):
+            value = round(value.total_seconds())
+        yield attr, value, field
 
 
 @dataclass(frozen=True)
@@ -482,24 +496,27 @@ class Vce:
     """Where it ends along the platform (ft east of the Master Plan's plans' west edge)."""
 
 
-VCE_DATA = Path(__file__).parent / "data" / "estimated_vce_widths.csv"
+DATA_DIR = Path(__file__).parents[2] / "data"
+"""The repo's `data/`, with each platform's VCEs and dimensions."""
 
-PLATFORM_LENGTHS = Path(__file__).parent / "data" / "platform_lengths.csv"
+VCE_DATA = DATA_DIR / "estimated_vce_widths.csv"
+
+PLATFORM_LENGTHS = DATA_DIR / "platform_lengths.csv"
 """Each platform's length, from the Moynihan Station EA's Table 4.4-10."""
 
-PLATFORM_MAX_CARS = Path(__file__).parent / "data" / "platform_max_cars.csv"
+PLATFORM_MAX_CARS = DATA_DIR / "platform_max_cars.csv"
 """
 Cars in the longest train that fits on each platform's tracks, from
 https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
 """
 
-PLATFORM_EAST_ENDS = Path(__file__).parent / "data" / "platform_east_ends.csv"
+PLATFORM_EAST_ENDS = DATA_DIR / "platform_east_ends.csv"
 """
 Where each platform ends to the east (ft east of the Master Plan's plans' west edge),
 via `scripts/estimate_vce_widths.py`.
 """
 
-OSM_PLATFORMS = Path(__file__).parent / "data" / "osm_platforms.csv"
+OSM_PLATFORMS = DATA_DIR / "osm_platforms.csv"
 """Each platform's outline's area, from OpenStreetMap, via `scripts/extract_osm_platforms.py`."""
 
 
@@ -589,7 +606,10 @@ class Door:
     """Fraction of the arriving passengers."""
 
     walking_times: list[int]
-    """Time (s) they take to walk to each VCE."""
+    """
+    Time they take to walk to each VCE, in `TIME_STEP`s,
+    so the simulation can look up who arrives each step without `timedelta` arithmetic.
+    """
 
 
 def doors_to_vces(params: Params) -> list[Door]:
@@ -651,7 +671,7 @@ class Car:
     """Doors (single-door equivalents) on the platform side."""
 
     walking_times: list[int]
-    """Time (s) to walk from each VCE to its nearest door."""
+    """Time to walk from each VCE to its nearest door, in `TIME_STEP`s, like `Door`'s."""
 
 
 def train_cars(params: Params) -> list[Car]:
@@ -760,9 +780,9 @@ class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
     """Which platform it is, 1 to 11, whose dimensions are in `data/`."""
 
-    headway: Annotated[int, Field(name="Headway", units="s")]
+    headway: Annotated[timedelta, Field(name="Headway", units="s")]
     """
-    Time (in seconds) between trains' scheduled arrivals.
+    Time between trains' scheduled arrivals.
     The first arrives at 0 s, on one track, and the second on the other.
     """
 
@@ -803,7 +823,7 @@ class Params:
 
     @property
     def filename_prefix(self) -> str:
-        """Prefix of the filename to save the spreadsheet in, e.g. `platform3_recon`."""
+        """Prefix of the filenames to save the time series and charts in, e.g. `platform3_recon`."""
         return f"platform{self.platform}" + (f"_{self.modifier}" if self.modifier else "")
 
     @property
@@ -884,38 +904,14 @@ class Params:
         return stair_flow(NFPA_130_EXIT_FLOW, stairs + min(sum(escalators), stairs))
 
 
-def writable_cell(sheet: Worksheet, row: int, column: int) -> Cell:
-    """
-    Like `sheet.cell`, but not a `MergedCell`, whose `value` is read-only.
-    We never merge cells, so this always holds.
-    """
-    cell = sheet.cell(row=row, column=column)
-    assert isinstance(cell, Cell)
-    return cell
-
-
-def active_worksheet(wb: openpyxl.Workbook) -> Worksheet:
-    """
-    `wb.active`, as a plain `Worksheet`.
-
-    The stubs type `wb.active` as a fake subclass of both `Chartsheet` and `Worksheet`.
-    Narrowing it with `type(active) is Worksheet` makes type checkers treat everything after as
-    unreachable, and narrowing with `isinstance` resolves methods like `add_chart` to
-    `Chartsheet`'s. Returning it as `Worksheet` avoids both.
-    """
-    active = wb.active
-    assert isinstance(active, Worksheet)
-    return active
-
-
 @dataclass
 class Instant:
     """
     An instant in the simulation.
     """
 
-    time: Annotated[int, Field(name="Time", units="s")]
-    """Time (in seconds)."""
+    time: Annotated[timedelta, Field(name="Time", units="s")]
+    """Time since the first train's scheduled arrival."""
 
     off_rate: Annotated[float, Field(name="Alighting Rate", units="pax/s")]
     """Alighting rate from every train (in pax/s)."""
@@ -962,30 +958,30 @@ class Summary:
     max_up_rate: float
     """Highest upstairs rate (pax/s)."""
 
-    secs_at_capacity: int
-    """Seconds the upstairs rate is at the LOS E capacity (17 pax/min/ft) of the VCEs going up."""
+    time_at_capacity: timedelta
+    """How long the upstairs rate is at the VCEs' LOS E capacity (17 pax/min/ft)."""
 
-    taper_time: int | None
+    taper_time: timedelta | None
     """
     Last second the arriving passengers on the platform exceed what fits in the stair queues,
     i.e. when they start to taper off, or `None` if they never do.
     """
 
-    clear_time: int | None
+    clear_time: timedelta | None
     """First second after the last arrival when all arriving passengers have left the platform."""
 
-    arrival_times: list[int | None]
-    """When each train arrives (s), or `None` if it doesn't within the simulation."""
+    arrival_times: list[timedelta | None]
+    """When each train arrives, or `None` if it doesn't within the simulation."""
 
-    dwells: list[int | None]
+    dwells: list[timedelta | None]
     """
-    Each train's dwell (s):
+    Each train's dwell:
     from its arrival until all of its arriving passengers have alighted
     and all of its departing passengers have boarded,
     or `None` if that doesn't happen within the simulation.
     """
 
-    boarded_time: int | None
+    boarded_time: timedelta | None
     """First second when all departing passengers have boarded, or `None` if they never do."""
 
     max_pax_on_platform: float
@@ -1000,22 +996,48 @@ class Summary:
     min_space_per_pax: float
     """Least platform space per passenger (sq ft)."""
 
+    vce_empty_times: list[timedelta | None]
+    """When each VCE's queue last empties, i.e. its last passenger goes up."""
 
-def calc_workbook(
-    params: Params, write_workbook: bool = True, print_time_series: bool = True
-) -> tuple[openpyxl.Workbook, Summary]:
+
+TRAIN_COLUMNS = [
+    "Passengers (pax)",
+    "Alighting Rate (pax/s)",
+    "Boarding Rate (pax/s)",
+    "Departing Passengers on Platform (pax)",
+]
+"""What `TimeSeries.trains` has for each train each second."""
+
+
+@dataclass
+class TimeSeries:
+    """Everything that happens each second of one model run, for its CSVs and charts."""
+
+    instants: list[Instant] = dataclasses.field(default_factory=list[Instant])
+    """The whole platform each second."""
+
+    trains: list[list[list[float]]] = dataclasses.field(default_factory=list[list[list[float]]])
+    """Each second, each train's `TRAIN_COLUMNS`."""
+
+    vces: list[list[list[float]]] = dataclasses.field(default_factory=list[list[list[float]]])
+    """Each second, each VCE's queue (pax) and upward flow (pax/s)."""
+
+
+def simulate(
+    params: Params, record_time_series: bool = True, print_time_series: bool = True
+) -> tuple[TimeSeries, Summary]:
     """
-    Simulate `params`, returning its spreadsheet and its results table's summary.
-    Without `write_workbook`, the spreadsheet is left without its time series and charts,
+    Simulate `params`, returning its time series and its results table's summary.
+    Without `record_time_series`, the time series is left empty,
     and without `print_time_series`, nothing is printed,
     e.g. when only the summary is needed.
     """
     assumptions = params.assumptions
-    eff_area = params.platform_area * assumptions.usable_platform_area_multiplier
+    usable_area = params.platform_area * assumptions.usable_platform_area_multiplier
     door_rate = params.doors_per_train * assumptions.door_flow_rate
 
     # Initialize counters
-    arriving_pax_waiting_on_plat: float = 0
+    arriving_pax_on_platform: float = 0
     vce_queues = [0.0 for _ in params.vces]
     """Arriving passengers queued at each VCE."""
     doors = doors_to_vces(params)
@@ -1027,26 +1049,26 @@ def calc_workbook(
     ]
     """Which way each VCE runs now."""
     walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in params.vces])
-    """Arriving passengers walking to each VCE, by the time they reach its queue."""
+    """Arriving passengers walking to each VCE, by the step they reach its queue."""
     walking_totals = [0.0 for _ in params.vces]
     """Arriving passengers walking to each VCE, whenever they reach it, i.e. `walking` summed."""
     cars = train_cars(params)
     nearest_cars = [cars_by_distance(cars, i) for i in range(len(params.vces))]
+    """Each VCE's cars, from the nearest to the farthest."""
     car_board_rates = [car.doors * assumptions.door_flow_rate for car in cars]
     """Each car's maximum boarding rate (pax/s)."""
-    """Each VCE's cars, from the nearest to the farthest."""
     trains = range(params.trains)
     boarders_walking: defaultdict[int, list[list[float]]] = defaultdict(
         lambda: [[0.0 for _ in cars] for _ in trains]
     )
-    """Each train's departing passengers walking to each car, by the time they reach it."""
+    """Each train's departing passengers walking to each car, by the step they reach it."""
     boarders_walking_totals = [0.0 for _ in trains]
     """Each train's departing passengers walking to any of its cars, `boarders_walking` summed."""
     car_waiting = [[0.0 for _ in cars] for _ in trains]
     """Each train's departing passengers waiting at each car."""
     car_loads = [list(waiting) for waiting in car_waiting]
     """Each train's passengers boarded on, waiting for, or walking to each car."""
-    arrival_times: list[int | None] = [
+    arrival_times: list[timedelta | None] = [
         train * params.headway if train < params.tracks else None for train in trains
     ]
     """
@@ -1059,60 +1081,22 @@ def calc_workbook(
         train * params.headway - assumptions.departing_pax_lead_time for train in trains
     ]
     """When each train's departing passengers start coming down to the platform."""
-    start_time = min(0, *release_times)
+    start_time = min(timedelta(0), *release_times)
     """
-    When the simulation starts (s): before the first train arrives at 0 s,
+    When the simulation starts: before the first train arrives at 0 s,
     once its departing passengers start coming down.
     """
     boarders_upstairs = [0.0 for _ in trains]
-    boarders_on_plat = [0.0 for _ in trains]
+    boarders_on_platform = [0.0 for _ in trains]
     total_pax_on_platform: float = 0
-    wb = openpyxl.Workbook()
-    vce_sheet = wb.create_sheet("VCEs")
-    """Each VCE's queue and upward flow each second."""
-    writable_cell(vce_sheet, row=1, column=1).value = "Time (s)"
-    for i, vce in enumerate(params.vces):
-        writable_cell(vce_sheet, row=1, column=2 + 2 * i).value = f"{vce.name} Queue (pax)"
-        writable_cell(vce_sheet, row=1, column=3 + 2 * i).value = f"{vce.name} Up Rate (pax/s)"
-    vce_empty_times: list[int | None] = [None for _ in params.vces]
-    """When each VCE's queue last empties, i.e. its last passenger goes up."""
-    trains_sheet = wb.create_sheet("Trains")
-    """Each train's passengers, alighting, boarding, and departing passengers each second."""
-    TRAIN_COLUMNS = [
-        "Passengers (pax)",
-        "Alighting Rate (pax/s)",
-        "Boarding Rate (pax/s)",
-        "Departing Passengers on Platform (pax)",
-    ]
-    if write_workbook:
-        writable_cell(trains_sheet, row=1, column=1).value = "Time (s)"
-        for train in trains:
-            for j, column_name in enumerate(TRAIN_COLUMNS):
-                writable_cell(
-                    trains_sheet, row=1, column=2 + len(TRAIN_COLUMNS) * train + j
-                ).value = f"Train {train + 1} {column_name}"
-
-    sheet = active_worksheet(wb)
-
-    writable_cell(sheet, column=1, row=1).value = "Parameter"
-    writable_cell(sheet, column=2, row=1).value = "Value"
-
-    param_values = [*annotated_field_values(params), *annotated_field_values(assumptions)]
-    for i, (_attr, value, field) in enumerate(param_values):
-        writable_cell(sheet, column=1, row=i + 2).value = field.description
-        writable_cell(sheet, column=2, row=i + 2).value = value
-
-    FIRST_DATA_ROW = 2
-
-    # The parameters take up columns 1 (A) and 2 (B), so the time series starts after them.
-    FIRST_DATA_COLUMN = 3
+    time_series = TimeSeries()
 
     max_pax_in_stair_queues = (
         params.total_vce_width * assumptions.stair_queue_length / assumptions.stair_queue_space
     )
     summary = Summary(
         max_up_rate=0,
-        secs_at_capacity=0,
+        time_at_capacity=timedelta(0),
         taper_time=None,
         clear_time=None,
         arrival_times=arrival_times,
@@ -1120,17 +1104,12 @@ def calc_workbook(
         boarded_time=None,
         max_pax_on_platform=total_pax_on_platform,
         max_occupants=total_pax_on_platform,
-        min_space_per_pax=space_per_pax(total_pax_on_platform, eff_area),
+        min_space_per_pax=space_per_pax(total_pax_on_platform, usable_area),
+        vce_empty_times=[None for _ in params.vces],
     )
 
     if print_time_series:
         print("Elapsed_Time", *(f"Train_{train + 1}_Pax" for train in trains))
-
-    def get_column_for(attr_name: str) -> int:
-        for i, (attr, _field) in enumerate(annotated_field_names(Instant)):
-            if attr == attr_name:
-                return FIRST_DATA_COLUMN + i
-        raise AttributeError(Instant, attr_name)
 
     def walking_to_train(train: int) -> float:
         """Departing passengers walking to `train`'s cars."""
@@ -1141,22 +1120,16 @@ def calc_workbook(
         remaining = total - pax
         return 0.0 if remaining < 1e-9 else remaining
 
-    def row_for(time: int) -> int:
-        """The spreadsheets' row for `time`."""
-        return time - start_time + FIRST_DATA_ROW
-
     time_after = start_time
-    for time_after in itertools.count(start_time):
+    for step in itertools.count():
+        time_after = start_time + step * TIME_STEP
         if time_after - start_time >= MAX_SIMULATION_LENGTH:
             raise RuntimeError(
-                f"{params.filename_prefix} hasn't finished after {MAX_SIMULATION_LENGTH} s"
+                f"{params.filename_prefix} hasn't finished after {MAX_SIMULATION_LENGTH}"
             )
         for train in trains:
             if release_times[train] == time_after:
                 boarders_upstairs[train] = float(assumptions.departing_pax_per_train)
-        if write_workbook:
-            writable_cell(vce_sheet, row=row_for(time_after), column=1).value = time_after
-            writable_cell(trains_sheet, row=row_for(time_after), column=1).value = time_after
         off_rates: list[float] = []
         for train in trains:
             off_rate = alight_rate(
@@ -1170,9 +1143,9 @@ def calc_workbook(
                 remaining_arrivals[train] = 0
             off_rates.append(off_rate)
         total_pax_on_platform += sum(off_rates)
-        arriving_pax_waiting_on_plat += sum(off_rates)
+        arriving_pax_on_platform += sum(off_rates)
         walking_to = list(walking_totals)
-        still_alighting = arriving_pax_waiting_on_plat
+        still_alighting = arriving_pax_on_platform
         for train in trains:
             arrival_time = arrival_times[train]
             if arrival_time is not None and time_after >= arrival_time:
@@ -1193,38 +1166,38 @@ def calc_workbook(
             if params.platform_east_end is None:
                 # Spread across the VCEs in proportion to their widths.
                 for i, vce in enumerate(params.vces):
-                    walking[time_after][i] += alighting * vce.width / params.total_vce_width
+                    walking[step][i] += alighting * vce.width / params.total_vce_width
                     walking_totals[i] += alighting * vce.width / params.total_vce_width
                 continue
             i = choose_vce(params, door, vce_queues, walking_to, directions, vce_capacities)
-            walking[time_after + door.walking_times[i]][i] += alighting
+            walking[step + door.walking_times[i]][i] += alighting
             walking_totals[i] += alighting
             walking_to[i] += alighting
-        for i, reaching in enumerate(walking.pop(time_after, [])):
+        for i, reaching in enumerate(walking.pop(step, [])):
             vce_queues[i] += reaching
             walking_totals[i] = subtract(walking_totals[i], reaching)
         vce_up_rates = [
             platform_clearance(queue, vce.width, assumptions)
             for vce, queue in zip(params.vces, vce_queues, strict=True)
         ]
-        for i, r_up in enumerate(vce_up_rates):
-            vce_queues[i] = max(0, vce_queues[i] - r_up)
-        plat_egress_rate = sum(vce_up_rates)
-        arriving_pax_waiting_on_plat -= plat_egress_rate
-        if arriving_pax_waiting_on_plat < 0:
-            arriving_pax_waiting_on_plat = 0
-        total_pax_on_platform -= plat_egress_rate
+        for i, vce_up_rate in enumerate(vce_up_rates):
+            vce_queues[i] = max(0, vce_queues[i] - vce_up_rate)
+        up_rate = sum(vce_up_rates)
+        arriving_pax_on_platform -= up_rate
+        if arriving_pax_on_platform < 0:
+            arriving_pax_on_platform = 0
+        total_pax_on_platform -= up_rate
         # Each train's boarders get a share of each VCE,
         # and so a share of the upward flow on it.
-        boarder_fracs = [
+        boarder_fractions = [
             boarder_fraction(boarders_upstairs[train], boarders_upstairs) for train in trains
         ]
-        vce_ingress_rates = [
+        vce_down_rates = [
             # Nobody comes down for a train with nobody upstairs.
             platform_ingress(
                 boarders_upstairs[train],
-                [vce.width * boarder_fracs[train] for vce in params.vces],
-                [r_up * boarder_fracs[train] for r_up in vce_up_rates],
+                [vce.width * boarder_fractions[train] for vce in params.vces],
+                [vce_up_rate * boarder_fractions[train] for vce_up_rate in vce_up_rates],
                 directions,
                 assumptions,
             )
@@ -1232,25 +1205,25 @@ def calc_workbook(
             else [0.0 for _ in params.vces]
             for train in trains
         ]
-        plat_ingress_rates = [sum(rates) for rates in vce_ingress_rates]
+        down_rates = [sum(rates) for rates in vce_down_rates]
         # Departing passengers walk from their VCE to a car.
         for train in trains:
-            for i, rate in enumerate(vce_ingress_rates[train]):
+            for i, rate in enumerate(vce_down_rates[train]):
                 if rate <= 0:
                     continue
                 car = choose_car(params, nearest_cars[i], car_loads[train])
-                boarders_walking[time_after + cars[car].walking_times[i]][train][car] += rate
+                boarders_walking[step + cars[car].walking_times[i]][train][car] += rate
                 boarders_walking_totals[train] += rate
                 car_loads[train][car] += rate
         for train, reaching in enumerate(
-            boarders_walking.pop(time_after, [[0.0 for _ in cars] for _ in trains])
+            boarders_walking.pop(step, [[0.0 for _ in cars] for _ in trains])
         ):
             for car, pax in enumerate(reaching):
                 car_waiting[train][car] += pax
                 boarders_walking_totals[train] = subtract(boarders_walking_totals[train], pax)
         for train in trains:
-            boarders_on_plat[train] = sum(car_waiting[train])
-            total_pax_on_platform += plat_ingress_rates[train]
+            boarders_on_platform[train] = sum(car_waiting[train])
+            total_pax_on_platform += down_rates[train]
         # Each car boards through its own doors,
         # once its train has arrived and everyone has alighted from it.
         car_on_rates = [
@@ -1276,36 +1249,36 @@ def calc_workbook(
         on_rates = [sum(rates) for rates in car_on_rates]
 
         for train in trains:
-            boarders_on_plat[train] -= on_rates[train]
+            boarders_on_platform[train] -= on_rates[train]
             total_pax_on_platform -= on_rates[train]
-            boarders_upstairs[train] -= plat_ingress_rates[train]
+            boarders_upstairs[train] -= down_rates[train]
             new_pax[train] += on_rates[train]
 
-        inst_crowding = space_per_pax(total_pax_on_platform, eff_area)
+        space = space_per_pax(total_pax_on_platform, usable_area)
         if total_pax_on_platform < 0:
             total_pax_on_platform = 0
         for train in trains:
-            if boarders_on_plat[train] < 0:
-                boarders_on_plat[train] = 0
-        if arriving_pax_waiting_on_plat < 0:
-            arriving_pax_waiting_on_plat = 0
+            if boarders_on_platform[train] < 0:
+                boarders_on_platform[train] = 0
+        if arriving_pax_on_platform < 0:
+            arriving_pax_on_platform = 0
         if print_time_series:
             print(
-                time_after,
+                round(time_after.total_seconds()),
                 *(remaining_arrivals[train] + new_pax[train] for train in trains),
-                arriving_pax_waiting_on_plat,
-                plat_egress_rate,
+                arriving_pax_on_platform,
+                up_rate,
             )
-        summary.max_up_rate = max(summary.max_up_rate, plat_egress_rate)
+        summary.max_up_rate = max(summary.max_up_rate, up_rate)
         # Capacity of the VCEs going up now, not counting escalators going down.
         capacity = sum(
             stair_flow(assumptions.stair_capacity, vce.width)
             for vce, direction in zip(params.vces, directions, strict=True)
             if direction != "down"
         )
-        if plat_egress_rate >= capacity - 1e-9:
-            summary.secs_at_capacity += 1
-        if arriving_pax_waiting_on_plat > max_pax_in_stair_queues:
+        if up_rate >= capacity - 1e-9:
+            summary.time_at_capacity += TIME_STEP
+        if arriving_pax_on_platform > max_pax_in_stair_queues:
             summary.taper_time = time_after
         if (
             summary.clear_time is None
@@ -1313,13 +1286,14 @@ def calc_workbook(
                 arrival_time is not None and time_after > arrival_time
                 for arrival_time in arrival_times
             )
-            and arriving_pax_waiting_on_plat < 1
+            and arriving_pax_on_platform < 1
         ):
             summary.clear_time = time_after
         if (
             summary.boarded_time is None
             and time_after >= max(release_times)
-            and sum(boarders_upstairs) + sum(boarders_on_plat) + sum(boarders_walking_totals) < 1
+            and sum(boarders_upstairs) + sum(boarders_on_platform) + sum(boarders_walking_totals)
+            < 1
         ):
             summary.boarded_time = time_after
         for train in trains:
@@ -1329,7 +1303,8 @@ def calc_workbook(
                 and arrival_time is not None
                 and time_after > arrival_time
                 and remaining_arrivals[train] < 1
-                and boarders_upstairs[train] + boarders_on_plat[train] + walking_to_train(train) < 1
+                and boarders_upstairs[train] + boarders_on_platform[train] + walking_to_train(train)
+                < 1
             ):
                 summary.dwells[train] = time_after - arrival_time
                 # The next train on its track arrives once it's scheduled and this one departs.
@@ -1346,60 +1321,55 @@ def calc_workbook(
             and summary.dwells[train] is None
         )
         summary.max_occupants = max(summary.max_occupants, total_pax_on_platform + aboard)
-        summary.min_space_per_pax = min(summary.min_space_per_pax, inst_crowding)
+        summary.min_space_per_pax = min(summary.min_space_per_pax, space)
 
-        for i, (queue, r_up) in enumerate(zip(vce_queues, vce_up_rates, strict=True)):
-            if queue < 1e-9 and r_up > 0:
-                vce_empty_times[i] = time_after
+        for i, (queue, vce_up_rate) in enumerate(zip(vce_queues, vce_up_rates, strict=True)):
+            if queue < 1e-9 and vce_up_rate > 0:
+                summary.vce_empty_times[i] = time_after
 
-        if write_workbook:
+        if record_time_series:
             net_pax_flow_rate: float = 0
-            for rate in plat_ingress_rates:
+            for rate in down_rates:
                 net_pax_flow_rate += rate
             for rate in off_rates:
                 net_pax_flow_rate += rate
-            net_pax_flow_rate -= plat_egress_rate
+            net_pax_flow_rate -= up_rate
             for rate in on_rates:
                 net_pax_flow_rate -= rate
             instant = Instant(
                 time=time_after,
-                arriving_pax_waiting_on_platform=arriving_pax_waiting_on_plat,
+                arriving_pax_waiting_on_platform=arriving_pax_on_platform,
                 off_rate=sum(off_rates),
                 on_rate=sum(on_rates),
-                down_rate=sum(plat_ingress_rates),
-                departing_pax_on_platform=sum(boarders_on_plat)
+                down_rate=sum(down_rates),
+                departing_pax_on_platform=sum(boarders_on_platform)
                 + sum(walking_to_train(train) for train in trains),
                 total_pax_on_platform=total_pax_on_platform,
-                platform_crowding=inst_crowding,
-                up_rate=plat_egress_rate,
+                platform_crowding=space,
+                up_rate=up_rate,
                 net_pax_flow_rate=net_pax_flow_rate,
-                platform_crowd_los=platform_crowd_los(inst_crowding, assumptions),
+                platform_crowd_los=platform_crowd_los(space, assumptions),
                 egress_los=worst_egress_los(params.vces, vce_up_rates, assumptions),
             )
 
-            for train in trains:
-                for j, value in enumerate(
-                    (
+            time_series.instants.append(instant)
+            time_series.trains.append(
+                [
+                    [
                         remaining_arrivals[train] + new_pax[train],
                         off_rates[train],
                         on_rates[train],
-                        boarders_on_plat[train] + walking_to_train(train),
-                    )
-                ):
-                    writable_cell(
-                        trains_sheet,
-                        row=row_for(instant.time),
-                        column=2 + len(TRAIN_COLUMNS) * train + j,
-                    ).value = value
-
-            for i, (queue, r_up) in enumerate(zip(vce_queues, vce_up_rates, strict=True)):
-                writable_cell(vce_sheet, row=row_for(instant.time), column=2 + 2 * i).value = queue
-                writable_cell(vce_sheet, row=row_for(instant.time), column=3 + 2 * i).value = r_up
-
-            for i, (_attr, value, field) in enumerate(annotated_field_values(instant)):
-                column = FIRST_DATA_COLUMN + i
-                writable_cell(sheet, row=1, column=column).value = field.description
-                writable_cell(sheet, row=row_for(instant.time), column=column).value = value
+                        boarders_on_platform[train] + walking_to_train(train),
+                    ]
+                    for train in trains
+                ]
+            )
+            time_series.vces.append(
+                [
+                    [queue, vce_up_rate]
+                    for queue, vce_up_rate in zip(vce_queues, vce_up_rates, strict=True)
+                ]
+            )
 
         # Stop once the last train has departed and the platform has cleared.
         if (
@@ -1408,156 +1378,7 @@ def calc_workbook(
             and all(dwell is not None for dwell in summary.dwells)
         ):
             break
-    if not write_workbook:
-        return wb, summary
-    simulation_length = time_after - start_time + 1
-
-    def make_chart(title: str, min_col: int, x_title: str, y_title: str) -> ScatterChart:
-        chart = ScatterChart()
-        chart.title = title
-        chart.style = 13
-        chart.x_axis.title = x_title
-        chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = start_time
-        chart.x_axis.scaling.max = time_after
-        chart.legend = None
-
-        max_row = simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(
-            sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
-        )
-        values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
-        # Y values start one row above X values so that first cell is series name.
-        series = SeriesFactory(values, xvalues, title_from_data=True)
-        chart.series.append(series)
-        return chart
-
-    def make_chart_with_chopped_y(
-        title: str, min_col: int, x_title: str, y_title: str
-    ) -> ScatterChart:
-        chart = ScatterChart()
-        chart.title = title
-        chart.style = 13
-        chart.x_axis.title = x_title
-        chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = start_time
-        chart.x_axis.scaling.max = time_after
-        chart.y_axis.scaling.min = 0
-        chart.y_axis.scaling.max = 50
-        chart.legend = None
-
-        max_row = simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(
-            sheet, min_col=get_column_for("time"), min_row=FIRST_DATA_ROW, max_row=max_row
-        )
-        values = Reference(sheet, min_col=min_col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
-        # Y values start one row above X values so that first cell is series name.
-        series = SeriesFactory(values, xvalues, title_from_data=True)
-        chart.series.append(series)
-        return chart
-
-    def make_chart_2(
-        title: str,
-        col1: int,
-        col2: int,
-        x_title: str,
-        y_title: str,
-        *more_cols: int,
-        data_sheet: Worksheet = sheet,
-        time_col: int | None = None,
-    ) -> ScatterChart:
-        chart = ScatterChart()
-        chart.title = title
-        chart.style = 13
-        chart.x_axis.title = x_title
-        chart.y_axis.title = y_title
-        chart.x_axis.scaling.min = start_time
-        chart.x_axis.scaling.max = time_after
-        assert chart.legend is not None
-        chart.legend.position = "b"
-
-        max_row = simulation_length + FIRST_DATA_ROW - 1
-        xvalues = Reference(
-            data_sheet,
-            min_col=get_column_for("time") if time_col is None else time_col,
-            min_row=FIRST_DATA_ROW,
-            max_row=max_row,
-        )
-        for col in (col1, col2, *more_cols):
-            values = Reference(data_sheet, min_col=col, min_row=FIRST_DATA_ROW - 1, max_row=max_row)
-            # Y values start one row above X values so that first cell is series name.
-            chart.series.append(SeriesFactory(values, xvalues, title_from_data=True))
-        return chart
-
-    sheet.add_chart(
-        make_chart_2(
-            "Up and Down Rates",
-            get_column_for("up_rate"),
-            get_column_for("down_rate"),
-            "Time (s)",
-            "Rate (pax/s)",
-        ),
-        "V4",
-    )
-    sheet.add_chart(
-        make_chart_2(
-            "Passengers Aboard Trains",
-            2,
-            2 + len(TRAIN_COLUMNS),
-            "Time (s)",
-            "Passengers",
-            *(2 + len(TRAIN_COLUMNS) * train for train in trains[2:]),
-            data_sheet=trains_sheet,
-            time_col=1,
-        ),
-        "V19",
-    )
-    sheet.add_chart(
-        make_chart_2(
-            "Passengers on Platform",
-            get_column_for("arriving_pax_waiting_on_platform"),
-            get_column_for("total_pax_on_platform"),
-            "Time (s)",
-            "Passengers",
-        ),
-        "V34",
-    )
-    sheet.add_chart(
-        make_chart_with_chopped_y(
-            "Space per Passenger",
-            get_column_for("platform_crowding"),
-            "Time (s)",
-            "Space per passenger (sq ft)",
-        ),
-        "V49",
-    )
-    sheet.add_chart(
-        make_chart(
-            "Net Platform Flow Rate",
-            get_column_for("net_pax_flow_rate"),
-            "Time (s)",
-            "Net Flow Rate (pax/s)",
-        ),
-        "V64",
-    )
-    vce_list = wb.create_sheet("VCE List")
-    vce_list.append(
-        [
-            "VCE",
-            "Type",
-            "Role",
-            "Width (ft)",
-            "West End (ft)",
-            "East End (ft)",
-            "Queue Empty Time (s)",
-        ]
-    )
-    for vce, role, empty_time in zip(params.vces, roles, vce_empty_times, strict=True):
-        vce_list.append(
-            [vce.name, vce.type, role, vce.width, vce.west_end, vce.east_end, empty_time]
-        )
-
-    return wb, summary
+    return time_series, summary
 
 
 RESULTS_COLUMNS = [
@@ -1577,7 +1398,7 @@ RESULTS_COLUMNS = [
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
-README = Path(__file__).parent / "README.md"
+README = Path(__file__).parents[2] / "README.md"
 RESULTS_START = "<!-- results-table:start -->"
 RESULTS_END = "<!-- results-table:end -->"
 """The README's results table is between these markers, so `--update-readme` can replace it."""
@@ -1618,15 +1439,20 @@ def best_stopping_position(params: Params) -> Params:
         candidates.append(dataclasses.replace(params, train_east_end=train_east_end))
         train_east_end -= STOPPING_POSITION_STEP
 
-    def score(candidate: Params) -> tuple[float, float]:
+    def score(candidate: Params) -> tuple[timedelta, timedelta]:
         # Only the summary matters.
-        _wb, summary = calc_workbook(candidate, write_workbook=False, print_time_series=False)
-        dwells = [float("inf") if dwell is None else dwell for dwell in summary.dwells]
-        return max(dwells), sum(dwells)
+        _time_series, summary = simulate(
+            candidate, record_time_series=False, print_time_series=False
+        )
+        dwells = summary.dwells
+        if any(dwell is None for dwell in dwells):
+            return timedelta.max, timedelta.max
+        finished = [dwell for dwell in dwells if dwell is not None]
+        return max(finished), sum(finished, timedelta(0))
 
-    scores: dict[float, tuple[float, float]] = {}
+    scores: dict[float, tuple[timedelta, timedelta]] = {}
 
-    def cached_score(candidate: Params) -> tuple[float, float]:
+    def cached_score(candidate: Params) -> tuple[timedelta, timedelta]:
         assert candidate.train_east_end is not None
         if candidate.train_east_end not in scores:
             scores[candidate.train_east_end] = score(candidate)
@@ -1639,35 +1465,181 @@ def best_stopping_position(params: Params) -> Params:
     return min(candidates[max(0, i - coarse_step) : i + coarse_step + 1], key=cached_score)
 
 
-def run_model(params: Params, spreadsheets: bool) -> str:
+OUTPUT_DIR = Path("output")
+"""Where `--charts` saves each scenario's CSVs and charts."""
+
+SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]
+"""Each chart's series colors, in order, from a colorblind-safe categorical palette."""
+
+
+def write_csv(path: Path, header: list[str], rows: list[list[Any]]) -> None:
+    """Write `header` and then `rows` to the CSV at `path`."""
+    with path.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        writer.writerows(rows)
+
+
+def save_time_series(params: Params, time_series: TimeSeries, summary: Summary, stem: Path) -> None:
+    """
+    Save `params`' parameters, VCEs, and time series to CSVs,
+    and its charts to an SVG, all named starting with `stem`.
+    """
+    param_values = [*annotated_field_values(params), *annotated_field_values(params.assumptions)]
+    write_csv(
+        stem.with_name(f"{stem.name}_params.csv"),
+        ["Parameter", "Value"],
+        [[field.description, value] for _attr, value, field in param_values],
+    )
+    write_csv(
+        stem.with_suffix(".csv"),
+        [field.description for _attr, field in annotated_field_names(Instant)],
+        [
+            [value for _attr, value, _field in annotated_field_values(instant)]
+            for instant in time_series.instants
+        ],
+    )
+    trains = range(params.trains)
+    write_csv(
+        stem.with_name(f"{stem.name}_trains.csv"),
+        [
+            "Time (s)",
+            *(f"Train {train + 1} {column}" for train in trains for column in TRAIN_COLUMNS),
+        ],
+        [
+            [round(instant.time.total_seconds()), *itertools.chain.from_iterable(train_values)]
+            for instant, train_values in zip(time_series.instants, time_series.trains, strict=True)
+        ],
+    )
+
+    write_csv(
+        stem.with_name(f"{stem.name}_vces.csv"),
+        [
+            "Time (s)",
+            *(
+                f"{vce.name} {column}"
+                for vce in params.vces
+                for column in ("Queue (pax)", "Up Rate (pax/s)")
+            ),
+        ],
+        [
+            [round(instant.time.total_seconds()), *itertools.chain.from_iterable(vce_values)]
+            for instant, vce_values in zip(time_series.instants, time_series.vces, strict=True)
+        ],
+    )
+    write_csv(
+        stem.with_name(f"{stem.name}_vce_list.csv"),
+        [
+            "VCE",
+            "Type",
+            "Role",
+            "Width (ft)",
+            "West End (ft)",
+            "East End (ft)",
+            "Queue Empty Time (s)",
+        ],
+        [
+            [
+                vce.name,
+                vce.type,
+                role,
+                vce.width,
+                vce.west_end,
+                vce.east_end,
+                None if empty_time is None else round(empty_time.total_seconds()),
+            ]
+            for vce, role, empty_time in zip(
+                params.vces, vce_roles(params.vces), summary.vce_empty_times, strict=True
+            )
+        ],
+    )
+
+    # Only `--charts` needs `matplotlib`, so don't slow down every other run importing it.
+    from matplotlib.figure import Figure
+
+    times = [instant.time.total_seconds() for instant in time_series.instants]
+
+    def column(attr: str) -> tuple[str, list[float]]:
+        """The name and values of `Instant`'s `attr` each second."""
+        field = dict(annotated_field_names(Instant))[attr]
+        return field.name, [getattr(instant, attr) for instant in time_series.instants]
+
+    charts: list[tuple[str, str, list[tuple[str, list[float]]]]] = [
+        ("Up and Down Rates", "Rate (pax/s)", [column("up_rate"), column("down_rate")]),
+        (
+            "Passengers Aboard Trains",
+            "Passengers",
+            [
+                (
+                    f"Train {train + 1}",
+                    [train_values[train][0] for train_values in time_series.trains],
+                )
+                for train in trains
+            ],
+        ),
+        (
+            "Passengers on Platform",
+            "Passengers",
+            [column("arriving_pax_waiting_on_platform"), column("total_pax_on_platform")],
+        ),
+        ("Space per Passenger", "Space per passenger (sq ft)", [column("platform_crowding")]),
+        ("Net Platform Flow Rate", "Net Flow Rate (pax/s)", [column("net_pax_flow_rate")]),
+    ]
+    fig = Figure(figsize=(12, 3 * len(charts)), layout="constrained")
+    fig.suptitle(f"Platform {params.name}, {round(params.headway.total_seconds())} s headway")
+    axes = fig.subplots(len(charts), 1, sharex=True, squeeze=False)[:, 0]
+    for ax, (title, y_label, series) in zip(axes, charts, strict=True):
+        for color, (label, values) in zip(SERIES_COLORS, series, strict=False):
+            ax.plot(times, values, label=label, color=color, linewidth=2)
+        ax.set_title(title, loc="left")
+        ax.set_ylabel(y_label)
+        ax.set_xlim(times[0], times[-1])
+        ax.grid(color="#e0e0dd", linewidth=0.5)
+        ax.spines[["top", "right"]].set_visible(False)
+        if len(series) > 1:
+            ax.legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=False)
+    # Past 50 sq ft per passenger, the platform is nearly empty, so show just the crowded part.
+    axes[3].set_ylim(0, 50)
+    axes[-1].set_xlabel("Time (s)")
+    fig.savefig(stem.with_suffix(".svg"))
+
+
+def run_model(params: Params, charts: bool) -> str:
     """
     Run the model, return its row of the results table,
-    and with `spreadsheets`, print its time series and save its spreadsheet.
+    and with `charts`, print its time series and save its CSVs and charts in `OUTPUT_DIR`.
     """
     params = best_stopping_position(params)
-    wb, summary = calc_workbook(
-        params=params, write_workbook=spreadsheets, print_time_series=spreadsheets
+    time_series, summary = simulate(
+        params=params, record_time_series=charts, print_time_series=charts
     )
 
     headway = params.headway
-    if spreadsheets:
-        wb.save(
-            f"{params.filename_prefix}"
-            f"_{params.arriving_pax_per_train}"
-            f"_{params.arriving_pax_per_train}"
-            f"_{headway}s.xlsx"
+    if charts:
+        save_time_series(
+            params,
+            time_series,
+            summary,
+            OUTPUT_DIR
+            / (
+                f"{params.filename_prefix}"
+                f"_{params.arriving_pax_per_train}"
+                f"_{params.arriving_pax_per_train}"
+                f"_{round(headway.total_seconds())}s"
+            ),
         )
-    wb.close()
 
-    evacuation_time = math.ceil(summary.max_occupants / params.nfpa_130_exit_capacity)
+    evacuation_time = timedelta(
+        seconds=math.ceil(summary.max_occupants / params.nfpa_130_exit_capacity)
+    )
     evacuation_ok = "✓" if evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME else "✗"
 
-    def fmt_time(t: int | None) -> str:
-        """`t` seconds as `m:ss`."""
+    def fmt_time(t: timedelta | None) -> str:
+        """`t` as `m:ss`."""
         if t is None:
             return "never"
-        minutes, seconds = divmod(t, SECONDS_PER_MINUTE)
-        return f"{minutes}:{seconds:02}"
+        minutes, rest = divmod(t, timedelta(minutes=1))
+        return f"{minutes}:{rest.seconds:02}"
 
     return (
         f"| {params.name} | {fmt_time(headway)} | {params.total_vce_width:.4g} ft"
@@ -1675,7 +1647,7 @@ def run_model(params: Params, spreadsheets: bool) -> str:
         f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
         f" | {fmt_time(summary.boarded_time)}"
-        f" | {fmt_time(summary.secs_at_capacity)} | {summary.max_up_rate:.2f}"
+        f" | {fmt_time(summary.time_at_capacity)} | {summary.max_up_rate:.2f}"
         f" | {summary.max_pax_on_platform:.0f}"
         f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
         f" ({platform_crowd_los(summary.min_space_per_pax, params.assumptions)})"
@@ -1687,9 +1659,9 @@ def main(
     update_readme: Annotated[
         bool, Option(help="Replace the results table in the README with this run's.")
     ] = False,
-    spreadsheets: Annotated[
+    charts: Annotated[
         bool,
-        Option(help="Also print each scenario's time series and save its spreadsheet."),
+        Option(help="Also print each scenario's time series and save its CSVs and charts."),
     ] = False,
 ) -> None:
     """Run every scenario and print a table of their results."""
@@ -1698,7 +1670,7 @@ def main(
         """`platform` with each VCE's position, before choosing a headway."""
         return Params(
             platform=platform,
-            headway=0,
+            headway=timedelta(0),
             vces=platform_vces(platform),
             platform_east_end=platform_east_ends()[platform],
         )
@@ -1726,13 +1698,15 @@ def main(
     # Group the results by headway first, then by platform.
     scenarios = [
         dataclasses.replace(params, headway=headway)
-        for headway in (0, CLOSE_HEADWAY, NORMAL_HEADWAY)
+        for headway in (timedelta(0), CLOSE_HEADWAY, NORMAL_HEADWAY)
         for params in platforms
     ]
+    if charts:
+        OUTPUT_DIR.mkdir(exist_ok=True)
     with ProcessPoolExecutor() as executor:
         rows = list(
             executor.map(
-                functools.partial(run_model, spreadsheets=spreadsheets),
+                functools.partial(run_model, charts=charts),
                 scenarios,
             )
         )
@@ -1743,5 +1717,6 @@ def main(
         update_readme_results(table)
 
 
-if __name__ == "__main__":
+def cli() -> None:
+    """Run `main` as a command-line program."""
     typer.run(main)

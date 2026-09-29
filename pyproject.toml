@@ -5,9 +5,16 @@ description = "Model platform crowding and alighting and boarding at NY Penn Sta
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "openpyxl>=3.1.5",
+    "matplotlib>=3.11.2",
     "typer>=0.27.2",
 ]
+
+[project.scripts]
+platform-crowd-model = "platform_crowd_model.model:cli"
+
+[build-system]
+requires = ["uv_build>=0.9,<1"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
@@ -17,7 +24,6 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.9",
     "ty>=0.0.84",
-    "types-openpyxl>=3.1.5.20260827",
 ]
 
 [tool.ruff]
@@ -40,5 +46,4 @@ possibly-unresolved-reference = "warn"
 unsupported-dynamic-base = "warn"
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
 testpaths = ["tests"]

@@ -7,11 +7,8 @@ __pycache__
 # Tooling Cache
 .ruff_cache/
 
-# LibreOffice Lock Files
-.~lock*
-
-# Excel Spreadsheet Output
-*.xlsx
+# Time Series and Chart Output
+output/
 
 # IDEs
 .idea/

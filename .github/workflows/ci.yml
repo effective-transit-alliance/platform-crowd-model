@@ -31,5 +31,5 @@ jobs:
         run: uv run pytest
 
       # Running the model end to end with its spreadsheets is the smoke test.
-      - name: run two trains alight and board
-        run: ./vce_two_trains_alight_and_board.py --spreadsheets
+      - name: run the model
+        run: uv run platform-crowd-model --charts
