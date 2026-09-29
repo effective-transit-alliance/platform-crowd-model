@@ -65,6 +65,9 @@ To install them, run
 uv run pre-commit install
 ```
 
+Every simulation also checks that it neither created nor lost passengers,
+and stops with an error if it did.
+
 ## How the Model Works
 
 The model is the one ETA's report
