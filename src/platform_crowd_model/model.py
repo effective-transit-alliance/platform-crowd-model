@@ -1671,13 +1671,8 @@ def run_model(params: Params, charts: bool) -> str:
     )
 
 
-def main(update_readme: bool = False, charts: bool = False) -> None:
-    """
-    Run every scenario and print a table of their results.
-
-    :param update_readme: also replace the results table in the README with this run's
-    :param charts: also print each scenario's time series and save its CSVs and charts
-    """
+def scenarios() -> list[Params]:
+    """Every scenario, grouped by headway first, then by platform, as in the results table."""
 
     def platform_params(platform: int) -> Params:
         """`platform` with its VCEs, before choosing a headway."""
@@ -1703,19 +1698,27 @@ def main(update_readme: bool = False, charts: bool = False) -> None:
         platform_params(10),
         platform_params(11),
     ]
-    # Group the results by headway first, then by platform.
-    scenarios = [
+    return [
         dataclasses.replace(params, headway=headway)
         for headway in (timedelta(0), CLOSE_HEADWAY, NORMAL_HEADWAY)
         for params in platforms
     ]
+
+
+def main(update_readme: bool = False, charts: bool = False) -> None:
+    """
+    Run every scenario and print a table of their results.
+
+    :param update_readme: also replace the results table in the README with this run's
+    :param charts: also print each scenario's time series and save its CSVs and charts
+    """
     if charts:
         OUTPUT_DIR.mkdir(exist_ok=True)
     with ProcessPoolExecutor() as executor:
         rows = list(
             executor.map(
                 functools.partial(run_model, charts=charts),
-                scenarios,
+                scenarios(),
             )
         )
     table = "\n".join([RESULTS_HEADER, *rows])
