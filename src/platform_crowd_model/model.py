@@ -596,7 +596,7 @@ def platform_vces(platform: int) -> tuple[Vce, ...]:
     with VCE_DATA.open() as f:
         return tuple(
             Vce(
-                name=row["vce"],
+                name=row["vce_name"],
                 width=float(row["master_plan_width_in"] or row["estimated_width_in"]) / 12,
                 type=row["type"],
                 west_end=float(row["west_end_ft"]),

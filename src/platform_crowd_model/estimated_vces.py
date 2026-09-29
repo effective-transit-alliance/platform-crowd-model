@@ -388,7 +388,7 @@ def main() -> None:
         out.append(
             {
                 "platform": v.platform,
-                "vce": f"P{v.platform}-S{numbers[v.platform]}",
+                "vce_name": f"P{v.platform}-S{numbers[v.platform]}",
                 "type": v.type,
                 "west_end_ft": ft(v.x0),
                 "east_end_ft": ft(v.x1),
@@ -612,7 +612,7 @@ def directory_vces(
             out.append(
                 {
                     "platform": p,
-                    "vce": f"P{p}-S{n}",
+                    "vce_name": f"P{p}-S{n}",
                     "type": type_,
                     "west_end_ft": round(mid - length / 2),
                     "east_end_ft": round(mid + length / 2),
