@@ -190,8 +190,15 @@ class Assumptions:
 
 
 def fmt_ft_in(ft: float) -> str:
-    """A length in feet as feet and inches, to the nearest inch, e.g. `6'2"` for 6.17 ft."""
+    """
+    A length in feet as feet and inches, to the nearest inch, e.g. `6'2"` for 6.17 ft,
+    leaving out whichever is 0, e.g. `18'` or `6"`.
+    """
     feet, inches = divmod(round(ft * 12), 12)
+    if inches == 0 and feet != 0:
+        return f"{feet}'"
+    if feet == 0:
+        return f'{inches}"'
     return f"{feet}'{inches}\""
 
 
