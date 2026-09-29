@@ -136,7 +136,6 @@ class Assumptions:
     """
     Length of each car, over which its doors are spread evenly.
     An NJ Transit MultiLevel.
-    Only used on platforms with each VCE's position.
     """
 
     walking_speed: Annotated[float, Field(name="Walking Speed", units="ft/s")] = (
@@ -147,7 +146,6 @@ class Assumptions:
     The TCQSM's design walking speed, 250 ft/min
     (p. 10-20: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=24),
     though people walk slower in crowds, with less than 25 ft^2/pax (Exhibit 10-10, p. 10-21).
-    Only used on platforms with each VCE's position.
     """
 
     escalator_reversal_threshold: Annotated[
@@ -169,7 +167,6 @@ class Assumptions:
     Which VCE each arriving passenger walks to:
     the `nearest`, or the `quickest` to get up,
     i.e. with the least walking time plus waiting time for everyone queued or walking there.
-    Only used on platforms with each VCE's position.
     """
 
     car_full_fraction: Annotated[float, Field(name="Car Full Fraction", units="fraction")] = 0.9
@@ -178,7 +175,6 @@ class Assumptions:
     unless it has at least this fraction of `seats_per_car` boarded, waiting, or walking to it,
     in which case they go to the nearest car that doesn't.
     Not from any source.
-    Only used on platforms with each VCE's position.
     """
 
     door_flow_rate: Annotated[float, Field(name="Door Flow Rate", units="pax/s/door")] = 1.0
@@ -485,14 +481,14 @@ class Vce:
     width: float
     """Its width (in feet)."""
 
-    type: str = "stair"
-    """`stair` or `escalator`."""
-
-    west_end: float | None = None
+    west_end: float
     """Where it starts along the platform (ft east of the Master Plan's plans' west edge)."""
 
-    east_end: float | None = None
+    east_end: float
     """Where it ends along the platform (ft east of the Master Plan's plans' west edge)."""
+
+    type: str = "stair"
+    """`stair` or `escalator`."""
 
 
 VCE_DATA = DATA_DIR / "estimated_vce_widths.csv"
@@ -583,9 +579,10 @@ def door_positions(params: Params) -> list[float]:
     Where each of a train's doors is along the platform (ft),
     spread evenly along a train stopped at `Params.train_east_end`.
     """
-    assert params.platform_east_end is not None
     assumptions = params.assumptions
-    train_east_end = params.train_east_end or params.platform_east_end
+    train_east_end = (
+        params.platform_east_end if params.train_east_end is None else params.train_east_end
+    )
     train_west_end = train_east_end - params.train_length
     door_spacing = assumptions.car_length / assumptions.doors_per_car
     return [train_west_end + (door + 0.5) * door_spacing for door in range(params.doors_per_train)]
@@ -593,7 +590,6 @@ def door_positions(params: Params) -> list[float]:
 
 def distance_to(vce: Vce, position: float) -> float:
     """Distance (ft) along the platform from `position` to the nearest end of `vce`."""
-    assert vce.west_end is not None and vce.east_end is not None
     return max(0, vce.west_end - position, position - vce.east_end)
 
 
@@ -614,11 +610,7 @@ class Door:
 def doors_to_vces(params: Params) -> list[Door]:
     """
     Where arriving passengers come from, and how far they are from each VCE.
-    If the VCEs have no positions, the platform is one door
-    with no walking time to any VCE.
     """
-    if params.platform_east_end is None:
-        return [Door(share=1, walking_times=[0 for _ in params.vces])]
     doors = door_positions(params)
     return [
         Door(
@@ -650,7 +642,7 @@ def vce_roles(vces: tuple[Vce, ...]) -> list[Role]:
     """
     escalators = sorted(
         (i for i, vce in enumerate(vces) if vce.type == "escalator"),
-        key=lambda i: vces[i].west_end or 0,
+        key=lambda i: vces[i].west_end,
     )
     roles: list[Role] = ["stair" for _ in vces]
     for i in escalators:
@@ -676,12 +668,8 @@ class Car:
 def train_cars(params: Params) -> list[Car]:
     """
     Each train's cars.
-    If the VCEs have no positions, the train is one car
-    with no walking time from any VCE.
     """
     assumptions = params.assumptions
-    if params.platform_east_end is None:
-        return [Car(doors=params.doors_per_train, walking_times=[0 for _ in params.vces])]
     doors = door_positions(params)
     doors_per_car = assumptions.doors_per_car
     cars: list[Car] = []
@@ -791,18 +779,10 @@ class Params:
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
     """Trains arriving, alternating between the platform's tracks."""
 
-    platform_east_end: float | None = None
-    """
-    Where the platform ends to the east (ft east of the Master Plan's plans' west edge),
-    if `vces` have positions.
-    From `PLATFORM_EAST_ENDS`.
-    """
-
     train_east_end: Annotated[float | None, Field(name="Train East End", units="ft")] = None
     """
     Where the trains' east ends stop (ft east of the Master Plan's plans' west edge),
-    if `vces` have positions,
-    or else `platform_east_end`.
+    or if `None`, `platform_east_end`.
     `best_stopping_position` finds the best one.
     """
 
@@ -852,6 +832,14 @@ class Params:
             ),
             self.assumptions.max_train_cars,
         )
+
+    @property
+    def platform_east_end(self) -> float:
+        """
+        Where the platform ends to the east (ft east of the Master Plan's plans' west edge),
+        from `PLATFORM_EAST_ENDS`.
+        """
+        return platform_east_ends()[self.platform]
 
     @property
     def platform_length(self) -> Annotated[int, Field(name="Platform Length", units="ft")]:
@@ -1162,12 +1150,6 @@ def simulate(
         # Nobody walks to a VCE in a second nobody alights.
         for door in doors if sum(off_rates) > 0 else ():
             alighting = sum(off_rates) * door.share
-            if params.platform_east_end is None:
-                # Spread across the VCEs in proportion to their widths.
-                for i, vce in enumerate(params.vces):
-                    walking[step][i] += alighting * vce.width / params.total_vce_width
-                    walking_totals[i] += alighting * vce.width / params.total_vce_width
-                continue
             i = choose_vce(params, door, vce_queues, walking_to, directions, vce_capacities)
             walking[step + door.walking_times[i]][i] += alighting
             walking_totals[i] += alighting
@@ -1427,8 +1409,6 @@ def best_stopping_position(params: Params) -> Params:
     or if tied, where their total dwell is shortest,
     of every position `STOPPING_POSITION_STEP` apart with the train on the platform.
     """
-    if params.platform_east_end is None:
-        return params
     platform_west_end = params.platform_east_end - params.platform_length
     # A train longer than the platform overhangs its west end.
     overhang = max(0, params.train_length - params.platform_length)
@@ -1663,13 +1643,8 @@ def main(update_readme: bool = False, charts: bool = False) -> None:
     """
 
     def platform_params(platform: int) -> Params:
-        """`platform` with each VCE's position, before choosing a headway."""
-        return Params(
-            platform=platform,
-            headway=timedelta(0),
-            vces=platform_vces(platform),
-            platform_east_end=platform_east_ends()[platform],
-        )
+        """`platform` with its VCEs, before choosing a headway."""
+        return Params(platform=platform, headway=timedelta(0), vces=platform_vces(platform))
 
     platform_3 = platform_params(3)
     platforms = [
