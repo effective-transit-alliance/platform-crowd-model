@@ -21,11 +21,7 @@ from typer import Option
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
-SECOND = timedelta(seconds=1)
-
-MINUTE = timedelta(minutes=1)
-
-TIME_STEP = SECOND
+TIME_STEP = timedelta(seconds=1)
 """
 How much time each step of the simulation covers.
 Every rate is per second, so this must stay 1 s.
@@ -189,7 +185,7 @@ def stair_flow(flow_per_width: float, width: float) -> float:
     :param width: total stair width (ft)
     :return: total stair flow (pax/s)
     """
-    return flow_per_width * width / (MINUTE / SECOND)
+    return flow_per_width * width / timedelta(minutes=1).total_seconds()
 
 
 def alight_rate(
@@ -381,7 +377,7 @@ def annotated_field_values(
         value = getattr(obj, attr)
         # CSVs and charts can't hold `timedelta`s, so give them in seconds, per `Field.units`.
         if isinstance(value, timedelta):
-            value = value / SECOND
+            value = value.total_seconds()
         yield attr, value, field
 
 
@@ -449,7 +445,9 @@ class Params:
         Time for everyone on both trains to go upstairs
         at `Assumptions.emergency_stair_flow`.
         """
-        return 2 * self.assumptions.arriving_pax_per_train / self.los_f_egress_rate * SECOND
+        return timedelta(
+            seconds=2 * self.assumptions.arriving_pax_per_train / self.los_f_egress_rate
+        )
 
 
 @dataclass
@@ -697,7 +695,7 @@ def simulate(
             arriving_pax_on_platform = 0
         if print_time_series:
             print(
-                time_after // SECOND,
+                int(time_after.total_seconds()),
                 *(remaining_arrivals[train] + new_pax[train] for train in trains),
                 arriving_pax_on_platform,
                 up_rate,
@@ -785,7 +783,7 @@ def simulate(
     if print_time_series:
         print(
             f"LOS F egress rate is {params.los_f_egress_rate} pax/s. "
-            f"Emergency egress time is {params.emergency_egress_time / SECOND} seconds."
+            f"Emergency egress time is {params.emergency_egress_time.total_seconds()} seconds."
         )
     return time_series, summary
 
@@ -862,7 +860,7 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
             *(f"Train {train + 1} {column}" for train in trains for column in TRAIN_COLUMNS),
         ],
         [
-            [instant.time / SECOND, *itertools.chain.from_iterable(train_values)]
+            [instant.time.total_seconds(), *itertools.chain.from_iterable(train_values)]
             for instant, train_values in zip(time_series.instants, time_series.trains, strict=True)
         ],
     )
@@ -870,7 +868,7 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
     # Only `--charts` needs `matplotlib`, so don't slow down every other run importing it.
     from matplotlib.figure import Figure
 
-    times = [instant.time / SECOND for instant in time_series.instants]
+    times = [instant.time.total_seconds() for instant in time_series.instants]
 
     def column(attr: str) -> tuple[str, list[float]]:
         """The name and values of `Instant`'s `attr` each second."""
@@ -899,7 +897,7 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
         ("Net Platform Flow Rate", "Net Flow Rate (pax/s)", [column("net_pax_flow_rate")]),
     ]
     fig = Figure(figsize=(12, 3 * len(charts)), layout="constrained")
-    fig.suptitle(f"Platform {params.name}, {params.headway // SECOND} s headway")
+    fig.suptitle(f"Platform {params.name}, {int(params.headway.total_seconds())} s headway")
     axes = fig.subplots(len(charts), 1, sharex=True, squeeze=False)[:, 0]
     for ax, (title, y_label, series) in zip(axes, charts, strict=True):
         for color, (label, values) in zip(SERIES_COLORS, series, strict=False):
@@ -936,7 +934,7 @@ def run_model(params: Params, charts: bool) -> str:
                 f"{params.filename_prefix}"
                 f"_{params.assumptions.arriving_pax_per_train}"
                 f"_{params.assumptions.arriving_pax_per_train}"
-                f"_{headway // SECOND}s"
+                f"_{int(headway.total_seconds())}s"
             ),
         )
 
@@ -944,8 +942,8 @@ def run_model(params: Params, charts: bool) -> str:
         """`t` as `m:ss`."""
         if t is None:
             return "never"
-        minutes, seconds = divmod(t // SECOND, MINUTE // SECOND)
-        return f"{minutes}:{seconds:02}"
+        minutes, rest = divmod(t, timedelta(minutes=1))
+        return f"{minutes}:{rest.seconds:02}"
 
     return (
         f"| {params.name} | {fmt_time(headway)} | {params.total_vce_width} ft"
