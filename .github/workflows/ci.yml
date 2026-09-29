@@ -32,4 +32,4 @@ jobs:
 
       # Running the model end to end with its spreadsheets is the smoke test.
       - name: run the model
-        run: uv run platform-crowd-model --spreadsheets
+        run: uv run platform-crowd-model --charts
