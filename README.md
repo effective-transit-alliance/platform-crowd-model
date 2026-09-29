@@ -32,7 +32,8 @@ To also replace the [results table](#results) below with that run's, run
 
 ## Checking
 
-We also use `ruff` for formatting and linting and `ty` and `pyrefly` for type checking.
+We also use `ruff` for formatting and linting, `ty` and `pyrefly` for type checking,
+and `pytest` for a snapshot test that fails if the [results table](#results) is out of date.
 To run these, which are also checked in CI,
 you can run
 
@@ -41,6 +42,7 @@ uv run ruff format # format
 uv run ruff check # lint
 uv run ty check # type check
 uv run pyrefly check # type check
+uv run pytest # test
 ```
 
 These same checks also run as `pre-commit` hooks.

@@ -27,6 +27,9 @@ jobs:
       - name: pyrefly
         run: uv run pyrefly check
 
-      # There are no tests yet, so running the model end to end is the smoke test.
+      - name: pytest
+        run: uv run pytest
+
+      # Running the model end to end with its spreadsheets is the smoke test.
       - name: run two trains alight and board
         run: ./vce_two_trains_alight_and_board.py --spreadsheets
