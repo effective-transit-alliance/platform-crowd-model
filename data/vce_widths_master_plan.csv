@@ -1,4 +1,4 @@
-alternative,source,platform,vce,width_in,type,status
+alternative,source,platform,vce_number,width_in,type,status
 1,draft-2020-08-p16,11,1,38,escalator,new
 1,draft-2020-08-p16,11,2,64,stair,existing
 1,draft-2020-08-p16,11,3,78,stair,existing

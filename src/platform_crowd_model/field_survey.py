@@ -59,7 +59,7 @@ SURVEY_COLUMNS = [
     "notes",
 ]
 """
-- `found`: yes, no, or a duplicate of another row's `id`.
+- `found`: yes, no, or a duplicate of another row's `vce`.
 - `clear_width_in`: between the handrails, at the platform end.
 - `escalator_direction_*`: up, down, or stopped.
 - `leads_to`: the concourse, e.g. NJ Transit, Amtrak, LIRR, Exit, West End, or Moynihan.
@@ -79,7 +79,7 @@ def main() -> None:
         for v in (v for v in sheet if int(v["platform"]) == platform):
             rows.append(
                 {
-                    "id": v["vce"],
+                    "vce": v["vce"],
                     "platform": platform,
                     "tracks": TRACKS[platform],
                     "source": "PCIP Phase 2 existing plan"
@@ -106,7 +106,7 @@ def main() -> None:
         for n, v in enumerate(on_map, 1):
             rows.append(
                 {
-                    "id": f"P{platform}-D{n}",
+                    "vce": f"P{platform}-D{n}",
                     "platform": platform,
                     "tracks": TRACKS[platform],
                     "source": "2022 directory",
@@ -121,7 +121,7 @@ def main() -> None:
         for n, v in enumerate(in_plan, 1):
             rows.append(
                 {
-                    "id": f"P{platform}-M{n}",
+                    "vce": f"P{platform}-M{n}",
                     "platform": platform,
                     "tracks": TRACKS[platform],
                     "source": "Master Plan",

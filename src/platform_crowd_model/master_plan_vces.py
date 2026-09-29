@@ -199,7 +199,7 @@ def main() -> None:
         for platform, row in rows.items():
             table = sorted(
                 (w for w in widths if w["source"] == source and int(w["platform"]) == platform),
-                key=lambda w: int(w["vce"]),
+                key=lambda w: int(w["vce_number"]),
             )
             drawn = west_to_east(row)
             drawn_types = [r.type for r in drawn]
@@ -218,7 +218,7 @@ def main() -> None:
                     {
                         "alternative": alternative,
                         "platform": platform,
-                        "vce": w["vce"],
+                        "vce_number": w["vce_number"],
                         "width_in": w["width_in"],
                         "type": w["type"],
                         "table_status": w["status"],

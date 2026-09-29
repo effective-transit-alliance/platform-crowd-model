@@ -635,7 +635,7 @@ starting with platform 3, the ETA report's focus,
 then platform 11, which has no width data.
 Surveyors fill in the columns after `position_ft`, feet east of the Master Plan's plans' west edge:
 
-- `found`: yes, no, or the `id` of another row it duplicates.
+- `found`: yes, no, or the `vce` of another row it duplicates.
   Add rows for VCEs neither source lists.
 - `clear_width_in`: the width between the handrails at the platform end,
   which the capacity standards use.
