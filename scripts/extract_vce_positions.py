@@ -27,7 +27,9 @@ since the plan is too small to measure widths from.
 Writes `data/master_plan_vce_positions.csv`,
 and `data/master_plan_existing_vces.csv`,
 which combines the existing VCEs across all of the alternatives,
-since each alternative keeps a different subset of them.
+since each alternative keeps a different subset of them,
+and `data/master_plan_platform_east_ends.csv`,
+each platform's east end from its outline, averaged across the alternatives.
 """
 
 import csv
@@ -42,6 +44,7 @@ REPO = Path(__file__).resolve().parent.parent
 WIDTHS_CSV = REPO / "data" / "master_plan_vce_widths.csv"
 POSITIONS_CSV = REPO / "data" / "master_plan_vce_positions.csv"
 EXISTING_CSV = REPO / "data" / "master_plan_existing_vces.csv"
+EAST_ENDS_CSV = REPO / "data" / "master_plan_platform_east_ends.csv"
 PDF_CACHE = REPO / ".cache" / "PSMP-Alternatives-Report.pdf"
 PDF_URL = (
     "https://liamblank.com/wp-content/uploads/2026/07/"
@@ -72,8 +75,17 @@ x coordinate of the plan's west edge, under the West End Concourse,
 where every platform's outline starts; positions are measured east from here.
 """
 
+WEST_EDGE_TOLERANCE = 2
+"""
+Outlines starting within this many PDF units of `WEST_EDGE_X` are platforms',
+since alternatives 3 and 4's plans are drawn about 1 unit farther west.
+"""
+
 SAME_VCE_TOLERANCE_FT = 15
 """VCEs of the same type within this many feet in different alternatives are the same VCE."""
+
+PLATFORM_FILL = (0.984, 0.965, 0.867)
+"""The plans' fill color for platforms."""
 
 LEGEND_MIN_X = 1050
 """The legend's color swatches are to the right of this x coordinate."""
@@ -144,6 +156,28 @@ def platform_rows(rects: list[Rect]) -> dict[int, list[Rect]]:
     return {11 - i: row for i, row in enumerate(rows)}
 
 
+def platform_east_ends(page: pymupdf.Page, rows: dict[int, list[Rect]]) -> dict[int, float]:
+    """
+    The x coordinate of each platform's east end, from the outline around its row of VCEs.
+    Only outlines starting at `WEST_EDGE_X` are platforms';
+    platforms 1 and 2 are drawn differently, so they're skipped.
+    """
+    out = {}
+    for drawing in page.get_drawings():
+        fill = drawing.get("fill")
+        r = drawing["rect"]
+        if (
+            fill is None
+            or any(abs(a - b) > 0.01 for a, b in zip(fill, PLATFORM_FILL, strict=True))
+            or abs(r.x0 - WEST_EDGE_X) > WEST_EDGE_TOLERANCE
+        ):
+            continue
+        for platform, row in rows.items():
+            if r.y0 <= sum(v.y for v in row) / len(row) <= r.y1:
+                out[platform] = r.x1
+    return out
+
+
 def west_to_east(row: list[Rect]) -> list[Rect]:
     """Sort VCEs west to east, with escalators before stairs beside them."""
     row = sorted(row, key=lambda r: r.x)
@@ -162,8 +196,12 @@ def main() -> None:
     doc = pdf()
     out = []
     mismatches = 0
+    east_ends: dict[int, list[float]] = {}
     for alternative, (page_number, source) in PLAN_PAGES.items():
-        rows = platform_rows(vce_rects(doc[page_number - 1]))
+        page = doc[page_number - 1]
+        rows = platform_rows(vce_rects(page))
+        for platform, x in platform_east_ends(page, rows).items():
+            east_ends.setdefault(platform, []).append(x)
         for platform, row in rows.items():
             table = sorted(
                 (w for w in widths if w["source"] == source and int(w["platform"]) == platform),
@@ -201,6 +239,18 @@ def main() -> None:
         writer.writerows(out)
     print(f"wrote {len(out)} VCEs; {mismatches} platforms didn't match their tables")
     write_existing(out)
+    write_east_ends(east_ends)
+
+
+def write_east_ends(east_ends: dict[int, list[float]]) -> None:
+    """Average each platform's east end across the alternatives."""
+    with EAST_ENDS_CSV.open("w", newline="") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(["platform", "east_end_ft", "alternatives"])
+        for platform, xs in sorted(east_ends.items()):
+            x = sum(xs) / len(xs)
+            writer.writerow([platform, round((x - WEST_EDGE_X) / PDF_UNITS_PER_FOOT), len(xs)])
+    print(f"wrote {len(east_ends)} platforms' east ends")
 
 
 def write_existing(vces: list[dict[str, int | str]]) -> None:

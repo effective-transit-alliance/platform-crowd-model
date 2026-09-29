@@ -1,87 +1,87 @@
 platform,vce,type,west_end_ft,east_end_ft,sheet_width_in,master_plan_width_in,width_status,source,notes
-1,P1-S1,stair,261,283,58,60,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+1,P1-S1,stair,262,284,58,60,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 1,P1-S2,stair,368,377,57,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 1,P1-S3,stair,405,415,63,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-1,P1-S4,stair,478,486,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-1,P1-S5,stair,542,555,57,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-1,P1-S6,escalator,667,678,37,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-1,P1-S7,escalator,789,804,33,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-1,P1-S8,stair,837,844,49,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-2,P2-S1,stair,261,269,58,64,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-2,P2-S2,stair,356,365,60,57,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+1,P1-S4,stair,479,487,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+1,P1-S5,stair,543,556,57,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+1,P1-S6,escalator,668,679,37,46,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+1,P1-S7,escalator,790,805,33,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+1,P1-S8,stair,838,845,49,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+2,P2-S1,stair,262,270,58,64,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+2,P2-S2,stair,357,366,60,57,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 2,P2-S3,escalator,382,397,36,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-2,P2-S4,stair,477,486,60,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-2,P2-S5,stair,542,554,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-2,P2-S6,escalator,660,675,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+2,P2-S4,stair,477,487,60,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+2,P2-S5,stair,543,555,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+2,P2-S6,escalator,661,676,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
 2,P2-S7,escalator,694,702,36,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-2,P2-S8,escalator,790,805,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-2,P2-S9,stair,827,834,51,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+2,P2-S8,escalator,791,806,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+2,P2-S9,stair,828,835,51,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 3,P3-S1,stair,-83,-61,107,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-3,P3-S2,stair,-17,17,120,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-3,P3-S3,escalator,265,283,37,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","The Master Plan has a 69 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades."
-3,P3-S4,stair,356,365,66,52,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-3,P3-S5,escalator,381,396,37,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-3,P3-S6,stair,477,489,61,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-3,P3-S7,stair,541,555,60,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-3,P3-S8,stair,659,666,45,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-4,P4-S1,stair,-17,17,121,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
-4,P4-S2,escalator,265,282,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021."
-4,P4-S3,stair,354,371,58,72,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
-4,P4-S4,stair,406,423,60,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",The Master Plan has a 34 in. escalator here instead. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
-4,P4-S5,stair,483,491,57,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
-4,P4-S6,stair,541,555,61,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
-4,P4-S7,escalator,661,676,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","The Master Plan has a 44 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021."
-5,P5-S1,stair,-17,17,120,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-5,P5-S2,escalator,265,282,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-5,P5-S3,stair,371,388,63,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+3,P3-S2,stair,-16,18,120,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+3,P3-S3,escalator,266,284,37,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","The Master Plan has a 69 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades."
+3,P3-S4,stair,357,366,66,52,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+3,P3-S5,escalator,382,397,37,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+3,P3-S6,stair,477,490,61,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+3,P3-S7,stair,542,556,60,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+3,P3-S8,stair,660,667,45,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+4,P4-S1,stair,-16,18,121,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S2,escalator,266,283,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021."
+4,P4-S3,stair,355,372,58,72,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S4,stair,407,424,60,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",The Master Plan has a 34 in. escalator here instead. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S5,stair,484,491,57,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S6,stair,542,555,61,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S7,escalator,662,677,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","The Master Plan has a 44 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021."
+5,P5-S1,stair,-16,17,120,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+5,P5-S2,escalator,266,283,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+5,P5-S3,stair,372,389,63,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 5,P5-S4,escalator,405,419,34,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-5,P5-S5,stair,483,499,61,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-5,P5-S6,stair,564,580,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-5,P5-S7,escalator,661,676,33,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","The Master Plan has a 44 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades."
+5,P5-S5,stair,484,500,61,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+5,P5-S6,stair,565,581,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+5,P5-S7,escalator,662,677,33,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","The Master Plan has a 44 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades."
 5,P5-S8,escalator,753,762,33,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-6,P6-S1,stair,-17,17,120,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+6,P6-S1,stair,-16,17,120,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 6,P6-S2,escalator,265,282,35,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-6,P6-S3,stair,367,384,59,50,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+6,P6-S3,stair,368,385,59,50,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 6,P6-S4,escalator,405,415,33,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
 6,P6-S5,stair,462,477,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-6,P6-S6,escalator,673,688,33,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-6,P6-S7,escalator,774,780,39,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-7,P7-S1,stair,-17,17,121,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+6,P6-S6,escalator,674,689,33,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+6,P6-S7,escalator,775,781,39,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+7,P7-S1,stair,-16,17,121,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 7,P7-S2,escalator,257,273,39,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-7,P7-S3,stair,364,381,60,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-7,P7-S4,escalator,404,418,34,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-7,P7-S5,stair,537,547,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+7,P7-S3,stair,365,382,60,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+7,P7-S4,escalator,405,419,34,34,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+7,P7-S5,stair,538,547,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 7,P7-S6,escalator,631,646,22,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
 7,P7-S7,stair,646,658,60,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-8,P8-S1,stair,-17,17,121,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+8,P8-S1,stair,-16,17,121,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 8,P8-S2,escalator,257,273,38,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-8,P8-S3,stair,357,374,59,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+8,P8-S3,stair,358,375,59,58,master plan,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 8,P8-S4,stair,404,421,59,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",The Master Plan has a 34 in. escalator here instead.
-8,P8-S5,stair,542,552,51,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
-8,P8-S6,escalator,627,640,38,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
-8,P8-S7,stair,649,661,70,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+8,P8-S5,stair,543,552,51,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
+8,P8-S6,escalator,628,641,38,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45","An escalator's treads are its steps, narrower than its balustrades."
+8,P8-S7,stair,650,662,70,,estimated,"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page 45",
 9,P9-S1,escalator,264,279,35,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
 9,P9-S2,stair,272,286,,60,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
 9,P9-S3,stair,361,375,,66,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-9,P9-S4,stair,399,413,,72,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-9,P9-S5,stair,471,485,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-9,P9-S6,stair,530,544,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-9,P9-S7,stair,627,641,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+9,P9-S4,stair,400,413,,72,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+9,P9-S5,stair,472,486,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+9,P9-S6,stair,531,544,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+9,P9-S7,stair,628,642,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
 9,P9-S8,stair,881,895,,68,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
 10,P10-S1,stair,259,273,,92,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
 10,P10-S2,escalator,264,279,,38,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-10,P10-S3,stair,360,374,,108,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+10,P10-S3,stair,361,375,,108,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
 10,P10-S4,escalator,360,376,,34,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-10,P10-S5,stair,399,413,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+10,P10-S5,stair,400,413,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
 10,P10-S6,stair,472,486,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-10,P10-S7,stair,530,544,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-10,P10-S8,stair,559,573,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-10,P10-S9,stair,611,625,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+10,P10-S7,stair,531,544,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+10,P10-S8,stair,560,574,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+10,P10-S9,stair,613,626,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
 10,P10-S10,stair,765,779,,94,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
 10,P10-S11,stair,863,877,,108,master plan,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-11,P11-S1,escalator,266,281,35,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-11,P11-S2,stair,330,344,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-11,P11-S3,stair,423,437,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-11,P11-S4,stair,476,490,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-11,P11-S5,stair,523,537,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
-11,P11-S6,stair,636,650,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+11,P11-S1,escalator,267,282,35,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+11,P11-S2,stair,331,345,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+11,P11-S3,stair,424,437,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+11,P11-S4,stair,477,490,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+11,P11-S5,stair,524,538,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.
+11,P11-S6,stair,637,650,60,,typical,"NJ Transit's Penn Station directory, January 2022, positioned by calibrating its map against platforms 1 to 8",Its position is only approximate; the directory isn't to scale.

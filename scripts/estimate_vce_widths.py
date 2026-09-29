@@ -36,7 +36,10 @@ NJ Transit's January 2022 station directory and the Master Plan instead;
 see `directory_vces`.
 Their widths are the Master Plan's, or else typical of platforms 1 to 8, marked `typical`.
 
-Writes `data/estimated_vce_widths.csv`.
+Writes `data/estimated_vce_widths.csv`,
+and `data/platform_east_ends.csv`: each platform's east end in the Master Plan's frame,
+from this sheet's outlines on platforms 1 to 8,
+and from the Master Plan's (`data/master_plan_platform_east_ends.csv`) on platforms 9 to 11.
 """
 
 import bisect
@@ -54,6 +57,8 @@ import pymupdf
 REPO = Path(__file__).resolve().parent.parent
 MASTER_PLAN_CSV = REPO / "data" / "master_plan_existing_vces.csv"
 DIRECTORY_CSV = REPO / "data" / "njt_directory_vces.csv"
+MASTER_PLAN_EAST_ENDS_CSV = REPO / "data" / "master_plan_platform_east_ends.csv"
+EAST_ENDS_CSV = REPO / "data" / "platform_east_ends.csv"
 OUT_CSV = REPO / "data" / "estimated_vce_widths.csv"
 PDF_CACHE = REPO / ".cache" / "pcip-2-conceptual-design-preliminary-drawings.pdf"
 PDF_URL = "https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf"
@@ -63,13 +68,6 @@ SOURCE = f"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page {PAGE}"
 
 PDF_UNITS_PER_FOOT = (507.2 - 290.9) / 120
 """From the centers of the scale bar's 0' and 120' labels."""
-
-MASTER_PLAN_EAST_END_FT = {3: 719, 4: 762, 5: 818, 6: 849, 7: 820, 8: 778}
-"""
-Each platform's east end on the Master Plan's plans, in its frame
-(`scripts/extract_vce_positions.py`'s units), from the east ends of their platform outlines.
-Platforms 1 and 2 are drawn differently on both, so they aren't used to register them.
-"""
 
 PLATFORM_FILL = (0.74, 0.74, 0.75)
 """The sheet's fill color for existing platforms."""
@@ -349,9 +347,14 @@ def main() -> None:
     labels = platform_labels(page)
     outlines = platform_outlines(page)
     east_ends = platform_east_ends(outlines, labels)
+    # Platforms 1 and 2 are drawn differently on both, so they aren't used to register them.
+    with MASTER_PLAN_EAST_ENDS_CSV.open() as f:
+        master_plan_east_ends = {
+            int(row["platform"]): int(row["east_end_ft"]) for row in csv.DictReader(f)
+        }
     offsets = [
-        east_ends[p] - MASTER_PLAN_EAST_END_FT[p] * PDF_UNITS_PER_FOOT
-        for p in MASTER_PLAN_EAST_END_FT
+        east_ends[p] - master_plan_east_ends[p] * PDF_UNITS_PER_FOOT
+        for p in east_ends.keys() & master_plan_east_ends.keys()
     ]
     master_plan_west_edge_x = sum(offsets) / len(offsets)
     spread_ft = (max(offsets) - min(offsets)) / PDF_UNITS_PER_FOOT
@@ -403,6 +406,13 @@ def main() -> None:
             }
         )
     out += directory_vces(out, master_plan)
+    with EAST_ENDS_CSV.open("w", newline="") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(["platform", "east_end_ft", "source"])
+        for p, x in sorted(east_ends.items()):
+            writer.writerow([p, ft(x), SOURCE])
+        for p in DIRECTORY_PLATFORMS:
+            writer.writerow([p, master_plan_east_ends[p], MASTER_PLAN_EAST_ENDS_SOURCE])
     with OUT_CSV.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(out[0]), lineterminator="\n")
         writer.writeheader()
@@ -423,6 +433,11 @@ DIRECTORY_PLATFORMS = (9, 10, 11)
 Platforms the PCIP Phase 2 existing plan doesn't show,
 whose VCEs are instead estimated from NJ Transit's January 2022 station directory.
 """
+
+MASTER_PLAN_EAST_ENDS_SOURCE = (
+    "NY Penn Station Master Plan Alternatives Report, August 2020 draft, "
+    "platform-level plans' platform outlines"
+)
 
 DIRECTORY_SOURCE = (
     "NJ Transit's Penn Station directory, January 2022, "

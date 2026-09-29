@@ -493,6 +493,12 @@ Cars in the longest train that fits on each platform's tracks, from
 https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
 """
 
+PLATFORM_EAST_ENDS = Path(__file__).parent / "data" / "platform_east_ends.csv"
+"""
+Where each platform ends to the east (ft east of the Master Plan's plans' west edge),
+via `scripts/estimate_vce_widths.py`.
+"""
+
 OSM_PLATFORMS = Path(__file__).parent / "data" / "osm_platforms.csv"
 """Each platform's outline's area, from OpenStreetMap, via `scripts/extract_osm_platforms.py`."""
 
@@ -516,6 +522,13 @@ def platform_max_cars() -> dict[int, int]:
     """Cars in the longest train that fits on each platform's tracks, from `PLATFORM_MAX_CARS`."""
     with PLATFORM_MAX_CARS.open() as f:
         return {int(row["platform"]): int(row["max_cars"]) for row in csv.DictReader(f)}
+
+
+@cache
+def platform_east_ends() -> dict[int, float]:
+    """Where each platform ends to the east (ft), from `PLATFORM_EAST_ENDS`."""
+    with PLATFORM_EAST_ENDS.open() as f:
+        return {int(row["platform"]): float(row["east_end_ft"]) for row in csv.DictReader(f)}
 
 
 @cache
@@ -763,7 +776,7 @@ class Params:
     """
     Where the platform ends to the east (ft east of the Master Plan's plans' west edge),
     if `vces` have positions.
-    From `MASTER_PLAN_EAST_END_FT` in `scripts/estimate_vce_widths.py`.
+    From `PLATFORM_EAST_ENDS`.
     """
 
     train_east_end: Annotated[float | None, Field(name="Train East End", units="ft")] = None
@@ -1681,22 +1694,19 @@ def main(
 ) -> None:
     """Run every scenario and print a table of their results."""
 
-    def platform_params(platform: int, east_end: float) -> Params:
+    def platform_params(platform: int) -> Params:
         """`platform` with each VCE's position, before choosing a headway."""
         return Params(
             platform=platform,
             headway=0,
             vces=platform_vces(platform),
-            platform_east_end=east_end,
+            platform_east_end=platform_east_ends()[platform],
         )
 
-    # East ends are from the PCIP Phase 2 existing plan, like each VCE's position,
-    # which shows platforms 1 and 2 extending farther east than the rest.
-    # Platforms 9 to 11's east ends are from the Master Plan's platform outlines.
-    platform_3 = platform_params(3, east_end=719)
+    platform_3 = platform_params(3)
     platforms = [
-        platform_params(1, east_end=910),
-        platform_params(2, east_end=910),
+        platform_params(1),
+        platform_params(2),
         platform_3,
         # Platform 3 accounting for Penn Reconstruction's plans.
         dataclasses.replace(
@@ -1704,14 +1714,14 @@ def main(
             modifier="recon",
             vces=penn_reconstruction_platform_3_vces(),
         ),
-        platform_params(4, east_end=762),
-        platform_params(5, east_end=818),
-        platform_params(6, east_end=849),
-        platform_params(7, east_end=820),
-        platform_params(8, east_end=778),
-        platform_params(9, east_end=882),
-        platform_params(10, east_end=965),
-        platform_params(11, east_end=965),
+        platform_params(4),
+        platform_params(5),
+        platform_params(6),
+        platform_params(7),
+        platform_params(8),
+        platform_params(9),
+        platform_params(10),
+        platform_params(11),
     ]
     # Group the results by headway first, then by platform.
     scenarios = [
