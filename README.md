@@ -663,6 +663,39 @@ The plan is a design from before the Train Hall was built, so:
   78 in. on platforms 9 and 10, 44 in. on platform 11,
   and 72 in. for a second stair on platform 9, about 90 ft west of the West End Concourse.
 
+### Penn Transformation
+
+The FRA's Penn Station Service Optimization Study
+([Phase I report](https://railroads.dot.gov/elibrary/new-york-penn-station-service-optimization-study-phase-i-report-final-june-2026), June 2026)
+lays out Penn Transformation's improvements to the platforms:
+up to 23 new VCEs, 19 stairs and 4 escalators, with at least one on every platform;
+Platforms 1 to 3 extended west by about 200 to 350 ft,
+so 10-car NJT trains can open all of their doors;
+and decluttered platforms, with 2% to 14% more circulation area (Table 1).
+Its Figure 11 shows the new VCEs' "generalized locations" on an aerial image,
+which `uv run platform-crowd-model data vces-transformation-fra-sos`
+([`vces_transformation_fra_sos.py`](./src/platform_crowd_model/vces_transformation_fra_sos.py))
+finds by their icons, along with the extensions,
+and registers to the Master Plan's frame by the platforms' drawn ends to within about 3 ft,
+into [`data/vces_transformation_fra_sos.csv`](./data/vces_transformation_fra_sos.csv)
+and [`data/platforms_transformation_fra_sos.csv`](./data/platforms_transformation_fra_sos.csv).
+They agree with the report's breakdown:
+5 in Moynihan, 2 on Platforms 1 and 2's extensions west of Eighth Avenue, and 16 in Penn Station,
+mostly in two rows, about 175 and 535 ft east of the Master Plan's plans' west edge.
+
+The report doesn't say which are escalators or how wide any are, so:
+
+- The 4 escalators are taken to be the 4 in Moynihan, about 250 ft west of the West End Concourse,
+  in line with the Train Hall's escalators.
+- Stairs are as wide as the West End Concourse's, 72 in., and escalators as the Train Hall's, 40 in.
+  Together, the 23 add about 30% to the existing VCEs' total width,
+  close to the 32% more vertical circulation capacity
+  [Penn Transformation's designers report](https://www.enr.com/articles/63127-penn-station-renderings-reveal-design-for-8b-reconstruction-beneath-madison-square-garden).
+- Its locations are only general, and a few of them are within a few feet of existing VCEs,
+  e.g. on platform 10, whose existing VCEs are only estimated from NJT's directory.
+- Each extended platform's new west end is where its extension's box on Figure 11 ends,
+  185 to 317 ft west of its end in PCIP Phase 1's plan.
+
 ### Field Survey
 
 Since no public source has every VCE's width,

@@ -107,6 +107,18 @@ def platform_west_ends_pcip_phase_1() -> None:
     platform_west_ends_pcip_phase_1.main()
 
 
+@data_app.command("vces-transformation-fra-sos")
+def vces_transformation_fra_sos() -> None:
+    """
+    Measure Penn Transformation's new VCEs and platform extensions on the FRA's SOS report,
+    writing `data/vces_transformation_fra_sos.csv` and `data/platforms_transformation_fra_sos.csv`.
+    Run `estimated-vces` and `platform-west-ends-pcip-phase-1` first.
+    """
+    from platform_crowd_model import vces_transformation_fra_sos
+
+    vces_transformation_fra_sos.main()
+
+
 @data_app.command("field-survey")
 def field_survey() -> None:
     """
@@ -127,5 +139,6 @@ def all_data() -> None:
     vces_moynihan_ea()
     estimated_vces()
     platform_west_ends_pcip_phase_1()
+    vces_transformation_fra_sos()
     osm_platforms()
     field_survey()
