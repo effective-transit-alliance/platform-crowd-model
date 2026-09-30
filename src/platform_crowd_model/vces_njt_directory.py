@@ -16,10 +16,10 @@ Writes `data/vces_njt_directory.csv`.
 """
 
 import csv
-import urllib.request
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any
+from urllib.request import Request, urlopen
 
 import pymupdf
 
@@ -74,10 +74,10 @@ class Icon:
 def pdf() -> pymupdf.Document:
     if not PDF_CACHE.exists():
         CACHE_DIR.mkdir(exist_ok=True)
-        request = urllib.request.Request(
+        request = Request(
             PDF_URL, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Firefox/130.0"}
         )
-        with urllib.request.urlopen(request) as response:
+        with urlopen(request) as response:
             PDF_CACHE.write_bytes(response.read())
     return pymupdf.open(PDF_CACHE)
 

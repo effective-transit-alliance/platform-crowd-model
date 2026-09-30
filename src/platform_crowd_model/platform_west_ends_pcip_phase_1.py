@@ -14,7 +14,7 @@ Writes `data/platform_west_ends_pcip_phase_1.csv`.
 """
 
 import csv
-import urllib.request
+from urllib.request import Request, urlopen
 
 import numpy as np
 import pymupdf
@@ -67,10 +67,10 @@ MAX_RESIDUAL_FT = 5
 def pdf() -> pymupdf.Document:
     if not PDF_CACHE.exists():
         CACHE_DIR.mkdir(exist_ok=True)
-        request = urllib.request.Request(
+        request = Request(
             PDF_URL, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Firefox/130.0"}
         )
-        with urllib.request.urlopen(request) as response:
+        with urlopen(request) as response:
             PDF_CACHE.write_bytes(response.read())
     return pymupdf.open(PDF_CACHE)
 
