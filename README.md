@@ -836,7 +836,7 @@ written by `uv run platform-crowd-model data platforms-osm`
 since platforms taper toward their ends.
 The outlines have no source, but agree with the PCIP Phase 2 existing plan's widths
 to within about 2 ft, and with the EA's lengths to within about 60 ft,
-except platform 9's, which is 178 ft longer.
+except platform 9's outline, which is 178 ft longer than the EA's length.
 The PCIP Phase 2 and Master Plan drawings cut the platforms off at their west ends,
 so they can't give lengths or areas.
 
