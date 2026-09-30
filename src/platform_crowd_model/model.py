@@ -7,13 +7,13 @@ import csv
 import dataclasses
 import functools
 import itertools
-import math
 import typing
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import cache
+from math import ceil
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
@@ -1113,9 +1113,7 @@ def run_model(params: Params, charts: bool) -> str:
             ),
         )
 
-    evacuation_time = timedelta(
-        seconds=math.ceil(summary.max_occupants / params.nfpa_130_exit_capacity)
-    )
+    evacuation_time = timedelta(seconds=ceil(summary.max_occupants / params.nfpa_130_exit_capacity))
     evacuation_ok = "✓" if evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME else "✗"
 
     def fmt_time(t: timedelta | None) -> str:
