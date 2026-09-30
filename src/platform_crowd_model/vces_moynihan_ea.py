@@ -177,8 +177,12 @@ def fill_width(page: pymupdf.Page, west_wall: float) -> float:
     )
 
 
-def main() -> None:
-    page = pdf()[PAGE - 1]
+def registration(page: pymupdf.Page) -> tuple[float, float]:
+    """
+    The plan's feet per PDF unit, from the West End Concourse's width,
+    and the Master Plan frame's x at the plan's x = 0,
+    from the West End Concourse's stairs as PCIP Phase 2's plan has them.
+    """
     scale = CONCOURSE_WIDTH_FT / fill_width(page, CONCOURSE_WEST_WALL)
     corridor_ft = fill_width(page, CORRIDOR_WEST_WALL) * scale
     print(
@@ -198,8 +202,14 @@ def main() -> None:
         offsets.append(
             (sheet_stair["west_end_ft"] + sheet_stair["east_end_ft"]) / 2 - (x0 + x1) / 2 * scale
         )
-    offset = statistics.mean(offsets)
     print(f"registered to PCIP Phase 2's stairs to within {max(offsets) - min(offsets):.1f} ft")
+    return scale, statistics.mean(offsets)
+
+
+def main() -> None:
+    page = pdf()[PAGE - 1]
+    scale, offset = registration(page)
+    lines = treads(page)
     rows = []
     for window in VCES:
         x0, x1, width = measure(window, lines)
