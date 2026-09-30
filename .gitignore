@@ -13,3 +13,6 @@ output/
 # IDEs
 .idea/
 .vscode/
+
+# Downloaded Sources
+.cache/
