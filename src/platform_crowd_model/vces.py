@@ -14,9 +14,11 @@ including stairs whose treads are drawn in two halves and T-shaped stairs.
 A stair's width is the extent of its treads across it, at its narrowest flight.
 Escalators are narrower than any stair, so flights under 42 in. are escalators,
 and their treads are their steps, narrower than their balustrades.
-Flights outside the platforms' outlines are skipped,
-as are those under the platforms' labels, which hide what's under them,
-e.g. an escalator the Master Plan has about 230 ft along each of platforms 3 to 8.
+Flights outside the platforms' outlines are skipped.
+The platforms' labels cover an escalator the Master Plan has
+about 230 ft along each of platforms 3 to 8,
+whose treads the sheet still has under them, but clipped,
+so their positions are the sheet's, but their type and width are the Master Plan's.
 
 Positions are converted to the Master Plan's frame: feet east of its plans' west edge.
 Its plans and this sheet register to within a few feet:
@@ -136,6 +138,8 @@ class Flight:
 class Vce:
     platform: int
     flights: list[Flight] = field(default_factory=list)
+    hidden: bool = False
+    """Whether its treads are under a platform's label, which clips them."""
 
     @property
     def type(self) -> str:
@@ -315,9 +319,6 @@ def vces(
     by_platform: dict[int, list[Flight]] = {}
     for f in all_flights:
         center = f.center
-        # Lines under a platform's label are hidden, so they can't be measured.
-        if any(center in label for label in labels.values()):
-            continue
         label_y = {p: (r.y0 + r.y1) / 2 for p, r in labels.items()}
         platform = min(label_y, key=lambda p: abs(label_y[p] - center.y))
         if abs(label_y[platform] - center.y) > MAX_PLATFORM_LABEL_OFFSET:
@@ -340,7 +341,8 @@ def vces(
             # Some stairs' upper flights are drawn past the platform's edge, so only require one
             # of a VCE's flights to be on a platform.
             if any(inside(f.center, polygon) for f in component for polygon in outlines):
-                out.append(Vce(platform, component))
+                hidden = any(f.center in label for f in component for label in labels.values())
+                out.append(Vce(platform, component, hidden))
     return out
 
 
@@ -391,15 +393,22 @@ def sheet_vces() -> tuple[list[dict[str, Any]], dict[int, int]]:
             if int(m["platform"]) == v.platform
             and abs(float(m["midpoint_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
         ]
-        same_type = [m for m in near if m["type"] == v.type]
+        # A hidden VCE's treads are clipped, so its type and width are the Master Plan's.
+        same_type = [m for m in near if v.hidden or m["type"] == v.type]
         match = min(same_type, key=lambda m: abs(float(m["midpoint_ft"]) - mid), default=None)
+        vce_type = match["type"] if v.hidden and match else v.type
         notes = []
+        if v.hidden:
+            notes.append(
+                "Its treads are under the sheet's platform label, which clips them, "
+                "so its type and width are the Master Plan's."
+            )
         if match is None and near:
             other = min(near, key=lambda m: abs(float(m["midpoint_ft"]) - mid))
             notes.append(
                 f"The Master Plan has a {other['width_in']} in. {other['type']} here instead."
             )
-        if v.type == "escalator":
+        if vce_type == "escalator" and not v.hidden:
             notes.append("An escalator's treads are its steps, narrower than its balustrades.")
         if v.platform == 4:
             notes.append("NJT replaced an escalator on tracks 7/8 with stairs in about 2021.")
@@ -407,10 +416,10 @@ def sheet_vces() -> tuple[list[dict[str, Any]], dict[int, int]]:
             {
                 "platform": v.platform,
                 "vce_name": f"P{v.platform}-S{numbers[v.platform]}",
-                "type": v.type,
+                "type": vce_type,
                 "west_end_ft": ft(v.x0),
                 "east_end_ft": ft(v.x1),
-                "estimated_width_in": round(v.width_in),
+                "estimated_width_in": "" if v.hidden else round(v.width_in),
                 "master_plan_width_in": match["width_in"] if match else "",
                 "width_source": "master_plan" if match else "estimated",
                 "source": PCIP_PHASE_2_VCE_SOURCE,
@@ -644,7 +653,8 @@ def directory_vces(
             if key == "estimated_width_in"
             else float(str(v["east_end_ft"])) - float(str(v["west_end_ft"]))
             for v in estimated
-            if v["type"] == type_
+            # Hidden VCEs' treads are clipped, so they have no width or length of their own.
+            if v["type"] == type_ and v["estimated_width_in"] != ""
         )
 
     # The directory doesn't show every VCE, so add the Master Plan's that it doesn't have.
