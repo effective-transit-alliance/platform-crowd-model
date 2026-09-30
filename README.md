@@ -877,7 +877,8 @@ by `uv run platform-crowd-model data shapes-pcip-phase-2`
 
 - each platform's outline, with platforms 1 and 2 sharing one, as the sheet draws them
 - each VCE's footprint: the bounding box of its treads and the balustrades beside them,
-  named as in [`data/vces.csv`](./data/vces.csv)
+  named as the nearest VCE of the same type in [`data/vces.csv`](./data/vces.csv), if one's within 15'
+  (by [`shapes.py`](./src/platform_crowd_model/shapes.py), which reads the plan's drawing into feet first)
 - the columns, the small squares on the platforms
 - the elevators, the boxes with an X across them
 - the walls, e.g. of rooms and of the enclosures around VCEs, as lines,
