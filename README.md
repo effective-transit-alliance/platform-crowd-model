@@ -753,6 +753,12 @@ Surveyors fill in the columns after `midpoint_ft`, feet east of the Master Plan'
   which the FRA found also slow clearing.
 - `photos` and `notes`.
 
+Regenerating the sheet keeps what surveyors have entered.
+Each row that's still generated keeps its entries,
+matched by its platform, source, type, and position rather than its `vce_name`,
+which can change as VCEs are added.
+Every other row with entries, like one a surveyor added, is kept at the end.
+
 ### Sources and Their Dates
 
 Penn Station's VCEs have changed over time,

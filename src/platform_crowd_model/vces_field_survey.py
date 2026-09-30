@@ -17,9 +17,14 @@ then the rest.
 which cuts across the platforms under the West End Concourse.
 
 Writes `data/vces_field_survey.csv`; the columns after `midpoint_ft` are for surveyors.
+Regenerating it keeps what surveyors have entered:
+each row that's still generated keeps its survey columns,
+matched by what identifies it rather than its `vce_name`, which can change as VCEs are added,
+and every other row with anything entered, like one a surveyor added, is kept at the end.
 """
 
 import csv
+from typing import Any
 
 from platform_crowd_model.paths import DATA_DIR
 from platform_crowd_model.vces import PCIP_PHASE_2_VCE_SOURCE
@@ -66,6 +71,49 @@ SURVEY_COLUMNS = [
 - `leads_to`: the concourse, e.g. NJT, Amtrak, LIRR, Exit, West End, or Moynihan.
 - `obstructions`: columns, benches, bins, or narrow landings near the bottom.
 """
+
+
+IDENTITY_COLUMNS = [
+    "platform",
+    "source",
+    "expected_type",
+    "directory_level",
+    "directory_map_x",
+    "midpoint_ft",
+]
+"""The columns that identify a generated row, since `vce_name` can change."""
+
+
+def identity(row: dict[str, Any]) -> tuple[str, ...]:
+    return tuple(str(row[column]) for column in IDENTITY_COLUMNS)
+
+
+def surveyed(row: dict[str, Any]) -> bool:
+    """Whether a surveyor has entered anything in `row`."""
+    return any(row.get(column) for column in SURVEY_COLUMNS)
+
+
+def keep_survey(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    `rows` with the survey columns already entered in `OUT_CSV` for the same VCEs,
+    followed by every other row entered in `OUT_CSV` that isn't generated anymore.
+    """
+    if not OUT_CSV.exists():
+        return rows
+    with OUT_CSV.open() as f:
+        old = [row for row in csv.DictReader(f) if surveyed(row)]
+    by_identity = {identity(row): row for row in old}
+    kept = set()
+    for row in rows:
+        entered = by_identity.get(identity(row))
+        if entered:
+            row.update({column: entered[column] for column in SURVEY_COLUMNS})
+            kept.add(identity(row))
+    unmatched = [row for row in old if identity(row) not in kept]
+    for row in unmatched:
+        print(f"keeping {row['vce_name'] or 'an added row'} on platform {row['platform']},")
+        print("  which isn't generated anymore but has survey entries")
+    return rows + unmatched
 
 
 def main() -> None:
@@ -135,6 +183,7 @@ def main() -> None:
                     "midpoint_ft": v["midpoint_ft"],
                 }
             )
+    rows = keep_survey(rows)
     with OUT_CSV.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=[*rows[0], *SURVEY_COLUMNS], lineterminator="\n")
         writer.writeheader()
