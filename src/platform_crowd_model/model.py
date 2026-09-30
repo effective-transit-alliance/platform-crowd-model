@@ -83,14 +83,29 @@ class Assumptions:
     From the ETA report.
     """
 
-    arriving_pax_per_train: Annotated[
-        int, Field(name="Arriving Passengers per Train", units="pax")
-    ] = 1620
+    max_train_cars: Annotated[int, Field(name="Max Train Cars", units="car")] = 12
     """
-    Passengers arriving on each train, all of whom alight.
-    A seated 12-car NJ Transit train at 135 seats per car,
+    Cars in the longest trains, on platforms long enough for them.
+    Shorter platforms get trains as long as `Params.platform_max_cars`.
+    """
+
+    max_train_overhang: Annotated[float, Field(name="Max Train Overhang", units="ft")] = 15
+    """
+    How far a train can extend past its platform's end,
+    e.g. 12-car LIRR trains on platform 11, 1,007' long, per the Moynihan Station EA.
+    Not from any source.
+    """
+
+    car_length: Annotated[float, Field(name="Car Length", units="ft")] = 85
+    """Length of each car, a NJT MultiLevel's."""
+
+    seats_per_car: Annotated[int, Field(name="Seats per Car", units="pax")] = 135
+    """
+    Seats in each car, all of which are full on arrival, and all of whose passengers alight.
+    A seated NJT car,
     from the Moynihan Station Development Project environmental assessment,
-    chapter 4.4, Station Circulation Analysis, Tables 4.4-10 and 4.4-19:
+    chapter 4.4, Station Circulation Analysis, Tables 4.4-10 and 4.4-19,
+    which have 1,620 passengers on a 12-car train:
     https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22
     https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=47
     """
@@ -111,11 +126,11 @@ class Assumptions:
     Not from any source.
     """
 
-    doors_per_train: Annotated[int, Field(name="Doors per Train", units="door")] = 48
+    doors_per_car: Annotated[int, Field(name="Doors per Car", units="door")] = 4
     """
-    Doors (single-door equivalents) on each train on the platform side.
-    A 12-car NJ Transit MultiLevel with 4 per car, like `arriving_pax_per_train`.
-    A 12-car LIRR train has more and better doors.
+    Doors (single-door equivalents) on each car on the platform side.
+    A NJT MultiLevel's, the worst case.
+    A LIRR car has more and better doors.
     """
 
     door_flow_rate: Annotated[float, Field(name="Door Flow Rate", units="pax/s/door")] = 1.0
@@ -407,11 +422,35 @@ def annotated_field_values(
         yield attr, value, field
 
 
+PLATFORM_LENGTHS = DATA_DIR / "platform_lengths_moynihan_ea.csv"
+"""Each platform's length, from the Moynihan Station EA's Table 4.4-10."""
+
+PLATFORM_MAX_CARS = DATA_DIR / "platform_max_cars_track_map.csv"
+"""
+Cars in the longest train that fits on each platform's tracks,
+from a track map of unknown origin found at Railfan Guides of the U.S.:
+https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
+"""
+
 PLATFORMS_OSM = DATA_DIR / "platforms_osm.csv"
 """
 Each platform's outline's area, from OpenStreetMap,
 via `platform-crowd-model data platforms-osm`.
 """
+
+
+@cache
+def platform_lengths() -> dict[int, int]:
+    """Each platform's length (ft), from `PLATFORM_LENGTHS`."""
+    with PLATFORM_LENGTHS.open() as f:
+        return {int(row["platform"]): int(row["length_ft"]) for row in csv.DictReader(f)}
+
+
+@cache
+def platform_max_cars() -> dict[int, int]:
+    """Cars in the longest train that fits on each platform's tracks, from `PLATFORM_MAX_CARS`."""
+    with PLATFORM_MAX_CARS.open() as f:
+        return {int(row["platform"]): int(row["max_cars"]) for row in csv.DictReader(f)}
 
 
 @cache
@@ -467,6 +506,43 @@ class Params:
     def filename_prefix(self) -> str:
         """Prefix of the filenames to save the time series and charts in, e.g. `platform3_recon`."""
         return f"platform{self.platform}" + (f"_{self.modifier}" if self.modifier else "")
+
+    @property
+    def platform_length(self) -> Annotated[int, Field(name="Platform Length", units="ft")]:
+        """Platform length (in feet), from the Moynihan Station EA."""
+        return platform_lengths()[self.platform]
+
+    @property
+    def platform_max_cars(self) -> Annotated[int, Field(name="Platform Max Cars", units="car")]:
+        """Cars in the longest train that fits on its tracks, from `PLATFORM_MAX_CARS`."""
+        return platform_max_cars()[self.platform]
+
+    @property
+    def cars(self) -> Annotated[int, Field(name="Cars per Train", units="car")]:
+        """
+        Cars in each train: as many as fit on the platform's tracks and along the platform,
+        with up to `max_train_overhang`, up to `max_train_cars`.
+        """
+        return min(
+            self.platform_max_cars,
+            int(
+                (self.platform_length + self.assumptions.max_train_overhang)
+                // self.assumptions.car_length
+            ),
+            self.assumptions.max_train_cars,
+        )
+
+    @property
+    def arriving_pax_per_train(
+        self,
+    ) -> Annotated[int, Field(name="Arriving Passengers per Train", units="pax")]:
+        """Passengers arriving on each train, all of whom alight."""
+        return self.cars * self.assumptions.seats_per_car
+
+    @property
+    def doors_per_train(self) -> Annotated[int, Field(name="Doors per Train", units="door")]:
+        """Doors (single-door equivalents) on each train on the platform side."""
+        return self.cars * self.assumptions.doors_per_car
 
     @property
     def platform_area(self) -> Annotated[int, Field(name="Platform Area", units="ft^2")]:
@@ -616,7 +692,7 @@ def simulate(
     """
     assumptions = params.assumptions
     usable_area = params.platform_area * assumptions.usable_platform_area_multiplier
-    door_rate = assumptions.doors_per_train * assumptions.door_flow_rate
+    door_rate = params.doors_per_train * assumptions.door_flow_rate
 
     vce_widths = params.vce_widths
 
@@ -633,7 +709,7 @@ def simulate(
     When each train arrives: the first two as scheduled,
     and each later one once it's scheduled and the train before it on its track has departed.
     """
-    remaining_arrivals = [float(assumptions.arriving_pax_per_train) for _ in trains]
+    remaining_arrivals = [float(params.arriving_pax_per_train) for _ in trains]
     new_pax = [0.0 for _ in trains]
     release_times = [
         train * params.headway - assumptions.departing_pax_lead_time for train in trains
@@ -874,7 +950,7 @@ def check_conservation(
     """
     assumptions = params.assumptions
     for who, places, expected in (
-        ("arriving", arriving, params.trains * assumptions.arriving_pax_per_train),
+        ("arriving", arriving, params.trains * params.arriving_pax_per_train),
         ("departing", departing, params.trains * assumptions.departing_pax_per_train),
     ):
         total = sum(pax for _place, pax in places)
@@ -1031,8 +1107,8 @@ def run_model(params: Params, charts: bool) -> str:
             OUTPUT_DIR
             / (
                 f"{params.filename_prefix}"
-                f"_{params.assumptions.arriving_pax_per_train}"
-                f"_{params.assumptions.arriving_pax_per_train}"
+                f"_{params.arriving_pax_per_train}"
+                f"_{params.arriving_pax_per_train}"
                 f"_{round(headway.total_seconds())}s"
             ),
         )
