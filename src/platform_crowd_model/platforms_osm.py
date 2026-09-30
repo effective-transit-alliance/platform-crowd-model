@@ -18,10 +18,10 @@ Writes `data/platforms_osm.csv`.
 
 import csv
 import json
-import math
-import urllib.parse
-import urllib.request
+from math import cos, dist, radians
 from typing import Any
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
 
@@ -50,22 +50,22 @@ METERS_PER_DEGREE_LATITUDE = 111_320
 def fetch() -> dict[str, Any]:
     if not CACHE.exists():
         CACHE_DIR.mkdir(exist_ok=True)
-        request = urllib.request.Request(
+        request = Request(
             OVERPASS_URL,
-            data=urllib.parse.urlencode({"data": QUERY}).encode(),
+            data=urlencode({"data": QUERY}).encode(),
             headers={
                 "User-Agent": "platform-crowd-model (https://github.com/effective-transit-alliance/platform-crowd-model)",
                 "Accept": "application/json",
             },
         )
-        with urllib.request.urlopen(request, timeout=120) as response:
+        with urlopen(request, timeout=120) as response:
             CACHE.write_bytes(response.read())
     return json.loads(CACHE.read_text())
 
 
 def project(points: list[dict[str, float]], lat0: float) -> list[tuple[float, float]]:
     """`points`' longitudes and latitudes as x and y in feet on a local plane."""
-    x_scale = METERS_PER_DEGREE_LATITUDE * math.cos(math.radians(lat0)) * FEET_PER_METER
+    x_scale = METERS_PER_DEGREE_LATITUDE * cos(radians(lat0)) * FEET_PER_METER
     y_scale = METERS_PER_DEGREE_LATITUDE * FEET_PER_METER
     return [(p["lon"] * x_scale, p["lat"] * y_scale) for p in points]
 
@@ -77,7 +77,7 @@ def main() -> None:
     for way in elements:
         tags = way.get("tags", {})
         points = project(way["geometry"], lat0)
-        length = max(math.dist(a, b) for a in points for b in points)
+        length = max(dist(a, b) for a in points for b in points)
         closed = way["geometry"][0] == way["geometry"][-1] and len(points) > 3
         area = (
             abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(points, points[1:], strict=False)))

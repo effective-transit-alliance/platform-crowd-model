@@ -1,30 +1,23 @@
 """
 The `platform-crowd-model` command.
 
-With no command, it runs the model.
-`platform-crowd-model data ...` regenerates `data/` from each source.
-Each data command imports its module only when run,
-so running the model doesn't import `pymupdf`.
+`platform-crowd-model run` runs the model,
+and `platform-crowd-model data ...` regenerates `data/` from each source.
+Each data command imports its module only when run.
 """
 
 from typing import Annotated
 
-import typer
-from typer import Option
+from typer import Option, Typer
 
-app = typer.Typer(no_args_is_help=False, add_completion=False)
+app = Typer(no_args_is_help=True)
 
-data_app = typer.Typer(
-    help="Regenerate `data/` from each source.",
-    no_args_is_help=True,
-    add_completion=False,
-)
+data_app = Typer(help="Regenerate `data/` from each source.", no_args_is_help=True)
 app.add_typer(data_app, name="data")
 
 
-@app.callback(invoke_without_command=True)
+@app.command()
 def run(
-    ctx: typer.Context,
     update_readme: Annotated[
         bool, Option(help="Replace the results table in the README with this run's.")
     ] = False,
@@ -34,11 +27,14 @@ def run(
     ] = False,
 ) -> None:
     """Run every scenario and print a table of their results."""
-    if ctx.invoked_subcommand is not None:
-        return
     from platform_crowd_model import model
 
     model.main(update_readme=update_readme, charts=charts)
+
+
+@app.callback()
+def callback() -> None:
+    """Model platform crowding and alighting and boarding at NY Penn Station."""
 
 
 @data_app.command()

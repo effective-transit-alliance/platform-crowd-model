@@ -14,5 +14,5 @@ output/
 .idea/
 .vscode/
 
-# Downloaded source documents
+# Downloaded Sources
 .cache/

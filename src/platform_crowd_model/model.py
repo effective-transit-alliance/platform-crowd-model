@@ -7,7 +7,6 @@ import csv
 import dataclasses
 import functools
 import itertools
-import math
 import typing
 from collections import defaultdict
 from collections.abc import Generator
@@ -15,6 +14,7 @@ from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import cache
+from math import ceil
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
@@ -93,7 +93,7 @@ class Assumptions:
     max_train_overhang: Annotated[float, Field(name="Max Train Overhang", units="ft")] = 15
     """
     How far a train can extend past its platform's west end,
-    e.g. 12-car LIRR trains on platform 11, 1,007 ft long, per the Moynihan Station EA.
+    e.g. 12-car LIRR trains on platform 11, 1,007' long, per the Moynihan Station EA.
     Trains only overhang their platform if they're longer than it.
     Not from any source.
     """
@@ -128,7 +128,7 @@ class Assumptions:
     doors_per_car: Annotated[int, Field(name="Doors per Car", units="door")] = 4
     """
     Doors (single-door equivalents) on each car on the platform side.
-    A NJT MultiLevel, the worst case.
+    A NJT MultiLevel's, the worst case.
     A LIRR car has more and better doors.
     """
 
@@ -256,6 +256,19 @@ class Assumptions:
 
 # basic flow: train egress > platform crowd > VCE egress rate > back to
 # platform crowd
+
+
+def fmt_ft_in(ft: float) -> str:
+    """
+    A length in feet as feet and inches, to the nearest inch, e.g. `6'2"` for 6.17 ft,
+    leaving out whichever is 0, e.g. `18'` or `6"`.
+    """
+    feet, inches = divmod(round(ft * 12), 12)
+    if inches == 0 and feet != 0:
+        return f"{feet}'"
+    if feet == 0:
+        return f'{inches}"'
+    return f"{feet}'{inches}\""
 
 
 def stair_flow(flow_per_width: float, width: float) -> float:
@@ -501,6 +514,9 @@ def annotated_field_values(
         # CSVs and charts can't hold `timedelta`s, so give them in seconds, per `Field.units`.
         if isinstance(value, timedelta):
             value = round(value.total_seconds())
+        # Lengths are easier to picture in feet and inches than in decimal feet.
+        elif field.units == "ft":
+            value = fmt_ft_in(value)
         yield attr, value, field
 
 
@@ -531,7 +547,8 @@ PLATFORM_LENGTHS = DATA_DIR / "platform_lengths_moynihan_ea.csv"
 
 PLATFORM_MAX_CARS = DATA_DIR / "platform_max_cars_track_map.csv"
 """
-Cars in the longest train that fits on each platform's tracks, from
+Cars in the longest train that fits on each platform's tracks,
+from a track map of unknown origin found at Railfan Guides of the U.S.:
 https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
 """
 
@@ -1812,9 +1829,7 @@ def run_model(params: Params, charts: bool) -> str:
             ),
         )
 
-    evacuation_time = timedelta(
-        seconds=math.ceil(summary.max_occupants / params.nfpa_130_exit_capacity)
-    )
+    evacuation_time = timedelta(seconds=ceil(summary.max_occupants / params.nfpa_130_exit_capacity))
     evacuation_ok = "✓" if evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME else "✗"
 
     def fmt_time(t: timedelta | None) -> str:
@@ -1825,7 +1840,7 @@ def run_model(params: Params, charts: bool) -> str:
         return f"{minutes}:{rest.seconds:02}"
 
     return (
-        f"| {params.name} | {fmt_time(headway)} | {params.total_vce_width:.4g} ft"
+        f"| {params.name} | {fmt_time(headway)} | {fmt_ft_in(params.total_vce_width)}"
         f" | {', '.join(fmt_time(arrival) for arrival in summary.arrival_times)}"
         f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
