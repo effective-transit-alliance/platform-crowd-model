@@ -41,7 +41,7 @@ def run(
     model.main(update_readme=update_readme, charts=charts)
 
 
-@data_app.command("vce-positions-master-plan")
+@data_app.command()
 def vce_positions_master_plan() -> None:
     """
     Extract each VCE's position from the Master Plan's platform-level plans,
@@ -53,7 +53,7 @@ def vce_positions_master_plan() -> None:
     vce_positions_master_plan.main()
 
 
-@data_app.command("vces-njt-directory")
+@data_app.command()
 def vces_njt_directory() -> None:
     """
     Extract each platform's VCEs from NJT's January 2022 station directory,
@@ -64,7 +64,7 @@ def vces_njt_directory() -> None:
     vces_njt_directory.main()
 
 
-@data_app.command("vces-moynihan-ea")
+@data_app.command()
 def vces_moynihan_ea() -> None:
     """
     Measure the VCEs around Moynihan Train Hall on the Moynihan Station EA's plan,
@@ -75,7 +75,7 @@ def vces_moynihan_ea() -> None:
     vces_moynihan_ea.main()
 
 
-@data_app.command("vces")
+@data_app.command()
 def vces() -> None:
     """
     Estimate every VCE's width and position from the PCIP Phase 2 plan and the directory,
@@ -87,7 +87,7 @@ def vces() -> None:
     vces.main()
 
 
-@data_app.command("platforms-osm")
+@data_app.command()
 def platforms_osm() -> None:
     """Measure each platform from OpenStreetMap, writing `data/platforms_osm.csv`."""
     from platform_crowd_model import platforms_osm
@@ -95,7 +95,7 @@ def platforms_osm() -> None:
     platforms_osm.main()
 
 
-@data_app.command("platform-west-ends-pcip-phase-1")
+@data_app.command()
 def platform_west_ends_pcip_phase_1() -> None:
     """
     Measure where each platform ends to the west on PCIP Phase 1's existing track plan,
@@ -107,7 +107,7 @@ def platform_west_ends_pcip_phase_1() -> None:
     platform_west_ends_pcip_phase_1.main()
 
 
-@data_app.command("platform-a-pcip-phase-1")
+@data_app.command()
 def platform_a_pcip_phase_1() -> None:
     """
     Measure PCIP Phase 1's Platform A and its VCEs on its plan of Alternative 12,
@@ -119,7 +119,7 @@ def platform_a_pcip_phase_1() -> None:
     platform_a_pcip_phase_1.main()
 
 
-@data_app.command("vces-transformation-fra-sos")
+@data_app.command()
 def vces_transformation_fra_sos() -> None:
     """
     Measure Penn Transformation's new VCEs and platform extensions on the FRA's SOS report,
@@ -131,7 +131,7 @@ def vces_transformation_fra_sos() -> None:
     vces_transformation_fra_sos.main()
 
 
-@data_app.command("vces-field-survey")
+@data_app.command()
 def vces_field_survey() -> None:
     """
     Make the field survey sheet for measuring every VCE in person,
