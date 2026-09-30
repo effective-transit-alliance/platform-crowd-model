@@ -211,6 +211,11 @@ class Plan:
     """The range of grays the plan draws building elements in, e.g. walls."""
     concourse_fill: tuple[float, ...] | None = None
     """The plan's fill color for existing concourses, if it has one."""
+    vce_boxes: list[tuple[str, str, tuple[float, float, float, float]]] | None = None
+    """
+    Each VCE's platform, type, and footprint, where the plan's module measures them itself,
+    in place of any found as runs of treads there.
+    """
     names: Callable[[str, str], list[tuple[float, str]]] | None = None
     """
     Each known VCE of a type on a platform: its midpoint and name,
@@ -512,21 +517,26 @@ def shapes(plan: Plan) -> list[tuple[dict[str, str], list[XY]]]:
         )
     platforms = unary_union([o for _, o in plan.outlines])
     segments = plan.drawing.segments()
-    found = [(vce, footprint(vce, segments)) for vce in vces(plan)]
+    measured = plan.vce_boxes or []
+    found = list(measured)
+    for vce in vces(plan):
+        b = footprint(vce, segments)
+        if not any(box(*b).intersects(box(*m)) for _, _, m in measured):
+            found.append((vce.platform, vce.type, b))
     # Each name goes to the nearest VCE of the same type, so no two VCEs get the same one.
     names: dict[int, str] = {}
     pairs = sorted(
         (abs(m - (b[0] + b[2]) / 2), i, name)
-        for i, (vce, b) in enumerate(found)
-        for m, name in (plan.names or vce_names)(vce.platform, vce.type)
+        for i, (platform, vce_type, b) in enumerate(found)
+        for m, name in (plan.names or vce_names)(platform, vce_type)
     )
     for distance, i, name in pairs:
         if distance <= SAME_VCE_TOLERANCE_FT and i not in names and name not in names.values():
             names[i] = name
-    for i, (vce, b) in enumerate(found):
-        props = {"type": vce.type, "platform": vce.platform, "vce_name": names.get(i, "")}
+    for i, (platform, vce_type, b) in enumerate(found):
+        props = {"type": vce_type, "platform": platform, "vce_name": names.get(i, "")}
         out.append((props, ring(b)))
-    boxes_found = [b for _, b in found]
+    boxes_found = [b for _, _, b in found]
     for kind, boxes in (
         ("column", columns(plan, platforms)),
         ("elevator", elevators(plan, platforms)),
