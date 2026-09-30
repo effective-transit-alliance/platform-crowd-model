@@ -1,8 +1,9 @@
 """
 Make a blank field survey sheet for measuring every platform's VCEs in person,
 prefilled with the VCEs expected from `data/vces.csv`,
-from the PCIP Phase 2 existing plan on platforms 1 to 8
-and positioned from the directory on platforms 9 to 11,
+from the PCIP Phase 2 existing plan on platforms 1 to 8,
+positioned from the directory on platforms 9 to 11,
+and from the Moynihan Station EA's plan at the platforms' west ends,
 NJT's January 2022 station directory (`data/vces_njt_directory.csv`),
 and the Master Plan (`data/vces_existing_master_plan.csv`).
 
@@ -27,12 +28,23 @@ import csv
 from typing import Any
 
 from platform_crowd_model.paths import DATA_DIR
-from platform_crowd_model.vces import PCIP_PHASE_2_VCE_SOURCE
+from platform_crowd_model.vces import (
+    DIRECTORY_VCE_SOURCE,
+    MOYNIHAN_EA_VCE_SOURCE,
+    PCIP_PHASE_2_VCE_SOURCE,
+)
 
 DIRECTORY_CSV = DATA_DIR / "vces_njt_directory.csv"
 MASTER_PLAN_CSV = DATA_DIR / "vces_existing_master_plan.csv"
 SHEET_CSV = DATA_DIR / "vces.csv"
 OUT_CSV = DATA_DIR / "vces_field_survey.csv"
+
+SOURCE_LABELS = {
+    PCIP_PHASE_2_VCE_SOURCE: "PCIP Phase 2 existing plan",
+    DIRECTORY_VCE_SOURCE: "2022 directory, positioned",
+    MOYNIHAN_EA_VCE_SOURCE: "Moynihan Station EA plan",
+}
+"""How the sheet labels each of `data/vces.csv`'s sources."""
 
 PLATFORM_ORDER = [3, 11, 1, 2, 4, 5, 6, 7, 8, 9, 10]
 
@@ -131,9 +143,7 @@ def main() -> None:
                     "vce_name": v["vce_name"],
                     "platform": platform,
                     "track_numbers": TRACKS[platform],
-                    "source": "PCIP Phase 2 existing plan"
-                    if v["source"] == PCIP_PHASE_2_VCE_SOURCE
-                    else "2022 directory, positioned",
+                    "source": SOURCE_LABELS[v["source"]],
                     "expected_type": v["type"],
                     "expected_width_in": v["master_plan_width_in"] or v["estimated_width_in"],
                     "expected_width_source": v["width_source"],
