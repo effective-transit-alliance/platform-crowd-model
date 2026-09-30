@@ -4,7 +4,7 @@ from typing import Annotated
 
 from typer import Option, Typer
 
-app = Typer(no_args_is_help=True, add_completion=False)
+app = Typer(no_args_is_help=True)
 
 
 @app.command()
