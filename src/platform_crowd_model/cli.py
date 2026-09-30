@@ -2,10 +2,9 @@
 
 from typing import Annotated
 
-import typer
-from typer import Option
+from typer import Option, Typer
 
-app = typer.Typer(no_args_is_help=True, add_completion=False)
+app = Typer(no_args_is_help=True, add_completion=False)
 
 
 @app.command()
