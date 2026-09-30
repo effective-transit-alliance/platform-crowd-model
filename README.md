@@ -869,36 +869,61 @@ so trains can overhang their platform's west end by up to 15'.
 
 ### Platform Shapes
 
-The model doesn't use them yet, but the shapes of platforms 1 to 8 and of what's on them
-are extracted from the PCIP Phase 2 existing plan
-([sheet A-001](https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf#page=45))
-by `uv run platform-crowd-model data shapes-pcip-phase-2`
-([`shapes_pcip_phase_2.py`](./src/platform_crowd_model/shapes_pcip_phase_2.py)):
+The model doesn't use them yet, but the shapes of the platforms and of what's on them
+are extracted from two vector plans of the existing station,
+by [`shapes.py`](./src/platform_crowd_model/shapes.py) and a module for each plan:
 
-- each platform's outline, with platforms 1 and 2 sharing one, as the sheet draws them
+- NJT's PCIP Phase 1 existing plan
+  ([Appendix A, sheet A-001](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=24),
+  July 2019),
+  by `uv run platform-crowd-model data shapes-pcip-phase-1`
+  ([`shapes_pcip_phase_1.py`](./src/platform_crowd_model/shapes_pcip_phase_1.py)).
+  It has every platform, 1 to 11 and the diagonal platform, though it cuts 5 to 8 off to the west.
+  It's marked not to scale, but it's drawn to one:
+  fitting its platforms' east ends and centerlines to the frame
+  gives scales along and across the platforms within 0.1% of each other.
+- NJT's PCIP Phase 2 existing plan
+  ([sheet A-001](https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf#page=45),
+  November 2020),
+  by `uv run platform-crowd-model data shapes-pcip-phase-2`
+  ([`shapes_pcip_phase_2.py`](./src/platform_crowd_model/shapes_pcip_phase_2.py)).
+  It only has platforms 1 to 8.
+
+Neither has Moynihan Train Hall's escalators, since both are from before it opened.
+From each, they're:
+
+- each platform's outline, with platforms 1 and 2 sharing one, as the plans draw them
 - each VCE's footprint: the bounding box of its treads and the balustrades beside them,
   named as the nearest VCE of the same type in [`data/vces.csv`](./data/vces.csv), if one's within 15'
-  (by [`shapes.py`](./src/platform_crowd_model/shapes.py), which reads the plan's drawing into feet first)
 - the columns, the small squares on the platforms
 - the elevators, the boxes with an X across them
 - the walls, e.g. of rooms and of the enclosures around VCEs, as lines,
   since most have gaps, e.g. for doors, or as areas where they close
 - the concourses above the platforms, at the concourse level
 
+What's under the platforms' labels is left out, since the labels hide it.
+The two plans' VCEs on platforms 1 to 8 agree to within a median of 2'10" along the platforms
+and 10" across them.
+The PCIP Phase 1 plan also shows an escalator about 220' along each of platforms 3 to 8,
+where the PCIP Phase 2 plan's labels hide it,
+so it isn't in `data/vces.csv` or the model yet.
+
 The shapes are 2D, at the platform level unless they say otherwise,
 since what matters on the platform is the space each VCE takes up there;
 going up, a VCE's capacity is already its width.
 
-They're GeoJSON, one feature per line, in two files:
+They're GeoJSON, one feature per line, in two files for each plan:
 
-- [`data/shapes_pcip_phase_2.geojson`](./data/shapes_pcip_phase_2.geojson),
+- `data/shapes_<plan>.geojson`, e.g.
+  [`data/shapes_pcip_phase_1.geojson`](./data/shapes_pcip_phase_1.geojson),
   in feet in the Master Plan's frame, extended to 2D:
   x east of its plans' west edge, as in `data/vces.csv`,
-  and y north of platform 5's centerline,
+  and y north of platform 5's centerline on the PCIP Phase 2 plan,
   where east and north are along Manhattan's street grid.
   GeoJSON requires longitude and latitude, so this is strictly not valid GeoJSON,
   but it's what the code reads.
-- [`data/shapes_pcip_phase_2_lonlat.geojson`](./data/shapes_pcip_phase_2_lonlat.geojson),
+- `data/shapes_<plan>_lonlat.geojson`, e.g.
+  [`data/shapes_pcip_phase_1_lonlat.geojson`](./data/shapes_pcip_phase_1_lonlat.geojson),
   the same shapes in longitude and latitude, so GitHub can show them on a map.
   They're registered to the platforms' outlines in OpenStreetMap:
   rotated 29.2° to their average direction, the street grid's,

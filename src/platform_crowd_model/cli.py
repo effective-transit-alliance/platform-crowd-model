@@ -141,6 +141,19 @@ def shapes_pcip_phase_2() -> None:
 
 
 @data_app.command()
+def shapes_pcip_phase_1() -> None:
+    """
+    Extract the shapes of platforms 1 to 11 and the diagonal platform and of what's on them
+    from the PCIP Phase 1 existing plan, writing `data/shapes_pcip_phase_1.geojson`,
+    and in longitude and latitude, `data/shapes_pcip_phase_1_lonlat.geojson`.
+    Run `shapes-pcip-phase-2` first.
+    """
+    from platform_crowd_model import shapes_pcip_phase_1
+
+    shapes_pcip_phase_1.main()
+
+
+@data_app.command()
 def vces_field_survey() -> None:
     """
     Make the field survey sheet for measuring every VCE in person,
@@ -164,4 +177,5 @@ def all_data() -> None:
     platform_a_pcip_phase_1()
     platforms_osm()
     shapes_pcip_phase_2()
+    shapes_pcip_phase_1()
     vces_field_survey()
