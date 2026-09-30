@@ -6,7 +6,7 @@ Platforms 1 and 2 share one outline, since the sheet draws them as one.
 This plan defines the frame's y: feet north of platform 5's centerline on it.
 x is registered to the Master Plan's as in `vces`, by the platforms' east ends.
 
-Writes `data/shapes_pcip_phase_2.geojson` and `data/shapes_pcip_phase_2_lonlat.geojson`.
+Writes `data/shapes_pcip_phase_2.geojson` and `data/shapes_pcip_phase_2.latlon.geojson`.
 """
 
 from shapely import Polygon, box, unary_union
@@ -26,7 +26,7 @@ from platform_crowd_model.vces import (
 )
 
 OUT_GEOJSON = DATA_DIR / "shapes_pcip_phase_2.geojson"
-LONLAT_GEOJSON = DATA_DIR / "shapes_pcip_phase_2_lonlat.geojson"
+LATLON_GEOJSON = DATA_DIR / "shapes_pcip_phase_2.latlon.geojson"
 
 Y_ORIGIN_PLATFORM = 5
 
@@ -86,4 +86,4 @@ def main() -> None:
         concourse_fill=CONCOURSE_FILL,
     )
     # This plan defines the frame, and `shapes.frame_outlines` reads it from `OUT_GEOJSON`.
-    write(plan, OUT_GEOJSON, LONLAT_GEOJSON, registration=named_outlines)
+    write(plan, OUT_GEOJSON, LATLON_GEOJSON, registration=named_outlines)

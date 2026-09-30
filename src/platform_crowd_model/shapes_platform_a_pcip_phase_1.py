@@ -11,7 +11,7 @@ They're named by their labels on the sheet, e.g. `AP7`,
 from `data/vces_platform_a_pcip_phase_1.csv`.
 
 Writes `data/shapes_platform_a_pcip_phase_1.geojson`
-and `data/shapes_platform_a_pcip_phase_1_lonlat.geojson`.
+and `data/shapes_platform_a_pcip_phase_1.latlon.geojson`.
 """
 
 import csv
@@ -22,7 +22,7 @@ from platform_crowd_model.shapes import vce_names, write
 from platform_crowd_model.shapes_pcip_phase_1 import read_plan
 
 OUT_GEOJSON = DATA_DIR / "shapes_platform_a_pcip_phase_1.geojson"
-LONLAT_GEOJSON = DATA_DIR / "shapes_platform_a_pcip_phase_1_lonlat.geojson"
+LATLON_GEOJSON = DATA_DIR / "shapes_platform_a_pcip_phase_1.latlon.geojson"
 
 PLATFORM_A = "A"
 
@@ -45,4 +45,4 @@ def names(platform: str, vce_type: str) -> list[tuple[float, str]]:
 
 def main() -> None:
     plan = read_plan(PAGE, SOURCE, {PLATFORM_A: PLATFORM_A_FILL}, names)
-    write(plan, OUT_GEOJSON, LONLAT_GEOJSON)
+    write(plan, OUT_GEOJSON, LATLON_GEOJSON)

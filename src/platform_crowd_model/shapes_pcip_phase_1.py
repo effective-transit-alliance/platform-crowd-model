@@ -15,7 +15,7 @@ x by fitting the platforms' east ends to `data/platform_east_ends.csv`,
 and y, separately, by fitting platforms 3 to 8's centerlines to the PCIP Phase 2 plan's,
 in `data/shapes_pcip_phase_2.geojson`; the two scales agree to within 1%.
 
-Writes `data/shapes_pcip_phase_1.geojson` and `data/shapes_pcip_phase_1_lonlat.geojson`.
+Writes `data/shapes_pcip_phase_1.geojson` and `data/shapes_pcip_phase_1.latlon.geojson`.
 """
 
 import json
@@ -39,7 +39,7 @@ SOURCE = f"PCIP Phase 1 Appendix A, sheet A-001, July 2019, PDF page {PAGE}"
 
 PCIP_PHASE_2_GEOJSON = DATA_DIR / "shapes_pcip_phase_2.geojson"
 OUT_GEOJSON = DATA_DIR / "shapes_pcip_phase_1.geojson"
-LONLAT_GEOJSON = DATA_DIR / "shapes_pcip_phase_1_lonlat.geojson"
+LATLON_GEOJSON = DATA_DIR / "shapes_pcip_phase_1.latlon.geojson"
 
 PLATFORM_ROWS = {
     "11": (184, 214),
@@ -203,4 +203,4 @@ def read_plan(
 
 
 def main() -> None:
-    write(read_plan(PAGE, SOURCE, {}), OUT_GEOJSON, LONLAT_GEOJSON)
+    write(read_plan(PAGE, SOURCE, {}), OUT_GEOJSON, LATLON_GEOJSON)

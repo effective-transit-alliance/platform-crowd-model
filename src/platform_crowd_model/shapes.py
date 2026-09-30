@@ -29,7 +29,7 @@ What's under the platforms' labels is hidden, so it's left out.
 
 Each plan's shapes are written as GeoJSON with one feature per line, in two files:
 `data/shapes_<source>.geojson`, in feet in the frame,
-and `data/shapes_<source>_lonlat.geojson`, in longitude and latitude, as GeoJSON requires,
+and `data/shapes_<source>.latlon.geojson`, in longitude and latitude, as GeoJSON requires,
 registered to OpenStreetMap's platform outlines, so it can be viewed on a map, e.g. on GitHub.
 """
 

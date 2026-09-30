@@ -19,7 +19,7 @@ and further west, each piece of platform is named
 by the PCIP Phase 1 plan's platform it overlaps most,
 in `data/shapes_pcip_phase_1.geojson`, if at least half of it overlaps one, or else it's unnamed.
 
-Writes `data/shapes_moynihan_ea.geojson` and `data/shapes_moynihan_ea_lonlat.geojson`.
+Writes `data/shapes_moynihan_ea.geojson` and `data/shapes_moynihan_ea.latlon.geojson`.
 """
 
 import json
@@ -43,7 +43,7 @@ from platform_crowd_model.vces_moynihan_ea import (
 PCIP_PHASE_1_GEOJSON = DATA_DIR / "shapes_pcip_phase_1.geojson"
 PCIP_PHASE_2_GEOJSON = DATA_DIR / "shapes_pcip_phase_2.geojson"
 OUT_GEOJSON = DATA_DIR / "shapes_moynihan_ea.geojson"
-LONLAT_GEOJSON = DATA_DIR / "shapes_moynihan_ea_lonlat.geojson"
+LATLON_GEOJSON = DATA_DIR / "shapes_moynihan_ea.latlon.geojson"
 
 PLATFORM_FILL = (0.905, 0.908, 0.912)
 """The plan's fill color for platforms."""
@@ -178,4 +178,4 @@ def main() -> None:
         concourse_fill=CONCOURSE_FILL,
         vce_boxes=vce_boxes,
     )
-    write(plan, OUT_GEOJSON, LONLAT_GEOJSON)
+    write(plan, OUT_GEOJSON, LATLON_GEOJSON)
