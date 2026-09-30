@@ -3,7 +3,9 @@ Measure the VCEs at the west ends of the platforms, around Moynihan Train Hall,
 on the Moynihan Station Development Project EA's lower concourse plan (Figure 3-4, February 2010),
 which the Master Plan's and PCIP Phase 2's plans cut off or leave out:
 the pairs of escalators from the Train Hall down to Platforms 3 to 8,
-and the West End Concourse's stairs down to Platforms 9 to 11.
+the West End Concourse's stairs down to Platforms 9 to 11,
+and the baggage and egress corridor's stairs down to Platforms 5 to 7, about 400 ft west,
+which may not have been built, since the PCIP plans cut those platforms off before them.
 
 The plan is a vector drawing, so each VCE is found as a run of treads,
 short lines across the platform, within its window, `VCES`.
@@ -92,6 +94,11 @@ UNBUILT_ESCALATOR_NOTE = (
     "and this one would run past the platform's west end."
 )
 
+CORRIDOR_STAIR_NOTE = (
+    "Down from the baggage and egress corridor. "
+    "Unconfirmed: the plan is a 2010 design, and the PCIP plans cut the platform off before it."
+)
+
 TRAIN_HALL_ESCALATORS = [
     VceWindow(
         platform,
@@ -114,6 +121,10 @@ VCES = [
     VceWindow(9, "stair", 168.1, 592.5, 600.5),
     VceWindow(10, "stair", 146.7, 635.5, 649.8),
     VceWindow(11, "stair", 117.7, 644.0, 652.0),
+    *(
+        VceWindow(platform, "stair", y, 426.0, 445.0, notes=CORRIDOR_STAIR_NOTE)
+        for platform, y in {7: 212.4, 6: 239.9, 5: 263.2}.items()
+    ),
 ]
 """Where each VCE is on the plan."""
 

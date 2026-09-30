@@ -15,3 +15,6 @@ platform,type,west_end_ft,east_end_ft,width_in,built,source,notes
 9,stair,-98,-86,72,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2",
 10,stair,-16,8,78,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2",
 11,stair,0,13,44,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2",
+7,stair,-413,-383,42,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Down from the baggage and egress corridor. Unconfirmed: the plan is a 2010 design, and the PCIP plans cut the platform off before it."
+6,stair,-413,-383,42,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Down from the baggage and egress corridor. Unconfirmed: the plan is a 2010 design, and the PCIP plans cut the platform off before it."
+5,stair,-413,-383,41,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Down from the baggage and egress corridor. Unconfirmed: the plan is a 2010 design, and the PCIP plans cut the platform off before it."

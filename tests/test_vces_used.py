@@ -16,13 +16,18 @@ def test_every_vce_carries_passengers_up(params: model.Params) -> None:
     every VCE but a down escalator carries some arriving passengers up,
     so none is misplaced where no passenger ever reaches it, e.g. off its platform.
     The trains aren't moved to their best stopping position, which would take much longer.
+    A VCE entirely west of the trains, e.g. a stair far out on a long platform,
+    can go unused if every passenger has a nearer one, so it isn't checked.
     """
     time_series, _summary = model.simulate(params, print_time_series=False)
     roles = model.vce_roles(params.vces)
+    train_west_end = params.platform_east_end - params.train_length
     unused = [
         vce.name
         for i, (vce, role) in enumerate(zip(params.vces, roles, strict=True))
-        if role != "down" and sum(second[i][1] for second in time_series.vces) == 0
+        if role != "down"
+        and vce.east_end > train_west_end
+        and sum(second[i][1] for second in time_series.vces) == 0
     ]
     assert not unused, f"{params.name}'s {unused} carry nobody up"
 
