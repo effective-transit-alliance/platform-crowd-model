@@ -926,6 +926,9 @@ From each plan, they're:
 - each VCE's footprint: each flight's treads and the balustrades beside them,
   joined by their landings, so a T-shaped stair's is a T,
   named as the nearest VCE of the same type in [`data/vces.csv`](./data/vces.csv), if one's within 15'
+- curved stairs, e.g. the Central Concourse's down to platforms 5 and 7,
+  as the band their treads sweep, found as runs of evenly spaced treads
+  that aren't horizontal or vertical
 - the columns, the small squares on the platforms
 - the elevators, the boxes with an X across them
 - the walls, e.g. of rooms and of the enclosures around VCEs, as lines,

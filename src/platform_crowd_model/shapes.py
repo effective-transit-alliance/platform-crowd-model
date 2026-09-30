@@ -21,6 +21,8 @@ From its lines and fills, this finds:
   Where they close, they're `enclosure` areas, but most have gaps, e.g. for doors,
   so they're `wall` lines, with their color, so they can be told apart later.
   Some are VCEs' details, e.g. break lines where a flight goes above the cut.
+- curved or diagonal stairs and escalators: runs of evenly spaced, nearly parallel treads
+  that aren't horizontal or vertical, whose footprint is the band their treads sweep
 - concourses: the areas filled as existing concourse, at `level` `concourse`, above the platforms
 
 What's under the platforms' labels is hidden, so it's left out.
@@ -84,6 +86,22 @@ MAX_JOIN_GAP_FT = 2.5
 IN_LINE_TOLERANCE_FT = 0.55
 MAX_ESCALATOR_WIDTH_IN = 42
 """Flights narrower than this are escalators; the Master Plan's narrowest stair is 44 in."""
+
+MIN_CURVED_TREAD_FT = 3
+"""
+Shorter lines aren't a curved stair's treads,
+but, e.g., pieces of a wall's two curved faces, which are side by side, too.
+"""
+DUPLICATE_TREAD_FT = 0.4
+"""Lines whose midpoints are this close, at about the same angle, are the same line drawn twice."""
+MAX_CURVED_TREAD_FT = 12
+"""Longer lines that aren't horizontal or vertical aren't a curved stair's treads."""
+MAX_CURVED_TREAD_TURN_DEGREES = 15
+"""How much a curved stair's consecutive treads can turn."""
+CURVED_TREAD_LENGTH_TOLERANCE = 0.2
+MIN_TREAD_OFFSET_DEGREES = 45
+"""How far off a curved stair's treads' direction the next tread has to be, not end to end."""
+"""How much a curved stair's consecutive treads' lengths can differ, as a fraction."""
 
 BALUSTRADE_REACH_FT = 1.7
 """How far beside a VCE's treads its balustrade lines can be."""
@@ -415,6 +433,85 @@ def vce_outline(vce: Vce, segments: list[tuple[XY, XY]]) -> Polygon:
     return joined if isinstance(joined, Polygon) else joined.convex_hull
 
 
+def curved_vces(plan: Plan, platforms: BaseGeometry) -> list[tuple[str, str, Polygon]]:
+    """
+    Curved or diagonal stairs and escalators on the platforms:
+    runs of evenly spaced, nearly parallel, equally long treads
+    that aren't horizontal or vertical, so `flights` doesn't find them.
+    Each one's footprint is the band its treads sweep.
+    """
+    treads = [
+        (a, b)
+        for a, b in plan.drawing.segments()
+        if abs(a[0] - b[0]) >= AXIS_TOLERANCE_FT
+        and abs(a[1] - b[1]) >= AXIS_TOLERANCE_FT
+        and MIN_CURVED_TREAD_FT <= float(np.hypot(b[0] - a[0], b[1] - a[1])) <= MAX_CURVED_TREAD_FT
+        and platforms.contains(Point((a[0] + b[0]) / 2, (a[1] + b[1]) / 2))
+    ]
+    # Lines drawn more than once, a little apart, aren't separate treads.
+    unique: dict[tuple[int, int, int], tuple[XY, XY]] = {}
+    for a, b in treads:
+        angle = np.degrees(np.arctan2(b[1] - a[1], b[0] - a[0])) % 180
+        key = (
+            round((a[0] + b[0]) / 2 / DUPLICATE_TREAD_FT),
+            round((a[1] + b[1]) / 2 / DUPLICATE_TREAD_FT),
+            round(angle / MAX_CURVED_TREAD_TURN_DEGREES),
+        )
+        unique.setdefault(key, (a, b))
+    treads = list(unique.values())
+    if not treads:
+        return []
+    ends = np.array(treads)
+    mids = ends.mean(axis=1)
+    vectors = ends[:, 1] - ends[:, 0]
+    lengths = np.hypot(vectors[:, 0], vectors[:, 1])
+    angles = np.arctan2(vectors[:, 1], vectors[:, 0]) % np.pi
+    neighbors: list[list[int]] = [[] for _ in treads]
+    for i in range(len(treads)):
+        offsets = mids - mids[i]
+        distance = np.hypot(*offsets.T)
+        turn = np.abs((angles - angles[i] + np.pi / 2) % np.pi - np.pi / 2)
+        # Treads are side by side, not end to end, like the pieces of a curved wall.
+        along = np.abs(offsets @ (vectors[i] / lengths[i]))
+        close = (
+            (along <= distance * np.cos(np.radians(MIN_TREAD_OFFSET_DEGREES)))
+            & (TREAD_SPACING_FT[0] <= distance)
+            & (distance <= TREAD_SPACING_FT[1])
+            & (turn <= np.radians(MAX_CURVED_TREAD_TURN_DEGREES))
+            & (np.abs(lengths / lengths[i] - 1) <= CURVED_TREAD_LENGTH_TOLERANCE)
+        )
+        neighbors[i] = [int(j) for j in np.nonzero(close)[0]]
+    out = []
+    seen: set[int] = set()
+    for start in range(len(treads)):
+        if start in seen:
+            continue
+        component = [start]
+        seen.add(start)
+        for i in component:
+            for j in neighbors[i]:
+                if j not in seen:
+                    seen.add(j)
+                    component.append(j)
+        if len(component) < MIN_TREADS:
+            continue
+        band = unary_union(
+            [
+                LineString(treads[i]).buffer(TREAD_SPACING_FT[1] / 2, cap_style="flat")
+                for i in component
+            ]
+        )
+        outline = band if isinstance(band, Polygon) else band.convex_hull
+        platform = plan.platform_at((outline.centroid.x, outline.centroid.y))
+        if platform is None:
+            continue
+        width_in = float(np.median(lengths[component])) * 12
+        out.append(
+            (platform, "escalator" if width_in < MAX_ESCALATOR_WIDTH_IN else "stair", outline)
+        )
+    return out
+
+
 def bounds(points: tuple[XY, ...] | list[XY]) -> tuple[float, float, float, float]:
     xs = [p[0] for p in points]
     ys = [p[1] for p in points]
@@ -557,6 +654,7 @@ def shapes(plan: Plan) -> list[tuple[dict[str, str], list[XY]]]:
     found: list[tuple[str, str, Polygon]] = list(measured)
     for platform, vce_type, outline in [
         *((vce.platform, vce.type, vce_outline(vce, segments)) for vce in vces(plan)),
+        *curved_vces(plan, platforms),
     ]:
         if not any(outline.intersects(m) for _, _, m in measured):
             found.append((platform, vce_type, outline))
