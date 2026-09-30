@@ -19,6 +19,7 @@ Writes `data/shapes_pcip_phase_1.geojson` and `data/shapes_pcip_phase_1_lonlat.g
 """
 
 import json
+from collections.abc import Callable
 
 import numpy as np
 import pymupdf
@@ -76,8 +77,17 @@ MIN_LABEL_OUTLINE_WIDTH = 0.5
 """The platforms' labels are white boxes with a thick outline."""
 
 
-def main() -> None:
-    page = pdf()[PAGE - 1]
+def read_plan(
+    page_number: int,
+    source: str,
+    fills: dict[str, tuple[float, ...]],
+    names: Callable[[str, str], list[tuple[float, str]]] | None = None,
+) -> Plan:
+    """
+    The plan on `page_number`, a sheet drawn like the existing plan,
+    with platforms besides the existing ones filled with `fills`, e.g. Platform A.
+    """
+    page = pdf()[page_number - 1]
     rotate = page.rotation_matrix
     x_ft, ft_per_unit = calibration(page)
 
@@ -106,6 +116,15 @@ def main() -> None:
                 )
             if name:
                 pieces.setdefault(name, []).append(polygon)
+        elif name := next(
+            (
+                p
+                for p, color in fills.items()
+                if all(abs(c - f) < 0.002 for c, f in zip(fill, color, strict=True))
+            ),
+            "",
+        ):
+            pieces.setdefault(name, []).append(polygon)
         elif (
             fill == LABEL_FILL
             and d.get("color") is not None
@@ -164,20 +183,24 @@ def main() -> None:
     rows = {**PLATFORM_ROWS, **SHARED_ROWS}
     del rows["1/2"]
     rows_ft = {name: sorted(rotated_to_ft(0, y)[1] for y in ys) for name, ys in rows.items()}
-    diagonal = dict(outlines).get(DIAGONAL_PLATFORM)
+    # Platforms not in a row are told apart by their outlines.
+    shaped = [(name, o) for name, o in outlines if name == DIAGONAL_PLATFORM or name in fills]
 
     def platform_at(point: XY) -> str | None:
-        if diagonal is not None and diagonal.contains(Point(point)):
-            return DIAGONAL_PLATFORM
-        return next((p for p, (lo, hi) in rows_ft.items() if lo <= point[1] <= hi), None)
+        on = next((name for name, o in shaped if o.contains(Point(point))), None)
+        return on or next((p for p, (lo, hi) in rows_ft.items() if lo <= point[1] <= hi), None)
 
-    plan = Plan(
-        source=SOURCE,
+    return Plan(
+        source=source,
         drawing=read_drawing(page, to_ft, ft_per_unit),
         outlines=outlines,
         platform_at=platform_at,
         hidden=unary_union([in_ft(box(*label.bounds)) for label in labels]),
         wall_grays=WALL_GRAYS,
         concourse_fill=CONCOURSE_FILL,
+        names=names,
     )
-    write(plan, OUT_GEOJSON, LONLAT_GEOJSON)
+
+
+def main() -> None:
+    write(read_plan(PAGE, SOURCE, {}), OUT_GEOJSON, LONLAT_GEOJSON)

@@ -870,7 +870,7 @@ so trains can overhang their platform's west end by up to 15'.
 ### Platform Shapes
 
 The model doesn't use them yet, but the shapes of the platforms and of what's on them
-are extracted from two vector plans of the existing station,
+are extracted from three vector plans of the station,
 by [`shapes.py`](./src/platform_crowd_model/shapes.py) and a module for each plan:
 
 - NJT's PCIP Phase 1 existing plan
@@ -888,6 +888,15 @@ by [`shapes.py`](./src/platform_crowd_model/shapes.py) and a module for each pla
   by `uv run platform-crowd-model data shapes-pcip-phase-2`
   ([`shapes_pcip_phase_2.py`](./src/platform_crowd_model/shapes_pcip_phase_2.py)).
   It only has platforms 1 to 8.
+- NJT's PCIP Phase 1 plan of Alternative 12
+  ([Appendix A, sheet A-021](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=31),
+  July 2019), with [Platform A](#platform-a),
+  by `uv run platform-crowd-model data shapes-platform-a-pcip-phase-1`
+  ([`shapes_platform_a_pcip_phase_1.py`](./src/platform_crowd_model/shapes_platform_a_pcip_phase_1.py)).
+  It's the existing plan with Alternative 12 added, so it's read the same way.
+  Platform A's VCEs are named by their labels, e.g. `AP7`,
+  and each of AP7 to AP12's stair and escalator side by side is one footprint,
+  since they're drawn as one run of treads.
 
 Neither has Moynihan Train Hall's escalators, since both are from before it opened.
 From each, they're:

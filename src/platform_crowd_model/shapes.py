@@ -211,6 +211,11 @@ class Plan:
     """The range of grays the plan draws building elements in, e.g. walls."""
     concourse_fill: tuple[float, ...] | None = None
     """The plan's fill color for existing concourses, if it has one."""
+    names: Callable[[str, str], list[tuple[float, str]]] | None = None
+    """
+    Each known VCE of a type on a platform: its midpoint and name,
+    by default from `data/vces.csv` (`vce_names`).
+    """
 
 
 @dataclass
@@ -513,7 +518,7 @@ def shapes(plan: Plan) -> list[tuple[dict[str, str], list[XY]]]:
     pairs = sorted(
         (abs(m - (b[0] + b[2]) / 2), i, name)
         for i, (vce, b) in enumerate(found)
-        for m, name in vce_names(vce.platform, vce.type)
+        for m, name in (plan.names or vce_names)(vce.platform, vce.type)
     )
     for distance, i, name in pairs:
         if distance <= SAME_VCE_TOLERANCE_FT and i not in names and name not in names.values():
