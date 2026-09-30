@@ -880,9 +880,11 @@ by `uv run platform-crowd-model data shapes-pcip-phase-2`
   named as in [`data/vces.csv`](./data/vces.csv)
 - the columns, the small squares on the platforms
 - the elevators, the boxes with an X across them
+- the walls, e.g. of rooms and of the enclosures around VCEs, as lines,
+  since most have gaps, e.g. for doors, or as areas where they close
+- the concourses above the platforms, at the concourse level
 
-Rooms, walls, and the enclosures around VCEs aren't extracted yet.
-The shapes are 2D, at the platform level,
+The shapes are 2D, at the platform level unless they say otherwise,
 since what matters on the platform is the space each VCE takes up there;
 going up, a VCE's capacity is already its width.
 

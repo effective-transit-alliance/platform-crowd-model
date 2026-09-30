@@ -1,14 +1,23 @@
 """
 Extract the shapes of platforms 1 to 8 and of what's on them
 from NJT's PCIP Phase 2 existing concourse-level plan (sheet A-001), the sheet `vces` measures:
-each platform's outline, each VCE's footprint, and the columns and elevators on the platforms.
+each platform's outline, each VCE's footprint, the columns, elevators, and walls on the platforms,
+and the concourses above them.
 
 - A VCE's footprint is the bounding box of its treads and the balustrade lines beside them,
   so it's a little wider than its treads, and T-shaped stairs' footprints include their corners.
   Its `vce_name` is its name in `data/vces.csv`.
-- Columns are the small squares on the platforms.
+- Columns are the small squares on the platforms, whether drawn as rectangles or as 4 lines.
 - Elevators are the boxes with an X across them.
-- Rooms, walls, and enclosures around the VCEs aren't extracted yet.
+- Walls are the other thin gray lines on the platforms, e.g. of rooms and of enclosures around VCEs,
+  joined end to end.
+  Where they close, they're `enclosure` areas, but most have gaps, e.g. for doors,
+  so they're `wall` lines, with their color, so they can be told apart later.
+  Some are VCEs' details, e.g. break lines where a flight goes above the cut,
+  and the curved stair to the Central Concourse on platform 5,
+  whose treads aren't found as a flight.
+- Concourses are the areas filled as existing concourse,
+  at `level` `concourse`, above the platforms.
 - Platforms 1 and 2 share one outline, since the sheet draws them as one.
 
 Shapes are 2D, at the platform level.
@@ -30,6 +39,7 @@ from typing import Any
 
 import numpy as np
 import pymupdf
+from shapely import LineString, Polygon, box, line_merge, unary_union
 
 from platform_crowd_model import platforms_osm
 from platform_crowd_model.paths import DATA_DIR
@@ -81,6 +91,21 @@ Smaller boxes (PDF units, about 3.3 ft) with an X across them aren't elevators,
 e.g. the hatching on the diagonal stair on platform 5.
 """
 
+WALL_TOLERANCE = 0.3
+"""How close (PDF units, about 2 in.) lines have to be to count as on something."""
+
+MAX_WALL_LINE_WIDTH = 3
+"""Thicker lines (PDF units) are the legend's streets and buildings above."""
+
+WALL_GRAYS = (0.4, 0.7)
+"""The range of grays the sheet draws building elements in."""
+
+MIN_WALL_LENGTH = 1.8
+"""Shorter lines (PDF units, about 1 ft), even joined end to end, are details, e.g. break lines."""
+
+CONCOURSE_FILL = (0.97, 0.97, 0.88)
+"""The sheet's fill color for existing concourses."""
+
 FT_DECIMALS = 1
 LONLAT_DECIMALS = 7
 """About 1 cm."""
@@ -131,6 +156,15 @@ def footprint(vce: Vce, lines: list[tuple[float, float, float, float]]) -> pymup
     return out
 
 
+def is_column(r: pymupdf.Rect) -> bool:
+    """Whether `r` is the size and shape of a column: a small square."""
+    return (
+        COLUMN_SIZE[0] <= r.width <= COLUMN_SIZE[1]
+        and COLUMN_SIZE[0] <= r.height <= COLUMN_SIZE[1]
+        and abs(r.width - r.height) < 1
+    )
+
+
 def columns(page: pymupdf.Page, outlines: list[list[pymupdf.Point]]) -> list[pymupdf.Rect]:
     """The small squares on the platforms."""
     out: list[pymupdf.Rect] = []
@@ -139,11 +173,7 @@ def columns(page: pymupdf.Page, outlines: list[list[pymupdf.Point]]) -> list[pym
             if item[0] != "re":
                 continue
             r = item[1]
-            if not (
-                COLUMN_SIZE[0] <= r.width <= COLUMN_SIZE[1]
-                and COLUMN_SIZE[0] <= r.height <= COLUMN_SIZE[1]
-                and abs(r.width - r.height) < 1
-            ):
+            if not is_column(r):
                 continue
             if any(inside((r.tl + r.br) * 0.5, o) for o in outlines) and not any(
                 abs(r.x0 - c.x0) < 0.5 and abs(r.y0 - c.y0) < 0.5 for c in out
@@ -185,17 +215,94 @@ def corners(rect: pymupdf.Rect) -> tuple[float, float, float, float]:
     return rect.x0, rect.y0, rect.x1, rect.y1
 
 
+def item_points(item: tuple[Any, ...]) -> list[pymupdf.Point]:
+    """A drawing item's points: a line's ends, a rectangle's or quad's corners, a curve's ends."""
+    match item[0]:
+        case "l":
+            return [item[1], item[2]]
+        case "re":
+            r = item[1]
+            return [r.tl, r.tr, r.br, r.bl, r.tl]
+        case "qu":
+            q = item[1]
+            return [q.ul, q.ur, q.lr, q.ll, q.ul]
+        case "c":
+            return [item[1], item[4]]
+    return []
+
+
+def walls(
+    page: pymupdf.Page,
+    outlines: list[list[pymupdf.Point]],
+    labels: dict[int, pymupdf.Rect],
+    found: list[pymupdf.Rect],
+) -> list[tuple[list[pymupdf.Point], tuple[float, ...]]]:
+    """
+    The other thin lines on the platforms, e.g. rooms' and enclosures' walls, joined end to end,
+    with their color, leaving out the platforms' edges, what's under their labels,
+    and the lines of what's already `found`: VCEs, columns, and elevators.
+    Where walls have gaps, e.g. for doors, they don't close, so they're lines, not areas.
+    """
+    platforms = [Polygon([(p.x, p.y) for p in o]) for o in outlines]
+    on_platforms = unary_union(platforms).buffer(WALL_TOLERANCE)
+    edges = unary_union([p.exterior for p in platforms]).buffer(2 * WALL_TOLERANCE)
+    hidden = unary_union([box(r.x0, r.y0, r.x1, r.y1) for r in labels.values()])
+    known = unary_union([box(*corners(r)).buffer(2 * WALL_TOLERANCE) for r in found])
+    by_color: dict[tuple[float, ...], list[LineString]] = {}
+    for d in page.get_drawings():
+        color = d.get("color")
+        # Thicker lines are the streets and buildings above, per the legend,
+        # and building elements are drawn in grays, unlike, e.g., the black section marker.
+        if (
+            color is None
+            or (d.get("width") or 0) > MAX_WALL_LINE_WIDTH
+            or not all(abs(c - color[0]) < 0.02 for c in color)
+            or not WALL_GRAYS[0] <= color[0] <= WALL_GRAYS[1]
+        ):
+            continue
+        for item in d["items"]:
+            points = item_points(item)
+            if not points:
+                continue
+            line = LineString([(p.x, p.y) for p in points])
+            if (
+                line.length >= WALL_TOLERANCE
+                and on_platforms.contains(line)
+                and not edges.contains(line)
+                and not known.contains(line)
+                and not hidden.intersects(line)
+            ):
+                by_color.setdefault(tuple(round(c, 2) for c in color), []).append(line)
+    out = []
+    for color, lines in sorted(by_color.items()):
+        merged = line_merge(unary_union(lines))
+        for line in getattr(merged, "geoms", [merged]):
+            if line.length < MIN_WALL_LENGTH:
+                continue
+            out.append(([pymupdf.Point(x, y) for x, y in line.coords], color))
+    return out
+
+
+def concourses(page: pymupdf.Page) -> list[list[pymupdf.Point]]:
+    """The outlines of the areas filled as existing concourse, above the platforms."""
+    out = []
+    for d in page.get_drawings():
+        fill = d.get("fill")
+        if fill and all(abs(c - f) < 0.01 for c, f in zip(fill, CONCOURSE_FILL, strict=True)):
+            points = [p for item in d["items"] for p in item_points(item)]
+            if len(points) >= 3:
+                out.append(points)
+    return out
+
+
 def ring(rect: pymupdf.Rect) -> list[pymupdf.Point]:
-    return [rect.tl, rect.tr, rect.br, rect.bl]
+    return [rect.tl, rect.tr, rect.br, rect.bl, rect.tl]
 
 
-def counterclockwise(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
-    """`points` as a closed ring, counterclockwise, as GeoJSON requires of outer rings."""
-    area = sum(
-        a[0] * b[1] - b[0] * a[1] for a, b in zip(points, points[1:] + points[:1], strict=True)
-    )
-    points = points if area > 0 else points[::-1]
-    return [*points, points[0]]
+def counterclockwise(ring: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """The closed `ring`, counterclockwise, as GeoJSON requires of outer rings."""
+    area = sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(ring, ring[1:], strict=False))
+    return ring if area > 0 else ring[::-1]
 
 
 def platform_of(y: float, labels: dict[int, pymupdf.Rect]) -> int | None:
@@ -301,17 +408,20 @@ def main() -> None:
         named = [row for row in csv.DictReader(f) if row["source"] == "pcip_phase_2"]
 
     shapes: list[tuple[dict[str, Any], list[pymupdf.Point]]] = []
+    """Each shape's properties and points, closed for areas and open for lines."""
     for outline in outlines:
         ys = [p.y for p in outline]
         platforms = sorted(p for p, r in labels.items() if min(ys) <= (r.y0 + r.y1) / 2 <= max(ys))
         if platforms:
             props = {"type": "platform", "platform": "/".join(map(str, platforms))}
-            shapes.append((props, outline))
+            shapes.append((props, [*outline, outline[0]]))
     lines = axis_lines(page)
+    found = []
     for vce in sorted(
         vces(flights(page), labels, outlines), key=lambda v: (v.platform, v.flights[0].x0)
     ):
-        box = footprint(vce, lines)
+        rect = footprint(vce, lines)
+        found.append(rect)
         west = round(ft(pymupdf.Point(min(f.x0 for f in vce.flights), 0))[0])
         match = next(
             (
@@ -324,15 +434,35 @@ def main() -> None:
         if match is None:
             raise RuntimeError(f"no VCE in {VCES_CSV.name} at {west} ft on platform {vce.platform}")
         props = {"type": vce.type, "platform": str(vce.platform), "vce_name": match["vce_name"]}
-        shapes.append((props, ring(box)))
+        shapes.append((props, ring(rect)))
     for kind, rects in (
         ("column", columns(page, outlines)),
         ("elevator", elevators(page, outlines)),
     ):
+        found += rects
         for rect in sorted(rects, key=lambda r: (r.y0, r.x0)):
             platform = platform_of((rect.y0 + rect.y1) / 2, labels)
             props = {"type": kind, "platform": "" if platform is None else str(platform)}
             shapes.append((props, ring(rect)))
+
+    for points, color in walls(page, outlines, labels, found):
+        closed = len(points) > 3 and points[0] == points[-1]
+        rect = pymupdf.Rect(
+            min(p.x for p in points),
+            min(p.y for p in points),
+            max(p.x for p in points),
+            max(p.y for p in points),
+        )
+        platform = platform_of(sum(p.y for p in points) / len(points), labels)
+        kind = "column" if closed and is_column(rect) else "enclosure" if closed else "wall"
+        props = {
+            "type": kind,
+            "platform": "" if platform is None else str(platform),
+            "color": "#" + "".join(f"{round(c * 255):02x}" for c in color),
+        }
+        shapes.append((props, points))
+    for outline in concourses(page):
+        shapes.append(({"type": "concourse", "level": "concourse"}, [*outline, outline[0]]))
 
     sheet_east_ends = {
         p: ft(pymupdf.Point(east_ends[p], centerline_y(p))) for p in REGISTRATION_PLATFORMS
@@ -341,28 +471,22 @@ def main() -> None:
     features: list[dict[str, Any]] = []
     lonlat_features: list[dict[str, Any]] = []
     for props, points in shapes:
-        feet = counterclockwise([ft(p) for p in points])
-        props = {**props, "level": "platform", "source": SOURCE}
-        features.append(
-            {
-                "type": "Feature",
-                "properties": props,
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [[[round(c, FT_DECIMALS) for c in p] for p in feet]],
-                },
-            }
-        )
-        lonlat_features.append(
-            {
-                "type": "Feature",
-                "properties": props,
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [[[round(c, LONLAT_DECIMALS) for c in lonlat(p)] for p in feet]],
-                },
-            }
-        )
+        feet = [ft(p) for p in points]
+        area = len(points) > 3 and points[0] == points[-1]
+        props = {"level": "platform", **props, "source": SOURCE}
+        if area:
+            feet = counterclockwise(feet)
+        for out, points_out, decimals in (
+            (features, feet, FT_DECIMALS),
+            (lonlat_features, [lonlat(p) for p in feet], LONLAT_DECIMALS),
+        ):
+            coordinates = [[round(c, decimals) for c in p] for p in points_out]
+            geometry = (
+                {"type": "Polygon", "coordinates": [coordinates]}
+                if area
+                else {"type": "LineString", "coordinates": coordinates}
+            )
+            out.append({"type": "Feature", "properties": props, "geometry": geometry})
     write(OUT_GEOJSON, features, FRAME)
     write(LONLAT_GEOJSON, lonlat_features, None)
     counts: dict[str, int] = {}
