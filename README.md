@@ -116,7 +116,7 @@ each using the passenger counts left by the one before.
      ([TCQSM, p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
    - So there's no gradual taper: the stairs stay at capacity until the platform is clear.
    - The report's "taper time" is when the remaining arriving passengers fit in the stair queues,
-     20 ft of queue in front of the VCEs at 5 sq ft/pax
+     20' of queue in front of the VCEs at 5 sq ft/pax
      (the TCQSM's stair queuing space).
      It's now always about 15 s before the clear time,
      but it's kept in the results table to compare with the report.
