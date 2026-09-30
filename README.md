@@ -731,6 +731,20 @@ except platform 9's, which is 178 ft longer.
 The PCIP Phase 2 and Master Plan drawings cut the platforms off at their west ends,
 so they can't give lengths or areas.
 
+NJT's PCIP Phase 1 existing track plan
+([Appendix A, sheet TK-003](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=8),
+July 2019) doesn't, though.
+It's a scan at 1" = 80',
+so `uv run platform-crowd-model data platform-west-ends-pcip-phase-1`
+([`platform_west_ends_pcip_phase_1.py`](./src/platform_crowd_model/platform_west_ends_pcip_phase_1.py))
+finds its orange platform edges by color
+and fits them to the platforms' east ends in the Master Plan's frame,
+which comes out at 80.3 ft per inch of the sheet, with every east end within about 1 ft.
+Each platform's west end is in
+[`data/platform_west_ends_pcip_phase_1.csv`](./data/platform_west_ends_pcip_phase_1.csv).
+The lengths between them agree with the EA's to within about 40 ft,
+except platform 9's, which is 134 ft longer, like its outline in OpenStreetMap.
+
 Platform 11 is 1,007 ft long, a few feet short of a 12-car train at 85 ft per car,
 but the EA has it take 12-car LIRR trains,
 so trains can overhang their platform's west end by up to 15 ft.

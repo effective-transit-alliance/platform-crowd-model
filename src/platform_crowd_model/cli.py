@@ -84,6 +84,18 @@ def osm_platforms() -> None:
     osm_platforms.main()
 
 
+@data_app.command("platform-west-ends-pcip-phase-1")
+def platform_west_ends_pcip_phase_1() -> None:
+    """
+    Measure where each platform ends to the west on PCIP Phase 1's existing track plan,
+    writing `data/platform_west_ends_pcip_phase_1.csv`.
+    Run `estimated-vces` first.
+    """
+    from platform_crowd_model import platform_west_ends_pcip_phase_1
+
+    platform_west_ends_pcip_phase_1.main()
+
+
 @data_app.command("field-survey")
 def field_survey() -> None:
     """
@@ -102,5 +114,6 @@ def all_data() -> None:
     master_plan_vces()
     directory_vces()
     estimated_vces()
+    platform_west_ends_pcip_phase_1()
     osm_platforms()
     field_survey()
