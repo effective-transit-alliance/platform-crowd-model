@@ -7,8 +7,8 @@ Each module reads its plan's drawing into feet in the Master Plan's frame, exten
 and says where its platforms and their labels are.
 From its lines and fills, this finds:
 
-- each VCE's footprint: the bounding box of its treads and the balustrade lines beside them,
-  so it's a little wider than its treads, and T-shaped stairs' footprints include their corners.
+- each VCE's footprint: each flight's treads and the balustrade lines beside them,
+  joined across landings, so a T-shaped stair's is a T.
   Each run of evenly spaced, equally long, parallel treads is a flight,
   and flights are joined into VCEs as in `vces`,
   with flights narrower than 42 in. being escalators.
@@ -20,8 +20,7 @@ From its lines and fills, this finds:
   joined end to end.
   Where they close, they're `enclosure` areas, but most have gaps, e.g. for doors,
   so they're `wall` lines, with their color, so they can be told apart later.
-  Some are VCEs' details, e.g. break lines where a flight goes above the cut,
-  and curved stairs, whose treads aren't found as flights.
+  Some are VCEs' details, e.g. break lines where a flight goes above the cut.
 - concourses: the areas filled as existing concourse, at `level` `concourse`, above the platforms
 
 What's under the platforms' labels is hidden, so it's left out.
@@ -377,6 +376,45 @@ def footprint(vce: Vce, segments: list[tuple[XY, XY]]) -> tuple[float, float, fl
     return out[0], out[1], out[2], out[3]
 
 
+def vce_outline(vce: Vce, segments: list[tuple[XY, XY]]) -> Polygon:
+    """
+    `vce`'s footprint: each flight's treads and balustrades, joined by their landings,
+    so a T-shaped stair's is a T, not a box including its corners.
+    Flights in line are joined by the landing between them,
+    and a flight meeting another at a right angle is extended across it.
+    """
+    parts = [box(*footprint(Vce(vce.platform, [f]), segments)) for f in vce.flights]
+    for i, a in enumerate(vce.flights):
+        for b in vce.flights[i + 1 :]:
+            if not touching(a, b):
+                continue
+            if a.along_x == b.along_x:
+                # The landing between them, across the width they share.
+                x0, y0 = min(a.x0, b.x0), min(a.y0, b.y0)
+                x1, y1 = max(a.x1, b.x1), max(a.y1, b.y1)
+                if a.along_x:
+                    y0, y1 = max(a.y0, b.y0), min(a.y1, b.y1)
+                else:
+                    x0, x1 = max(a.x0, b.x0), min(a.x1, b.x1)
+                if x0 < x1 and y0 < y1:
+                    parts.append(box(x0, y0, x1, y1))
+            else:
+                across, along = (b, a) if a.along_x else (a, b)
+                # `across` runs north-south, so it's extended north or south across `along`.
+                parts.append(
+                    box(
+                        across.x0,
+                        min(across.y0, along.y0),
+                        across.x1,
+                        max(across.y1, along.y1),
+                    )
+                )
+    # Closing slits where the parts' edges nearly meet.
+    r = WALL_TOLERANCE_FT
+    joined = unary_union(parts).buffer(r, join_style="mitre").buffer(-r, join_style="mitre")
+    return joined if isinstance(joined, Polygon) else joined.convex_hull
+
+
 def bounds(points: tuple[XY, ...] | list[XY]) -> tuple[float, float, float, float]:
     xs = [p[0] for p in points]
     ys = [p[1] for p in points]
@@ -442,9 +480,7 @@ def elevators(plan: Plan, platforms: BaseGeometry) -> list[tuple[float, float, f
     return out
 
 
-def walls(
-    plan: Plan, found: list[tuple[float, float, float, float]]
-) -> list[tuple[list[XY], tuple[float, ...]]]:
+def walls(plan: Plan, found: list[BaseGeometry]) -> list[tuple[list[XY], tuple[float, ...]]]:
     """
     The other thin, solid gray lines on the platforms, joined end to end, with their color,
     leaving out the platforms' edges, what's under their labels,
@@ -453,7 +489,7 @@ def walls(
     outlines = [o for _, o in plan.outlines]
     on_platforms = unary_union(outlines).buffer(WALL_TOLERANCE_FT)
     edges = unary_union([o.exterior for o in outlines]).buffer(2 * WALL_TOLERANCE_FT)
-    known = unary_union([box(*b).buffer(2 * WALL_TOLERANCE_FT) for b in found])
+    known = unary_union([g.buffer(2 * WALL_TOLERANCE_FT) for g in found])
     by_color: dict[tuple[float, ...], list[LineString]] = {}
     for s in plan.drawing.strokes:
         color = s.color
@@ -517,35 +553,36 @@ def shapes(plan: Plan) -> list[tuple[dict[str, str], list[XY]]]:
         )
     platforms = unary_union([o for _, o in plan.outlines])
     segments = plan.drawing.segments()
-    measured = plan.vce_boxes or []
-    found = list(measured)
-    for vce in vces(plan):
-        b = footprint(vce, segments)
-        if not any(box(*b).intersects(box(*m)) for _, _, m in measured):
-            found.append((vce.platform, vce.type, b))
+    measured = [(p, t, box(*b)) for p, t, b in plan.vce_boxes or []]
+    found: list[tuple[str, str, Polygon]] = list(measured)
+    for platform, vce_type, outline in [
+        *((vce.platform, vce.type, vce_outline(vce, segments)) for vce in vces(plan)),
+    ]:
+        if not any(outline.intersects(m) for _, _, m in measured):
+            found.append((platform, vce_type, outline))
     # Each name goes to the nearest VCE of the same type, so no two VCEs get the same one.
     names: dict[int, str] = {}
     pairs = sorted(
-        (abs(m - (b[0] + b[2]) / 2), i, name)
-        for i, (platform, vce_type, b) in enumerate(found)
+        (abs(m - (g.bounds[0] + g.bounds[2]) / 2), i, name)
+        for i, (platform, vce_type, g) in enumerate(found)
         for m, name in (plan.names or vce_names)(platform, vce_type)
     )
     for distance, i, name in pairs:
         if distance <= SAME_VCE_TOLERANCE_FT and i not in names and name not in names.values():
             names[i] = name
-    for i, (platform, vce_type, b) in enumerate(found):
+    for i, (platform, vce_type, g) in enumerate(found):
         props = {"type": vce_type, "platform": platform, "vce_name": names.get(i, "")}
-        out.append((props, ring(b)))
-    boxes_found = [b for _, _, b in found]
+        out.append((props, [(float(x), float(y)) for x, y in g.exterior.coords]))
+    shapes_found: list[BaseGeometry] = [g for _, _, g in found]
     for kind, boxes in (
         ("column", columns(plan, platforms)),
         ("elevator", elevators(plan, platforms)),
     ):
-        boxes_found += boxes
+        shapes_found += [box(*b) for b in boxes]
         for b in sorted(boxes, key=lambda b: (-b[3], b[0])):
             center = ((b[0] + b[2]) / 2, (b[1] + b[3]) / 2)
             out.append(({"type": kind, "platform": plan.platform_at(center) or ""}, ring(b)))
-    for points, color in walls(plan, boxes_found):
+    for points, color in walls(plan, shapes_found):
         b = bounds(points)
         closed = len(points) > 3 and points[0] == points[-1]
         kind = "column" if closed and is_column(b) else "enclosure" if closed else "wall"

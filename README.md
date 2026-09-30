@@ -923,7 +923,8 @@ The PCIP plans are from before Moynihan Train Hall opened, so they don't have it
 From each plan, they're:
 
 - each platform's outline, with platforms 1 and 2 sharing one, as the plans draw them
-- each VCE's footprint: the bounding box of its treads and the balustrades beside them,
+- each VCE's footprint: each flight's treads and the balustrades beside them,
+  joined by their landings, so a T-shaped stair's is a T,
   named as the nearest VCE of the same type in [`data/vces.csv`](./data/vces.csv), if one's within 15'
 - the columns, the small squares on the platforms
 - the elevators, the boxes with an X across them
