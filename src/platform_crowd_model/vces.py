@@ -27,7 +27,7 @@ and the rest have only this sheet's width, marked `estimated`.
 
 Platforms 9 to 11 aren't on that plan, so their VCEs are estimated from
 NJ Transit's January 2022 station directory and the Master Plan instead;
-see `directory_vces`.
+see `vces_njt_directory`.
 Their widths are the Master Plan's, or else typical of platforms 1 to 8, marked `typical`.
 
 Writes `data/vces.csv`,

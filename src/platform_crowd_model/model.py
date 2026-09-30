@@ -538,7 +538,7 @@ https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
 PLATFORM_EAST_ENDS = DATA_DIR / "platform_east_ends.csv"
 """
 Where each platform ends to the east (ft east of the Master Plan's plans' west edge),
-via `platform-crowd-model data estimated-vces`.
+via `platform-crowd-model data vces`.
 """
 
 PLATFORM_WEST_ENDS = DATA_DIR / "platform_west_ends_pcip_phase_1.csv"
@@ -571,7 +571,7 @@ PLATFORM_A = 0
 OSM_PLATFORMS = DATA_DIR / "platforms_osm.csv"
 """
 Each platform's outline's area, from OpenStreetMap,
-via `platform-crowd-model data osm-platforms`.
+via `platform-crowd-model data platforms-osm`.
 """
 
 

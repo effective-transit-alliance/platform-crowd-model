@@ -10,7 +10,7 @@ and an outline's area is the area inside it, which accounts for platforms taperi
 and its width is its area divided by its length, i.e. its average width.
 Positions are projected onto a local plane in feet, which is accurate to well under a foot here.
 
-The raw Overpass response is cached in `.cache/osm_platforms.json`;
+The raw Overpass response is cached in `.cache/platforms_osm.json`;
 delete it to fetch the current data.
 
 Writes `data/platforms_osm.csv`.
@@ -25,7 +25,7 @@ from typing import Any
 
 from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
 
-CACHE = CACHE_DIR / "osm_platforms.json"
+CACHE = CACHE_DIR / "platforms_osm.json"
 OUT_CSV = DATA_DIR / "platforms_osm.csv"
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"

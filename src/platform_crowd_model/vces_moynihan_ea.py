@@ -10,7 +10,7 @@ short lines across the platform, within its window, `VCES`.
 Its scale comes from the West End Concourse's width, dimensioned as 36'-3",
 and it's registered to the Master Plan's frame (feet east of its plans' west edge)
 by the West End Concourse's stairs down to Platforms 3 to 8,
-as `estimated_vces` measures them on PCIP Phase 2's existing plan.
+as `vces` measures them on PCIP Phase 2's existing plan.
 
 The plan is a design, from before the Train Hall was built,
 but the Train Hall opened in 2021 with escalators to Platforms 3 to 8 (Tracks 5 to 16),
@@ -31,8 +31,8 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from platform_crowd_model.estimated_vces import sheet_vces
 from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
+from platform_crowd_model.vces import sheet_vces
 
 PDF_CACHE = CACHE_DIR / "moynihan-ea-figures-3-3-and-3-4.pdf"
 PDF_URL = (

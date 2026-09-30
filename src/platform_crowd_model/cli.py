@@ -41,27 +41,27 @@ def run(
     model.main(update_readme=update_readme, charts=charts)
 
 
-@data_app.command("master-plan-vces")
-def master_plan_vces() -> None:
+@data_app.command("vce-positions-master-plan")
+def vce_positions_master_plan() -> None:
     """
     Extract each VCE's position from the Master Plan's platform-level plans,
     writing `data/vce_positions_master_plan.csv`, `data/vces_existing_master_plan.csv`,
     and `data/platform_east_ends_master_plan.csv`.
     """
-    from platform_crowd_model import master_plan_vces
+    from platform_crowd_model import vce_positions_master_plan
 
-    master_plan_vces.main()
+    vce_positions_master_plan.main()
 
 
-@data_app.command("directory-vces")
-def directory_vces() -> None:
+@data_app.command("vces-njt-directory")
+def vces_njt_directory() -> None:
     """
     Extract each platform's VCEs from NJ Transit's January 2022 station directory,
     writing `data/vces_njt_directory.csv`.
     """
-    from platform_crowd_model import directory_vces
+    from platform_crowd_model import vces_njt_directory
 
-    directory_vces.main()
+    vces_njt_directory.main()
 
 
 @data_app.command("vces-moynihan-ea")
@@ -75,24 +75,24 @@ def vces_moynihan_ea() -> None:
     vces_moynihan_ea.main()
 
 
-@data_app.command("estimated-vces")
-def estimated_vces() -> None:
+@data_app.command("vces")
+def vces() -> None:
     """
     Estimate every VCE's width and position from the PCIP Phase 2 plan and the directory,
     writing `data/vces.csv` and `data/platform_east_ends.csv`.
-    Run `master-plan-vces` and `directory-vces` first.
+    Run `vce-positions-master-plan` and `vces-njt-directory` first.
     """
-    from platform_crowd_model import estimated_vces
+    from platform_crowd_model import vces
 
-    estimated_vces.main()
+    vces.main()
 
 
-@data_app.command("osm-platforms")
-def osm_platforms() -> None:
+@data_app.command("platforms-osm")
+def platforms_osm() -> None:
     """Measure each platform from OpenStreetMap, writing `data/platforms_osm.csv`."""
-    from platform_crowd_model import osm_platforms
+    from platform_crowd_model import platforms_osm
 
-    osm_platforms.main()
+    platforms_osm.main()
 
 
 @data_app.command("platform-west-ends-pcip-phase-1")
@@ -100,7 +100,7 @@ def platform_west_ends_pcip_phase_1() -> None:
     """
     Measure where each platform ends to the west on PCIP Phase 1's existing track plan,
     writing `data/platform_west_ends_pcip_phase_1.csv`.
-    Run `estimated-vces` first.
+    Run `vces` first.
     """
     from platform_crowd_model import platform_west_ends_pcip_phase_1
 
@@ -112,7 +112,7 @@ def platform_a_pcip_phase_1() -> None:
     """
     Measure PCIP Phase 1's Platform A and its VCEs on its plan of Alternative 12,
     writing `data/platform_a_pcip_phase_1.csv` and `data/vces_platform_a_pcip_phase_1.csv`.
-    Run `estimated-vces` first.
+    Run `vces` first.
     """
     from platform_crowd_model import platform_a_pcip_phase_1
 
@@ -124,34 +124,34 @@ def vces_transformation_fra_sos() -> None:
     """
     Measure Penn Transformation's new VCEs and platform extensions on the FRA's SOS report,
     writing `data/vces_transformation_fra_sos.csv` and `data/platforms_transformation_fra_sos.csv`.
-    Run `estimated-vces` and `platform-west-ends-pcip-phase-1` first.
+    Run `vces` and `platform-west-ends-pcip-phase-1` first.
     """
     from platform_crowd_model import vces_transformation_fra_sos
 
     vces_transformation_fra_sos.main()
 
 
-@data_app.command("field-survey")
-def field_survey() -> None:
+@data_app.command("vces-field-survey")
+def vces_field_survey() -> None:
     """
     Make the field survey sheet for measuring every VCE in person,
     writing `data/vces_field_survey.csv`.
-    Run `estimated-vces` first.
+    Run `vces` first.
     """
-    from platform_crowd_model import field_survey
+    from platform_crowd_model import vces_field_survey
 
-    field_survey.main()
+    vces_field_survey.main()
 
 
 @data_app.command("all")
 def all_data() -> None:
     """Regenerate everything in `data/` that's generated, in order."""
-    master_plan_vces()
-    directory_vces()
+    vce_positions_master_plan()
+    vces_njt_directory()
     vces_moynihan_ea()
-    estimated_vces()
+    vces()
     platform_west_ends_pcip_phase_1()
     vces_transformation_fra_sos()
     platform_a_pcip_phase_1()
-    osm_platforms()
-    field_survey()
+    platforms_osm()
+    vces_field_survey()

@@ -437,8 +437,8 @@ transcribed in [`data/vce_widths_master_plan.csv`](./data/vce_widths_master_plan
 Each VCE is marked as a stair or escalator, and as new or existing.
 Widths are in inches, listed in the tables' order, which is west to east along the platform.
 
-`uv run platform-crowd-model data master-plan-vces`
-([`master_plan_vces.py`](./src/platform_crowd_model/master_plan_vces.py))
+`uv run platform-crowd-model data vce-positions-master-plan`
+([`vce_positions_master_plan.py`](./src/platform_crowd_model/vce_positions_master_plan.py))
 extracts each VCE's approximate position from the draft's platform-level plans
 ([p. 17](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=23), [p. 29](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=35),
 [p. 41](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=47), and [p. 53](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=59)).
@@ -521,8 +521,8 @@ is the only source found that shows every platform's VCEs after Moynihan Train H
 It's a vector wayfinding map of both concourse levels,
 with an icon for each stair, escalator, and elevator to a platform,
 labeled with the platform's tracks.
-`uv run platform-crowd-model data directory-vces`
-([`directory_vces.py`](./src/platform_crowd_model/directory_vces.py))
+`uv run platform-crowd-model data vces-njt-directory`
+([`vces_njt_directory.py`](./src/platform_crowd_model/vces_njt_directory.py))
 extracts and classifies these icons into
 [`data/vces_njt_directory.csv`](./data/vces_njt_directory.csv),
 matching each of the map's 104 track labels to a distinct icon.
@@ -564,8 +564,8 @@ NJ Transit's PCIP Phase 2 drawings include an
 (sheet A-001, November 2020), a vector drawing at 1" = 40' of platforms 1 to 8,
 including the West End Concourse, with each stair's and escalator's treads drawn as lines.
 No such drawing of platforms 9 to 11 was found.
-`uv run platform-crowd-model data estimated-vces`
-([`estimated_vces.py`](./src/platform_crowd_model/estimated_vces.py))
+`uv run platform-crowd-model data vces`
+([`vces.py`](./src/platform_crowd_model/vces.py))
 finds every run of treads on the platforms, merges a stair's flights,
 and measures each VCE's width and position into
 [`data/vces.csv`](./data/vces.csv):
@@ -656,7 +656,7 @@ which puts its 19' corridor at 19.04 ft,
 and registers it by the West End Concourse's stairs down to platforms 3 to 8
 to where the PCIP Phase 2 plan has them, to within about 2 ft,
 into [`data/vces_moynihan_ea.csv`](./data/vces_moynihan_ea.csv),
-which `estimated-vces` adds to [`data/vces.csv`](./data/vces.csv) with `source` `moynihan_ea`.
+which `vces` adds to [`data/vces.csv`](./data/vces.csv) with `source` `moynihan_ea`.
 
 The plan is a design from before the Train Hall was built, so:
 
@@ -732,8 +732,8 @@ In the model, it's platform 0.
 
 Since no public source has every VCE's width,
 [`data/vces_field_survey.csv`](./data/vces_field_survey.csv) is a sheet for measuring them in person,
-made by `uv run platform-crowd-model data field-survey`
-([`field_survey.py`](./src/platform_crowd_model/field_survey.py)).
+made by `uv run platform-crowd-model data vces-field-survey`
+([`vces_field_survey.py`](./src/platform_crowd_model/vces_field_survey.py)).
 It lists each platform's VCEs expected from the PCIP Phase 2 plan (platforms 1 to 8),
 the 2022 directory, and the Master Plan,
 each sorted west to east, since they can't all be aligned reliably,
@@ -825,8 +825,8 @@ in [`data/platform_lengths_moynihan_ea.csv`](./data/platform_lengths_moynihan_ea
 the only source found with written platform lengths.
 Its area is from its outline in OpenStreetMap, which OpenRailwayMap draws,
 in [`data/platforms_osm.csv`](./data/platforms_osm.csv),
-written by `uv run platform-crowd-model data osm-platforms`
-([`osm_platforms.py`](./src/platform_crowd_model/osm_platforms.py)),
+written by `uv run platform-crowd-model data platforms-osm`
+([`platforms_osm.py`](./src/platform_crowd_model/platforms_osm.py)),
 since platforms taper toward their ends.
 The outlines have no source, but agree with the PCIP Phase 2 existing plan's widths
 to within about 2 ft, and with the EA's lengths to within about 60 ft,

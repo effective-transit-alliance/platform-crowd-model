@@ -21,8 +21,8 @@ Writes `data/vces_field_survey.csv`; the columns after `midpoint_ft` are for sur
 
 import csv
 
-from platform_crowd_model.estimated_vces import PCIP_PHASE_2_VCE_SOURCE
 from platform_crowd_model.paths import DATA_DIR
+from platform_crowd_model.vces import PCIP_PHASE_2_VCE_SOURCE
 
 DIRECTORY_CSV = DATA_DIR / "vces_njt_directory.csv"
 MASTER_PLAN_CSV = DATA_DIR / "vces_existing_master_plan.csv"
