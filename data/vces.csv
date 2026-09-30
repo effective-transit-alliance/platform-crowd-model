@@ -27,13 +27,13 @@ platform,vce_name,type,west_end_ft,east_end_ft,estimated_width_in,master_plan_wi
 3,P3-S9,stair,660,667,45,,estimated,pcip_phase_2,
 4,P4-S1,escalator,-203,-154,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
 4,P4-S2,escalator,-151,-100,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
-4,P4-S3,stair,-16,18,121,,estimated,pcip_phase_2,NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
-4,P4-S4,escalator,266,283,35,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021."
-4,P4-S5,stair,355,372,58,72,master_plan,pcip_phase_2,NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
-4,P4-S6,stair,407,424,60,,estimated,pcip_phase_2,The Master Plan has a 34 in. escalator here instead. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
-4,P4-S7,stair,484,491,57,,estimated,pcip_phase_2,NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
-4,P4-S8,stair,542,555,61,,estimated,pcip_phase_2,NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021.
-4,P4-S9,escalator,662,677,35,,estimated,pcip_phase_2,"The Master Plan has a 44 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades. NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021."
+4,P4-S3,stair,-16,18,121,,estimated,pcip_phase_2,NJT replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S4,escalator,266,283,35,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades. NJT replaced an escalator on tracks 7/8 with stairs in about 2021."
+4,P4-S5,stair,355,372,58,72,master_plan,pcip_phase_2,NJT replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S6,stair,407,424,60,,estimated,pcip_phase_2,The Master Plan has a 34 in. escalator here instead. NJT replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S7,stair,484,491,57,,estimated,pcip_phase_2,NJT replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S8,stair,542,555,61,,estimated,pcip_phase_2,NJT replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S9,escalator,662,677,35,,estimated,pcip_phase_2,"The Master Plan has a 44 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades. NJT replaced an escalator on tracks 7/8 with stairs in about 2021."
 5,P5-S1,escalator,-204,-154,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
 5,P5-S2,escalator,-150,-100,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
 5,P5-S3,stair,-16,17,120,,estimated,pcip_phase_2,

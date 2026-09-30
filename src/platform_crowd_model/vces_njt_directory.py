@@ -1,6 +1,6 @@
 """
 Extract the stairs, escalators, and elevators to each platform
-from NJ Transit's January 2022 Penn Station directory,
+from NJT's January 2022 Penn Station directory,
 the only source found that shows every platform's VCEs after Moynihan Train Hall opened.
 
 The directory is a vector wayfinding map of the station's upper and lower concourse levels.
@@ -61,7 +61,7 @@ MAX_LABEL_OFFSET_Y = 16
 MAX_LABEL_GAP_ABOVE_OR_BELOW = 8
 """
 Maximum vertical gap (PDF units) between an icon and its track label above or below it,
-as in the NJ Transit concourse and the LIRR's east end.
+as in the NJT concourse and the LIRR's east end.
 """
 
 

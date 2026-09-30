@@ -8,7 +8,7 @@ new or existing, stair or escalator.
 Each platform's width table lists its VCEs in the same west-to-east order as the plan,
 so the `n`th rectangle on a platform, from west to east, is its `n`th VCE in the table.
 The plans have west on the left:
-the platforms' east ends on the plans match those on an existing-conditions plan in NJ Transit's
+the platforms' east ends on the plans match those on an existing-conditions plan in NJT's
 PCIP Phase 2 drawings (November 2020) to within about 4 ft,
 and the gray wedges on the right are the 7th Ave subway.
 The draft's plans and tables don't always agree, though.

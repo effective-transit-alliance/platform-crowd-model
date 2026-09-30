@@ -56,7 +56,7 @@ def vce_positions_master_plan() -> None:
 @data_app.command("vces-njt-directory")
 def vces_njt_directory() -> None:
     """
-    Extract each platform's VCEs from NJ Transit's January 2022 station directory,
+    Extract each platform's VCEs from NJT's January 2022 station directory,
     writing `data/vces_njt_directory.csv`.
     """
     from platform_crowd_model import vces_njt_directory

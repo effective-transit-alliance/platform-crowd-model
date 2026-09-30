@@ -101,7 +101,7 @@ class Assumptions:
     seats_per_car: Annotated[int, Field(name="Seats per Car", units="pax")] = 135
     """
     Seats in each car, all of which are full on arrival, and all of whose passengers alight.
-    A seated NJ Transit car,
+    A seated NJT car,
     from the Moynihan Station Development Project environmental assessment,
     chapter 4.4, Station Circulation Analysis, Tables 4.4-10 and 4.4-19,
     which have 1,620 passengers on a 12-car train:
@@ -128,14 +128,14 @@ class Assumptions:
     doors_per_car: Annotated[int, Field(name="Doors per Car", units="door")] = 4
     """
     Doors (single-door equivalents) on each car on the platform side.
-    An NJ Transit MultiLevel, the worst case.
-    An LIRR car has more and better doors.
+    A NJT MultiLevel, the worst case.
+    A LIRR car has more and better doors.
     """
 
     car_length: Annotated[float, Field(name="Car Length", units="ft")] = 85
     """
     Length of each car, over which its doors are spread evenly.
-    An NJ Transit MultiLevel.
+    A NJT MultiLevel.
     """
 
     walking_speed: Annotated[float, Field(name="Walking Speed", units="ft/s")] = (

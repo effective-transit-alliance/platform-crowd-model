@@ -3,7 +3,7 @@ Make a blank field survey sheet for measuring every platform's VCEs in person,
 prefilled with the VCEs expected from `data/vces.csv`,
 from the PCIP Phase 2 existing plan on platforms 1 to 8
 and positioned from the directory on platforms 9 to 11,
-NJ Transit's January 2022 station directory (`data/vces_njt_directory.csv`),
+NJT's January 2022 station directory (`data/vces_njt_directory.csv`),
 and the Master Plan (`data/vces_existing_master_plan.csv`).
 
 The sources don't reconcile, and the directory can't be aligned with the others,
@@ -63,7 +63,7 @@ SURVEY_COLUMNS = [
 - `found`: yes, no, or a duplicate of another row's `vce_name`.
 - `clear_width_in`: between the handrails, at the platform end.
 - `escalator_direction_*`: up, down, or stopped.
-- `leads_to`: the concourse, e.g. NJ Transit, Amtrak, LIRR, Exit, West End, or Moynihan.
+- `leads_to`: the concourse, e.g. NJT, Amtrak, LIRR, Exit, West End, or Moynihan.
 - `obstructions`: columns, benches, bins, or narrow landings near the bottom.
 """
 

@@ -112,13 +112,13 @@ each using the passenger counts left by the one before.
      per [this track map](https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg),
      recorded in [`data/platform_max_cars_track_map.csv`](./data/platform_max_cars_track_map.csv):
      10 cars on platform 3, and 12 on platforms 6, 10, and 11.
-   - Every car is a full, seated NJ Transit MultiLevel car with 135 passengers,
+   - Every car is a full, seated NJT MultiLevel car with 135 passengers,
      from the Moynihan Station environmental assessment,
      whose 12-car trains carry 1,620
      ([Table 4.4-10, p. 4.4-22](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22);
      [Table 4.4-19, p. 4.4-47](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=47)).
    - Every car has 4 doors and is 85 ft long, the worst case.
-     (An LIRR car has more doors, and LIRR platforms are generally wider.)
+     (A LIRR car has more doors, and LIRR platforms are generally wider.)
 2. **Going upstairs.**
    Arriving passengers leave the platform
    via the vertical circulation elements (VCEs), i.e. the stairs and escalators.
@@ -313,7 +313,7 @@ Its stress test is close to this model's platform 3 scenario with trains 2 minut
 trains alighting and boarding on both tracks of the same platform, 2.5 minutes apart,
 with up to 1,600 passengers per commuter train ([p. 4-40](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=51)).
 
-For NJ Transit trains that only alight ("drop and go"),
+For NJT trains that only alight ("drop and go"),
 its baseline, i.e. today's VCEs,
 needed up to 7.9 minutes of passenger service time,
 the time for passengers to alight, cross the platform, and reach the VCEs
@@ -451,7 +451,7 @@ with positions in feet east of the plans' west edge,
 which cuts across every platform at the same place, under the West End Concourse.
 The plans have west on the left:
 the platforms' east ends on them match those on a scaled existing-conditions plan
-in NJ Transit's PCIP Phase 2 drawings to within about 4 ft
+in NJT's PCIP Phase 2 drawings to within about 4 ft
 (see [Estimated Widths](#estimated-widths)).
 The draft's plans and tables don't always agree:
 often, they disagree on whether a VCE is new or existing, so both are recorded,
@@ -467,7 +467,7 @@ matching both the final report's count and the 2 escalators and 3 stairs in the
 [Moynihan Station EA's Table 4.4-10](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22),
 but only some of the other platforms' (none of platform 11's).
 Those 5 may not be all of platform 3's VCEs, though.
-The January 2022 NJ Transit station directory shows 8 stairs and escalators to platform 3,
+The January 2022 NJT station directory shows 8 stairs and escalators to platform 3,
 including 2 stairs down from the West End Concourse, under Moynihan Train Hall, west of 8th Ave.
 The Master Plan's platform plans cut every platform off under the West End Concourse,
 and show none of its stairs,
@@ -502,7 +502,7 @@ This data couldn't replace the ETA report's total VCE widths on its own:
   But the Master Plan probably doesn't include the West End Concourse's VCEs,
   and the EA's data predates Moynihan Train Hall,
   so platform 3's total width today is probably more than 19.4 ft.
-  With the VCEs on NJ Transit's scaled PCIP Phase 2 plan, whose widths are mostly
+  With the VCEs on NJT's scaled PCIP Phase 2 plan, whose widths are mostly
   [estimated](#estimated-widths), it's about 550 in. (45.8 ft), a little more than the ETA report's 42.5 ft,
   or 516 in. (43 ft) with the Master Plan's widths where it has them, as the model now uses.
   Either way, a single total overstates how quickly a platform clears
@@ -513,9 +513,9 @@ This data couldn't replace the ETA report's total VCE widths on its own:
 The FRA's Service Optimization Study measured today's VCEs on site,
 but didn't publish the measurements.
 
-### Counts from NJ Transit's Station Directory
+### Counts from NJT's Station Directory
 
-NJ Transit's [January 2022 station directory](https://content.njtransit.com/sites/default/files/NY%20Penn%20Station%20Directory_011022.pdf),
+NJT's [January 2022 station directory](https://content.njtransit.com/sites/default/files/NY%20Penn%20Station%20Directory_011022.pdf),
 which the ETA report links to,
 is the only source found that shows every platform's VCEs after Moynihan Train Hall opened.
 It's a vector wayfinding map of both concourse levels,
@@ -559,7 +559,7 @@ So these counts are a check on the other sources, not a replacement for the FRA'
 ### Estimated Widths
 
 Until the VCEs are measured, widths no source lists can be estimated from a scaled drawing.
-NJ Transit's PCIP Phase 2 drawings include an
+NJT's PCIP Phase 2 drawings include an
 [existing concourse-level plan](https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf#page=45)
 (sheet A-001, November 2020), a vector drawing at 1" = 40' of platforms 1 to 8,
 including the West End Concourse, with each stair's and escalator's treads drawn as lines.
@@ -581,7 +581,7 @@ and measures each VCE's width and position into
   The rest, 45 of 61, are `estimated`, with only the sheet's width.
 - Their `source` is `pcip_phase_2`.
   Platforms 9 to 11's VCEs, which aren't on the sheet,
-  have `source` `njt_directory`: they're from NJ Transit's directory, as described below.
+  have `source` `njt_directory`: they're from NJT's directory, as described below.
 - For the 10 matched stairs, the sheet's widths differ from the Master Plan's by up to 14 in.
   (a median of 4 in.), and for the 6 matched escalators, by up to 9 in.
 - Escalators' treads are their steps, narrower than their balustrades.
@@ -616,13 +616,13 @@ These are only estimates:
   so some may be stairs between the upper and lower concourses drawn over a platform,
   though every platform's matches the directory's pattern,
   e.g. 2 stairs each for the West End and Exit Concourses.
-- The sheet predates NJ Transit's replacement of an escalator on tracks 7/8 (platform 4)
+- The sheet predates NJT's replacement of an escalator on tracks 7/8 (platform 4)
   with stairs in about 2021.
 - The model gives an escalator the TCQSM's capacity for its tread width,
   so a few inches' error can move it across 32 in., between 34 and 72 pax/min.
 
 Platforms 9 to 11 aren't on that plan,
-so their VCEs are estimated from NJ Transit's January 2022 station directory instead,
+so their VCEs are estimated from NJT's January 2022 station directory instead,
 whose map is schematic and not to scale.
 Each level of its map is calibrated to feet by matching its icons on platforms 1 to 8,
 and the Master Plan's on platforms 9 and 10, to their positions,
@@ -766,10 +766,10 @@ From newest to oldest:
 |---|---|---|---|---|---|---|
 | [FRA Service Optimization Study, Phase I](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf) | July 2026 report | Only of new VCEs | Only of new VCEs | Measured, but not published | Only of new VCEs | Yes |
 | [Amtrak's *Doubling Trans-Hudson Train Capacity*](https://web.archive.org/web/20250307173712id_/http://pennstationcomplex.info/wp-content/uploads/2024/10/Doubling-of-Trans-Hudson-Train-Capacity-at-Penn-Station.pdf#page=34) | October 2024 | No | No | No | No | n/a |
-| [NJ Transit station directory](https://content.njtransit.com/sites/default/files/NY%20Penn%20Station%20Directory_011022.pdf) | January 2022 | Yes | Yes | No | Schematic | Yes |
+| [NJT station directory](https://content.njtransit.com/sites/default/files/NY%20Penn%20Station%20Directory_011022.pdf) | January 2022 | Yes | Yes | No | Schematic | Yes |
 | [Master Plan final report](https://esd.ny.gov/sites/default/files/CACWG-Meetings-8-9-Q-A-09-08-21.pdf#page=7), in the Empire Station Complex Q&A | April 2021 | Yes | Only of kept VCEs | Only of kept VCEs | No | Probably not |
 | [Master Plan draft Alternatives Report](https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf#page=22) | August 2020 | No | Only of kept VCEs | Only of kept VCEs | Yes, from vector plans | Probably not |
-| [NJ Transit PCIP Phase 1 and 2 reports and drawings](https://liamblank.com/wp-content/uploads/2026/09/penn-station-gateway-catalogue.csv) | 2019 to 2021 | Only of new VCEs | Only of new VCEs | Only of new VCEs, but existing ones can be estimated from a scaled plan | Only of new VCEs, but existing ones can be estimated from a scaled plan | Yes, on a scaled plan |
+| [NJT PCIP Phase 1 and 2 reports and drawings](https://liamblank.com/wp-content/uploads/2026/09/penn-station-gateway-catalogue.csv) | 2019 to 2021 | Only of new VCEs | Only of new VCEs | Only of new VCEs, but existing ones can be estimated from a scaled plan | Only of new VCEs, but existing ones can be estimated from a scaled plan | Yes, on a scaled plan |
 | [Moynihan Station EA, Table 4.4-10](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22) | 2008 data | Yes | Yes | No, only capacities in ped/min | No | Before its expansion |
 | ETA's `total_vce_width` | Unknown | No | No | Totals per platform | No | Unknown |
 
@@ -784,16 +784,16 @@ Notes:
   but its only per-VCE figure shows the up to 23 VCEs it proposes adding
   ([p. 5-60](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=71)).
   Its measurements would be the best source for this model if released.
-- **NJ Transit station directory (January 2022).**
+- **NJT station directory (January 2022).**
   The only source found that shows every platform's VCEs after Moynihan Train Hall opened,
   as icons for stairs, escalators, and elevators labeled with their tracks,
   on both concourse levels.
   The ETA report links to it.
   It's a schematic wayfinding map, not to scale, so it has no widths,
   and may show some VCEs more than once
-  (see [Counts from NJ Transit's Station Directory](#counts-from-nj-transits-station-directory)).
+  (see [Counts from NJT's Station Directory](#counts-from-nj-transits-station-directory)).
 - **Amtrak's *Doubling Trans-Hudson Train Capacity* (October 2024).**
-  Lists an "NJ Transit Track 7/8 Escalator Replacement with Stairs"
+  Lists an "NJT Track 7/8 Escalator Replacement with Stairs"
   among nearby projects, with an expected completion in 2021,
   a change on platform 4 that may postdate the Master Plan draft.
 - **Master Plan (August 2020 draft and April 2021 final).**
@@ -803,7 +803,7 @@ Notes:
   The final report's "Existing Number of VCEs" counts per platform
   are the only complete per-platform counts in a table,
   but also probably exclude the West End Concourse.
-- **NJ Transit's PCIP reports (2019 to 2021).**
+- **NJT's PCIP reports (2019 to 2021).**
   From records requests, archived by Liam Blank.
   Their drawings only dimension proposed platforms, concourses, and VCEs, not existing ones,
   but PCIP Phase 2's existing concourse-level plan (November 2020) is a scaled vector drawing
@@ -882,7 +882,7 @@ and 12.04 pax/s for 0:32, tapering at 6:04, without it.
 ### Current Results
 
 This table is generated by `uv run platform-crowd-model --update-readme`.
-Platforms 9 to 11's VCEs are only estimated from NJ Transit's station directory
+Platforms 9 to 11's VCEs are only estimated from NJT's station directory
 (see [Estimated Widths](#estimated-widths)).
 The directory doesn't show every VCE, and the Master Plan has none on platform 11,
 so its VCEs total only 31.6 ft, much less than the ETA report's 43.58 ft,

@@ -3,7 +3,7 @@ Estimate the widths and positions of every VCE on platforms 1 to 8
 by measuring their treads on a scaled vector drawing,
 and compare them with the Master Plan's (`data/vces_existing_master_plan.csv`).
 
-NJ Transit's PCIP Phase 2 drawings (November 2020) include an existing concourse-level plan
+NJT's PCIP Phase 2 drawings (November 2020) include an existing concourse-level plan
 (sheet A-001, PDF page 45) drawn at 1" = 40', with each stair's and escalator's treads as lines,
 so a tread's length is roughly a stair's width, or an escalator's step width.
 It shows platforms 1 to 8, including the West End Concourse; no such plan of 9 to 11 was found.
@@ -26,7 +26,7 @@ Matched VCEs have the Master Plan's width,
 and the rest have only this sheet's width, marked `estimated`.
 
 Platforms 9 to 11 aren't on that plan, so their VCEs are estimated from
-NJ Transit's January 2022 station directory and the Master Plan instead;
+NJT's January 2022 station directory and the Master Plan instead;
 see `vces_njt_directory`.
 Their widths are the Master Plan's, or else typical of platforms 1 to 8, marked `typical`.
 
@@ -394,9 +394,7 @@ def sheet_vces() -> tuple[list[dict[str, Any]], dict[int, int]]:
         if v.type == "escalator":
             notes.append("An escalator's treads are its steps, narrower than its balustrades.")
         if v.platform == 4:
-            notes.append(
-                "NJ Transit replaced an escalator on tracks 7/8 with stairs in about 2021."
-            )
+            notes.append("NJT replaced an escalator on tracks 7/8 with stairs in about 2021.")
         out.append(
             {
                 "platform": v.platform,
@@ -477,7 +475,7 @@ def main() -> None:
 DIRECTORY_PLATFORMS = (9, 10, 11)
 """
 Platforms the PCIP Phase 2 existing plan doesn't show,
-whose VCEs are instead estimated from NJ Transit's January 2022 station directory.
+whose VCEs are instead estimated from NJT's January 2022 station directory.
 """
 
 MASTER_PLAN_EAST_ENDS_SOURCE = (
@@ -487,7 +485,7 @@ MASTER_PLAN_EAST_ENDS_SOURCE = (
 
 DIRECTORY_VCE_SOURCE = "njt_directory"
 """
-`data/vces.csv`'s `source` for VCEs from NJ Transit's Penn Station directory (January 2022),
+`data/vces.csv`'s `source` for VCEs from NJT's Penn Station directory (January 2022),
 positioned by calibrating its map against platforms 1 to 8.
 """
 
@@ -587,7 +585,7 @@ def directory_vces(
     estimated: list[dict[str, object]], master_plan: list[dict[str, str]]
 ) -> list[dict[str, object]]:
     """
-    Every VCE on `DIRECTORY_PLATFORMS`, from NJ Transit's station directory
+    Every VCE on `DIRECTORY_PLATFORMS`, from NJT's station directory
     (`data/vces_njt_directory.csv`), whose map is schematic and not to scale.
 
     Each level's map is calibrated to feet with a piecewise-linear, nondecreasing fit,
