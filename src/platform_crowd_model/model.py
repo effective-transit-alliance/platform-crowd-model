@@ -541,6 +541,21 @@ Where each platform ends to the east (ft east of the Master Plan's plans' west e
 via `platform-crowd-model data estimated-vces`.
 """
 
+PLATFORM_WEST_ENDS = DATA_DIR / "platform_west_ends_pcip_phase_1.csv"
+"""
+Where each platform ends to the west (ft east of the Master Plan's plans' west edge),
+via `platform-crowd-model data platform-west-ends-pcip-phase-1`.
+"""
+
+TRANSFORMATION_VCES = DATA_DIR / "vces_transformation_fra_sos.csv"
+"""Penn Transformation's new VCEs, via `platform-crowd-model data vces-transformation-fra-sos`."""
+
+TRANSFORMATION_PLATFORMS = DATA_DIR / "platforms_transformation_fra_sos.csv"
+"""
+Penn Transformation's platform extensions and decluttering,
+via `platform-crowd-model data vces-transformation-fra-sos`.
+"""
+
 OSM_PLATFORMS = DATA_DIR / "platforms_osm.csv"
 """
 Each platform's outline's area, from OpenStreetMap,
@@ -587,6 +602,48 @@ def platform_areas() -> dict[int, int]:
             for row in csv.DictReader(f)
             if row["platform"] and row["level"] == "-3"
         }
+
+
+@cache
+def platform_west_ends() -> dict[int, float]:
+    """Where each platform ends to the west (ft), from `PLATFORM_WEST_ENDS`."""
+    with PLATFORM_WEST_ENDS.open() as f:
+        return {int(row["platform"]): float(row["west_end_ft"]) for row in csv.DictReader(f)}
+
+
+@cache
+def platform_widths() -> dict[int, float]:
+    """Each platform's average width (ft), from `OSM_PLATFORMS`."""
+    with OSM_PLATFORMS.open() as f:
+        return {
+            int(row["platform"]): float(row["width_ft"])
+            for row in csv.DictReader(f)
+            if row["platform"] and row["level"] == "-3"
+        }
+
+
+@cache
+def transformation_platforms() -> dict[int, dict[str, str]]:
+    """Each platform's row of `TRANSFORMATION_PLATFORMS`."""
+    with TRANSFORMATION_PLATFORMS.open() as f:
+        return {int(row["platform"]): row for row in csv.DictReader(f)}
+
+
+@cache
+def transformation_vces(platform: int) -> tuple[Vce, ...]:
+    """Penn Transformation's new VCEs on `platform`, from `TRANSFORMATION_VCES`, e.g. `P3-T1`."""
+    with TRANSFORMATION_VCES.open() as f:
+        rows = [row for row in csv.DictReader(f) if int(row["platform"]) == platform]
+    return tuple(
+        Vce(
+            name=f"P{platform}-T{n}",
+            width=float(row["width_in"]) / 12,
+            west_end=float(row["west_end_ft"]),
+            east_end=float(row["east_end_ft"]),
+            type=row["type"],
+        )
+        for n, row in enumerate(rows, start=1)
+    )
 
 
 @cache
@@ -772,31 +829,6 @@ def choose_vce(
     return min(going_up, key=time_to_go_up)
 
 
-PENN_RECONSTRUCTION_PLATFORM_3_EXTRA_WIDTH = 44.75 - 42.5
-"""
-How much wider platform 3's VCEs are after Penn Reconstruction, in total (ft),
-from the ETA report's total VCE widths with and without it.
-"""
-
-
-def penn_reconstruction_platform_3_vces() -> tuple[Vce, ...]:
-    """
-    Platform 3's VCEs after Penn Reconstruction:
-    its existing VCEs, plus one stair as wide as `PENN_RECONSTRUCTION_PLATFORM_3_EXTRA_WIDTH`
-    in the middle of the platform, standing in for the new VCEs,
-    whose positions and widths aren't known.
-    """
-    return (
-        *platform_vces(3),
-        Vce(
-            name="P3-Reconstruction",
-            width=PENN_RECONSTRUCTION_PLATFORM_3_EXTRA_WIDTH,
-            west_end=245,
-            east_end=259,
-        ),
-    )
-
-
 @dataclass
 class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
@@ -824,26 +856,51 @@ class Params:
     assumptions: Assumptions = dataclasses.field(default_factory=Assumptions)
     """What the model assumes, the same for every scenario unless overridden."""
 
+    transformation: bool = False
+    """
+    Whether the platform is as Penn Transformation would leave it,
+    extended, with longer trains, and decluttered, per `TRANSFORMATION_PLATFORMS`.
+    Its new VCEs, `transformation_vces`, are in `vces`.
+    """
+
     modifier: str | None = None
     """
     What sets this scenario apart from the platform's others,
-    e.g. `recon` for its VCEs after Penn Reconstruction.
+    e.g. `transformation` for Penn Transformation.
     """
 
     @property
     def name(self) -> str:
-        """The platform's name in the results table, e.g. `3 (recon)`."""
+        """The platform's name in the results table, e.g. `3 (transformation)`."""
         return f"{self.platform} ({self.modifier})" if self.modifier else str(self.platform)
 
     @property
     def filename_prefix(self) -> str:
-        """Prefix of the filenames to save the time series and charts in, e.g. `platform3_recon`."""
+        """
+        Prefix of the filenames to save its time series and charts in,
+        e.g. `platform3_transformation`.
+        """
         return f"platform{self.platform}" + (f"_{self.modifier}" if self.modifier else "")
 
     @property
+    def transformation_platform(self) -> dict[str, str]:
+        """The platform's row of `TRANSFORMATION_PLATFORMS`, if `transformation`, or else none."""
+        return transformation_platforms()[self.platform] if self.transformation else {}
+
+    @property
+    def platform_extension(self) -> Annotated[float, Field(name="Platform Extension", units="ft")]:
+        """How far Penn Transformation extends the platform to the west (ft), if at all."""
+        west_end = self.transformation_platform.get("west_end_ft")
+        return platform_west_ends()[self.platform] - float(west_end) if west_end else 0
+
+    @property
     def platform_max_cars(self) -> Annotated[int, Field(name="Platform Max Cars", units="car")]:
-        """Cars in the longest train that fits on its tracks, from `PLATFORM_MAX_CARS`."""
-        return platform_max_cars()[self.platform]
+        """
+        Cars in the longest train that fits on its tracks, from `PLATFORM_MAX_CARS`,
+        or with Penn Transformation's extension, from `TRANSFORMATION_PLATFORMS`.
+        """
+        max_cars = self.transformation_platform.get("max_cars")
+        return int(max_cars) if max_cars else platform_max_cars()[self.platform]
 
     @property
     def tracks(self) -> Annotated[int, Field(name="Tracks", units="track")]:
@@ -877,17 +934,24 @@ class Params:
         return platform_east_ends()[self.platform]
 
     @property
-    def platform_length(self) -> Annotated[int, Field(name="Platform Length", units="ft")]:
-        """Platform length (in feet), from the Moynihan Station EA."""
-        return platform_lengths()[self.platform]
+    def platform_length(self) -> Annotated[float, Field(name="Platform Length", units="ft")]:
+        """Platform length (in feet), from the Moynihan Station EA, plus `platform_extension`."""
+        return platform_lengths()[self.platform] + self.platform_extension
 
     @property
-    def platform_area(self) -> Annotated[int, Field(name="Platform Area", units="ft^2")]:
+    def platform_area(self) -> Annotated[float, Field(name="Platform Area", units="ft^2")]:
         """
         Platform area (in square feet), from OpenStreetMap's outline of it,
         which accounts for platforms tapering.
+        With Penn Transformation, decluttering adds the FRA's percentage more circulation area,
+        and `platform_extension` adds its length at the platform's average width.
         """
-        return platform_areas()[self.platform]
+        area = platform_areas()[self.platform]
+        row = self.transformation_platform
+        if not row:
+            return area
+        decluttered = int(row["added_circulation_area_sq_ft"]) / int(row["circulation_area_sq_ft"])
+        return area * (1 + decluttered) + self.platform_extension * platform_widths()[self.platform]
 
     @property
     def arriving_pax_per_train(
@@ -1728,25 +1792,20 @@ def scenarios() -> list[Params]:
         """`platform` with its VCEs, before choosing a headway."""
         return Params(platform=platform, headway=timedelta(0), vces=platform_vces(platform))
 
-    platform_3 = platform_params(3)
+    def transformation_params(platform: int) -> Params:
+        """`platform` as Penn Transformation would leave it, with its new VCEs."""
+        params = platform_params(platform)
+        return dataclasses.replace(
+            params,
+            transformation=True,
+            modifier="transformation",
+            vces=(*params.vces, *transformation_vces(platform)),
+        )
+
     platforms = [
-        platform_params(1),
-        platform_params(2),
-        platform_3,
-        # Platform 3 accounting for Penn Reconstruction's plans.
-        dataclasses.replace(
-            platform_3,
-            modifier="recon",
-            vces=penn_reconstruction_platform_3_vces(),
-        ),
-        platform_params(4),
-        platform_params(5),
-        platform_params(6),
-        platform_params(7),
-        platform_params(8),
-        platform_params(9),
-        platform_params(10),
-        platform_params(11),
+        params
+        for platform in range(1, 12)
+        for params in (platform_params(platform), transformation_params(platform))
     ]
     return [
         dataclasses.replace(params, headway=headway)
