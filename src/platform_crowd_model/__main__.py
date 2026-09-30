@@ -1,3 +1,3 @@
-from platform_crowd_model.model import cli
+from platform_crowd_model.cli import app
 
-cli()
+app()

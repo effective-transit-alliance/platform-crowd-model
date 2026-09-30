@@ -16,9 +16,6 @@ from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Self, cast
 
-import typer
-from typer import Option
-
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
@@ -1029,15 +1026,7 @@ def run_model(params: Params, charts: bool) -> str:
     )
 
 
-def main(
-    update_readme: Annotated[
-        bool, Option(help="Replace the results table in the README with this run's.")
-    ] = False,
-    charts: Annotated[
-        bool,
-        Option(help="Also print each scenario's time series and save its CSVs and charts."),
-    ] = False,
-) -> None:
+def main(update_readme: bool = False, charts: bool = False) -> None:
     """Run every scenario and print a table of their results."""
 
     # params are labeled  with p<platform number><time in seconds>
@@ -1139,8 +1128,3 @@ def main(
     print(table)
     if update_readme:
         update_readme_results(table)
-
-
-def cli() -> None:
-    """Run `main` as a command-line program."""
-    typer.run(main)
