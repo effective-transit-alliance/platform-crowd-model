@@ -44,6 +44,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import cache
+from typing import Any
 
 import pymupdf
 
@@ -52,6 +53,7 @@ from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
 MASTER_PLAN_CSV = DATA_DIR / "vces_existing_master_plan.csv"
 DIRECTORY_CSV = DATA_DIR / "vces_njt_directory.csv"
 MASTER_PLAN_EAST_ENDS_CSV = DATA_DIR / "platform_east_ends_master_plan.csv"
+MOYNIHAN_EA_CSV = DATA_DIR / "vces_moynihan_ea.csv"
 EAST_ENDS_CSV = DATA_DIR / "platform_east_ends.csv"
 OUT_CSV = DATA_DIR / "vces.csv"
 PDF_CACHE = CACHE_DIR / "pcip-2-conceptual-design-preliminary-drawings.pdf"
@@ -62,6 +64,9 @@ SOURCE = f"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page {PAGE}"
 
 PCIP_PHASE_2_VCE_SOURCE = "pcip_phase_2"
 """`data/vces.csv`'s `source` for VCEs measured on this sheet (`SOURCE`)."""
+
+MOYNIHAN_EA_VCE_SOURCE = "moynihan_ea"
+"""`data/vces.csv`'s `source` for VCEs from the Moynihan Station EA's plan, in `MOYNIHAN_EA_CSV`."""
 
 PDF_UNITS_PER_FOOT = (507.2 - 290.9) / 120
 """From the centers of the scale bar's 0' and 120' labels."""
@@ -339,7 +344,11 @@ def vces(
     return out
 
 
-def main() -> None:
+def sheet_vces() -> tuple[list[dict[str, Any]], dict[int, int]]:
+    """
+    Every VCE on platforms 1 to 8 measured on the sheet, as rows of `OUT_CSV`,
+    and each platform's east end, both in the Master Plan's frame.
+    """
     page = pdf()[PAGE - 1]
     labels = platform_labels(page)
     outlines = platform_outlines(page)
@@ -402,12 +411,52 @@ def main() -> None:
                 "notes": " ".join(notes),
             }
         )
+    return out, {p: ft(x) for p, x in east_ends.items()}
+
+
+def moynihan_ea_vces() -> list[dict[str, Any]]:
+    """The VCEs in `MOYNIHAN_EA_CSV` that were built, as rows of `OUT_CSV`."""
+    with MOYNIHAN_EA_CSV.open() as f:
+        return [
+            {
+                "platform": int(row["platform"]),
+                "vce_name": "",
+                "type": row["type"],
+                "west_end_ft": int(row["west_end_ft"]),
+                "east_end_ft": int(row["east_end_ft"]),
+                "estimated_width_in": int(row["width_in"]),
+                "master_plan_width_in": "",
+                "width_source": "estimated",
+                "source": MOYNIHAN_EA_VCE_SOURCE,
+                "notes": row["notes"],
+            }
+            for row in csv.DictReader(f)
+            if row["built"] == "yes"
+        ]
+
+
+def main() -> None:
+    out, east_end_ft = sheet_vces()
+    with MASTER_PLAN_CSV.open() as f:
+        master_plan = list(csv.DictReader(f))
+    with MASTER_PLAN_EAST_ENDS_CSV.open() as f:
+        master_plan_east_ends = {
+            int(row["platform"]): int(row["east_end_ft"]) for row in csv.DictReader(f)
+        }
+    # The directory is calibrated against the sheet's VCEs alone,
+    # before the Moynihan EA's join them.
     out += directory_vces(out, master_plan)
+    out += moynihan_ea_vces()
+    out.sort(key=lambda v: (v["platform"], v["west_end_ft"]))
+    numbers: dict[int, int] = {}
+    for v in out:
+        numbers[v["platform"]] = numbers.get(v["platform"], 0) + 1
+        v["vce_name"] = f"P{v['platform']}-S{numbers[v['platform']]}"
     with EAST_ENDS_CSV.open("w", newline="") as f:
         writer = csv.writer(f, lineterminator="\n")
         writer.writerow(["platform", "east_end_ft", "source"])
-        for p, x in sorted(east_ends.items()):
-            writer.writerow([p, ft(x), SOURCE])
+        for p, x in sorted(east_end_ft.items()):
+            writer.writerow([p, x, SOURCE])
         for p in DIRECTORY_PLATFORMS:
             writer.writerow([p, master_plan_east_ends[p], MASTER_PLAN_EAST_ENDS_SOURCE])
     with OUT_CSV.open("w", newline="") as f:

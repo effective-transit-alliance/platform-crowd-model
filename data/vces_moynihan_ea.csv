@@ -1,0 +1,17 @@
+platform,type,west_end_ft,east_end_ft,width_in,built,source,notes
+8,escalator,-204,-153,40,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Its width is KONE's 1,000 mm steps, not measured on the plan."
+8,escalator,-151,-100,40,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Its width is KONE's 1,000 mm steps, not measured on the plan."
+7,escalator,-204,-154,40,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Its width is KONE's 1,000 mm steps, not measured on the plan."
+7,escalator,-150,-100,40,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Its width is KONE's 1,000 mm steps, not measured on the plan."
+6,escalator,-204,-154,40,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Its width is KONE's 1,000 mm steps, not measured on the plan."
+6,escalator,-151,-100,40,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Its width is KONE's 1,000 mm steps, not measured on the plan."
+5,escalator,-204,-154,40,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Its width is KONE's 1,000 mm steps, not measured on the plan."
+5,escalator,-150,-100,40,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Its width is KONE's 1,000 mm steps, not measured on the plan."
+4,escalator,-203,-154,40,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Its width is KONE's 1,000 mm steps, not measured on the plan."
+4,escalator,-151,-100,40,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Its width is KONE's 1,000 mm steps, not measured on the plan."
+3,escalator,-205,-156,40,no,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Taken as not built: the Train Hall opened with 11 escalators, not the plan's 12, and this one would run past the platform's west end."
+3,escalator,-150,-101,40,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2","Its width is KONE's 1,000 mm steps, not measured on the plan."
+9,stair,-16,8,78,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2",
+9,stair,-98,-86,72,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2",
+10,stair,-16,8,78,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2",
+11,stair,0,13,44,yes,"Moynihan Station EA, Figure 3-4, February 2010, PDF page 2",

@@ -64,6 +64,17 @@ def directory_vces() -> None:
     directory_vces.main()
 
 
+@data_app.command("vces-moynihan-ea")
+def vces_moynihan_ea() -> None:
+    """
+    Measure the VCEs around Moynihan Train Hall on the Moynihan Station EA's plan,
+    writing `data/vces_moynihan_ea.csv`.
+    """
+    from platform_crowd_model import vces_moynihan_ea
+
+    vces_moynihan_ea.main()
+
+
 @data_app.command("estimated-vces")
 def estimated_vces() -> None:
     """
@@ -113,6 +124,7 @@ def all_data() -> None:
     """Regenerate everything in `data/` that's generated, in order."""
     master_plan_vces()
     directory_vces()
+    vces_moynihan_ea()
     estimated_vces()
     platform_west_ends_pcip_phase_1()
     osm_platforms()
