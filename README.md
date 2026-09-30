@@ -867,6 +867,42 @@ Platform 11 is 1,007' long, a few feet short of a 12-car train at 85' per car,
 but the EA has it take 12-car LIRR trains,
 so trains can overhang their platform's west end by up to 15'.
 
+### Platform Shapes
+
+The model doesn't use them yet, but the shapes of platforms 1 to 8 and of what's on them
+are extracted from the PCIP Phase 2 existing plan
+([sheet A-001](https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf#page=45))
+by `uv run platform-crowd-model data shapes-pcip-phase-2`
+([`shapes_pcip_phase_2.py`](./src/platform_crowd_model/shapes_pcip_phase_2.py)):
+
+- each platform's outline, with platforms 1 and 2 sharing one, as the sheet draws them
+- each VCE's footprint: the bounding box of its treads and the balustrades beside them,
+  named as in [`data/vces.csv`](./data/vces.csv)
+- the columns, the small squares on the platforms
+- the elevators, the boxes with an X across them
+
+Rooms, walls, and the enclosures around VCEs aren't extracted yet.
+The shapes are 2D, at the platform level,
+since what matters on the platform is the space each VCE takes up there;
+going up, a VCE's capacity is already its width.
+
+They're GeoJSON, one feature per line, in two files:
+
+- [`data/shapes_pcip_phase_2.geojson`](./data/shapes_pcip_phase_2.geojson),
+  in feet in the Master Plan's frame, extended to 2D:
+  x east of its plans' west edge, as in `data/vces.csv`,
+  and y north of platform 5's centerline,
+  where east and north are along Manhattan's street grid.
+  GeoJSON requires longitude and latitude, so this is strictly not valid GeoJSON,
+  but it's what the code reads.
+- [`data/shapes_pcip_phase_2_lonlat.geojson`](./data/shapes_pcip_phase_2_lonlat.geojson),
+  the same shapes in longitude and latitude, so GitHub can show them on a map.
+  They're registered to the platforms' outlines in OpenStreetMap:
+  rotated 29.2° to their average direction, the street grid's,
+  and offset to match their east ends on average,
+  which agree to within about 4' across the platforms, but only about 37' along them,
+  like OpenStreetMap's lengths.
+
 ## Results
 
 Times are in m:ss.

@@ -344,15 +344,11 @@ def vces(
     return out
 
 
-def sheet_vces() -> tuple[list[dict[str, Any]], dict[int, int]]:
+def master_plan_west_edge_x(east_ends: dict[int, float]) -> float:
     """
-    Every VCE on platforms 1 to 8 measured on the sheet, as rows of `OUT_CSV`,
-    and each platform's east end, both in the Master Plan's frame.
+    The sheet's x (PDF units) of the Master Plan's plans' west edge,
+    registering each platform's east end on the sheet to the Master Plan's.
     """
-    page = pdf()[PAGE - 1]
-    labels = platform_labels(page)
-    outlines = platform_outlines(page)
-    east_ends = platform_east_ends(outlines, labels)
     # Platforms 1 and 2 are drawn differently on both, so they aren't used to register them.
     with MASTER_PLAN_EAST_ENDS_CSV.open() as f:
         master_plan_east_ends = {
@@ -362,12 +358,24 @@ def sheet_vces() -> tuple[list[dict[str, Any]], dict[int, int]]:
         east_ends[p] - master_plan_east_ends[p] * PDF_UNITS_PER_FOOT
         for p in east_ends.keys() & master_plan_east_ends.keys()
     ]
-    master_plan_west_edge_x = sum(offsets) / len(offsets)
     spread_ft = (max(offsets) - min(offsets)) / PDF_UNITS_PER_FOOT
     print(f"registered to the Master Plan to within {spread_ft:.1f} ft")
+    return sum(offsets) / len(offsets)
+
+
+def sheet_vces() -> tuple[list[dict[str, Any]], dict[int, int]]:
+    """
+    Every VCE on platforms 1 to 8 measured on the sheet, as rows of `OUT_CSV`,
+    and each platform's east end, both in the Master Plan's frame.
+    """
+    page = pdf()[PAGE - 1]
+    labels = platform_labels(page)
+    outlines = platform_outlines(page)
+    east_ends = platform_east_ends(outlines, labels)
+    west_edge_x = master_plan_west_edge_x(east_ends)
 
     def ft(x: float) -> int:
-        return round((x - master_plan_west_edge_x) / PDF_UNITS_PER_FOOT)
+        return round((x - west_edge_x) / PDF_UNITS_PER_FOOT)
 
     with MASTER_PLAN_CSV.open() as f:
         master_plan = list(csv.DictReader(f))
