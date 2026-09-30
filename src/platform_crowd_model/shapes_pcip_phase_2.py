@@ -85,4 +85,5 @@ def main() -> None:
         wall_grays=WALL_GRAYS,
         concourse_fill=CONCOURSE_FILL,
     )
-    write(plan, OUT_GEOJSON, LONLAT_GEOJSON)
+    # This plan defines the frame, and `shapes.frame_outlines` reads it from `OUT_GEOJSON`.
+    write(plan, OUT_GEOJSON, LONLAT_GEOJSON, registration=named_outlines)

@@ -632,10 +632,30 @@ def write_geojson(path: Path, features: list[dict[str, Any]], frame: str | None)
     path.write_text(f'{head}, "features": [\n{lines}\n]}}\n')
 
 
-def write(plan: Plan, feet_path: Path, lonlat_path: Path) -> None:
+FRAME_GEOJSON = DATA_DIR / "shapes_pcip_phase_2.geojson"
+"""The plan that defines the frame's y, whose platforms register every plan to OpenStreetMap."""
+
+
+def frame_outlines() -> list[tuple[str, Polygon]]:
+    """The platforms' outlines in `FRAME_GEOJSON`."""
+    with FRAME_GEOJSON.open() as f:
+        return [
+            (feature["properties"]["platform"], Polygon(feature["geometry"]["coordinates"][0]))
+            for feature in json.load(f)["features"]
+            if feature["properties"]["type"] == "platform"
+        ]
+
+
+def write(
+    plan: Plan,
+    feet_path: Path,
+    lonlat_path: Path,
+    registration: list[tuple[str, Polygon]] | None = None,
+) -> None:
     """Write `plan`'s shapes to `feet_path`, and to `lonlat_path` in longitude and latitude."""
     found = shapes(plan)
-    lonlat = to_lonlat(east_ends(plan.outlines))
+    # Every plan is in the same frame, so it's registered the same way, by `frame_outlines`.
+    lonlat = to_lonlat(east_ends(frame_outlines() if registration is None else registration))
     features: list[dict[str, Any]] = []
     lonlat_features: list[dict[str, Any]] = []
     for props, points in found:

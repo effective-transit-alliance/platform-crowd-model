@@ -934,7 +934,8 @@ They're GeoJSON, one feature per line, in two files for each plan:
 - `data/shapes_<plan>_lonlat.geojson`, e.g.
   [`data/shapes_pcip_phase_1_lonlat.geojson`](./data/shapes_pcip_phase_1_lonlat.geojson),
   the same shapes in longitude and latitude, so GitHub can show them on a map.
-  They're registered to the platforms' outlines in OpenStreetMap:
+  Every plan's are converted the same way, since they're in the same frame,
+  registered by the PCIP Phase 2 plan's platforms to their outlines in OpenStreetMap:
   rotated 29.2° to their average direction, the street grid's,
   and offset to match their east ends on average,
   which agree to within about 4' across the platforms, but only about 37' along them,
