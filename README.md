@@ -870,7 +870,7 @@ so trains can overhang their platform's west end by up to 15'.
 ### Platform Shapes
 
 The model doesn't use them yet, but the shapes of the platforms and of what's on them
-are extracted from three vector plans of the station,
+are extracted from four vector plans of the station,
 by [`shapes.py`](./src/platform_crowd_model/shapes.py) and a module for each plan:
 
 - NJT's PCIP Phase 1 existing plan
@@ -897,9 +897,26 @@ by [`shapes.py`](./src/platform_crowd_model/shapes.py) and a module for each pla
   Platform A's VCEs are named by their labels, e.g. `AP7`,
   and each of AP7 to AP12's stair and escalator side by side is one footprint,
   since they're drawn as one run of treads.
+- The Moynihan Station EA's lower concourse plan
+  ([Figure 3-4](https://web.archive.org/web/2017id_/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/03a%20Figure%203-3%20and%203-4.pdf#page=2),
+  February 2010),
+  by `uv run platform-crowd-model data shapes-moynihan-ea`
+  ([`shapes_moynihan_ea.py`](./src/platform_crowd_model/shapes_moynihan_ea.py)),
+  with the platforms' west ends, Moynihan Train Hall's escalators,
+  and the stairs down from the West End Concourse and the baggage and egress corridor.
+  It's a design, from before the Train Hall was built,
+  so its VCEs are as [`vces_moynihan_ea.py`](./src/platform_crowd_model/vces_moynihan_ea.py)
+  measures them, leaving out the escalator taken as not built.
+  Its platforms' west ends agree with the PCIP Phase 1 track plan's to within about 2'
+  on platforms 3 to 9,
+  though platforms 4 and 8's last 40', past the baggage and egress corridor,
+  are drawn as slivers too thin to extract.
+  It doesn't show platforms 1 and 2, or 10 and 11 west of the West End Concourse.
+  Pieces of platform west of the West End Concourse are named by the PCIP Phase 1 plan's platform
+  they're mostly on, if any.
 
-Neither has Moynihan Train Hall's escalators, since both are from before it opened.
-From each, they're:
+The PCIP plans are from before Moynihan Train Hall opened, so they don't have its escalators.
+From each plan, they're:
 
 - each platform's outline, with platforms 1 and 2 sharing one, as the plans draw them
 - each VCE's footprint: the bounding box of its treads and the balustrades beside them,

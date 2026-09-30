@@ -168,6 +168,20 @@ def shapes_platform_a_pcip_phase_1() -> None:
 
 
 @data_app.command()
+def shapes_moynihan_ea() -> None:
+    """
+    Extract the shapes of the platforms' west ends and of what's on them
+    from the Moynihan Station EA's lower concourse plan,
+    writing `data/shapes_moynihan_ea.geojson`,
+    and in longitude and latitude, `data/shapes_moynihan_ea_lonlat.geojson`.
+    Run `vces-moynihan-ea`, `shapes-pcip-phase-2`, and `shapes-pcip-phase-1` first.
+    """
+    from platform_crowd_model import shapes_moynihan_ea
+
+    shapes_moynihan_ea.main()
+
+
+@data_app.command()
 def vces_field_survey() -> None:
     """
     Make the field survey sheet for measuring every VCE in person,
@@ -193,4 +207,5 @@ def all_data() -> None:
     shapes_pcip_phase_2()
     shapes_pcip_phase_1()
     shapes_platform_a_pcip_phase_1()
+    shapes_moynihan_ea()
     vces_field_survey()
