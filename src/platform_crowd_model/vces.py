@@ -678,7 +678,3 @@ def directory_vces(
                 }
             )
     return out
-
-
-if __name__ == "__main__":
-    main()

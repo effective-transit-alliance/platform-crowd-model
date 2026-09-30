@@ -285,7 +285,3 @@ def main() -> None:
         writer.writerows(platforms)
     for row in vces + platforms:
         print(row)
-
-
-if __name__ == "__main__":
-    main()

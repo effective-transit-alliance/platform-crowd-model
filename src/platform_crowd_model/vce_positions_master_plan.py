@@ -281,7 +281,3 @@ def write_existing(vces: list[dict[str, int | str]]) -> None:
         writer.writeheader()
         writer.writerows(combined)
     print(f"wrote {len(combined)} existing VCEs")
-
-
-if __name__ == "__main__":
-    main()

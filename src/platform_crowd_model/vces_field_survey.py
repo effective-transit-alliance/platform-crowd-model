@@ -199,7 +199,3 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(rows)
     print(f"wrote {len(rows)} rows")
-
-
-if __name__ == "__main__":
-    main()

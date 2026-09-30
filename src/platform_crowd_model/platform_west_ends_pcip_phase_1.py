@@ -111,7 +111,3 @@ def main() -> None:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
-
-
-if __name__ == "__main__":
-    main()

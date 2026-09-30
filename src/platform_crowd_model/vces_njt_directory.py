@@ -190,7 +190,3 @@ def main() -> None:
                 if counts[platform, t]
             },
         )
-
-
-if __name__ == "__main__":
-    main()
