@@ -135,16 +135,16 @@ each using the passenger counts left by the one before.
    - A stair's capacity is LOS E capacity, 17 pax/min per foot of its width
      ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)).
    - An escalator's is the TCQSM's nominal capacity at 90 ft/min:
-     34 pax/min with treads narrower than 32 in., and 72 pax/min with wider treads,
-     since 32 in. treads carry close to 40 in. treads' capacity
+     34 pax/min with treads narrower than 2'8", and 72 pax/min with wider treads,
+     since 2'8" treads carry close to 3'4" treads' capacity
      ([TCQSM, Exhibit 10-31, p. 10-52](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=56)).
    - Each VCE's width and position are from
      [`data/vces.csv`](./data/vces.csv)
      (see [Estimated Widths](#estimated-widths)).
      - The train's doors are spread evenly along it,
        and it stops wherever on the platform the longest of the trains' dwells is shortest,
-       trying every position a car length (85 ft) apart,
-       then every position 5 ft apart within a car length of the best of those.
+       trying every position a car length (85') apart,
+       then every position 5' apart within a car length of the best of those.
      - Each second, each door's alighting passengers walk to the quickest VCE:
        the one with the least walking time plus waiting time
        for everyone already queued or walking there.
@@ -250,7 +250,7 @@ or **unclear** (it could go either way).
 - **Unclear:** Escalators' capacities are the TCQSM's nominal ones at 90 ft/min,
   but their speeds aren't known,
   and their tread widths are measured from a drawing, so they may be off by a few inches,
-  which matters at the 32 in. boundary between 34 and 72 pax/min.
+  which matters at the 2'8" boundary between 34 and 72 pax/min.
 - **Unclear:** Which escalators run which way isn't known,
   so they follow the rules above.
   Which escalator goes down is based on AM peak demand toward 7th Avenue,
@@ -354,7 +354,7 @@ and real passengers are somewhere in between:
 
 - **They only see nearby queues.**
   From a door, passengers can see the nearest few VCEs,
-  not one 500 ft down a crowded platform.
+  not one 500' down a crowded platform.
 - **They don't all make the same choice.**
   Given similar options, people split between them unevenly,
   rather than all taking the best one each second.
@@ -460,7 +460,7 @@ with positions in feet east of the plans' west edge,
 which cuts across every platform at the same place, under the West End Concourse.
 The plans have west on the left:
 the platforms' east ends on them match those on a scaled existing-conditions plan
-in NJT's PCIP Phase 2 drawings to within about 4 ft
+in NJT's PCIP Phase 2 drawings to within about 4'
 (see [Estimated Widths](#estimated-widths)).
 The draft's plans and tables don't always agree:
 often, they disagree on whether a VCE is new or existing, so both are recorded,
@@ -499,25 +499,25 @@ This data couldn't replace the ETA report's total VCE widths on its own:
   but platforms 4 to 8 exclude nothing,
   and Alternative 2's platforms 2 and 3 exclude a stair.
 - **It doesn't match the ETA report's total VCE widths.**
-  E.g. platform 3's VCEs sum to 412 to 458 in. across the alternatives, even with their new VCEs,
-  but the ETA report used 42.5 ft (510 in.) today,
-  and platform 6's sum to 437 to 458 in., but the ETA report used 48.168 ft (578 in.).
+  E.g. platform 3's VCEs sum to 34'4" to 38'2" across the alternatives, even with their new VCEs,
+  but the ETA report used 42'6" today,
+  and platform 6's sum to 36'5" to 38'2", but the ETA report used 48'2".
   The source of the ETA report's widths is unknown.
-  Platform 3's 5 existing VCEs in the Master Plan total 233 in. (19.4 ft):
-  3 stairs (165 in.) and 2 escalators (68 in.).
+  Platform 3's 5 existing VCEs in the Master Plan total 19'5":
+  3 stairs (13'9") and 2 escalators (5'8").
   At 17 pax/min/ft for the stairs and typical escalator capacities,
   that's roughly the Moynihan Station EA's 437 pax/min for platform 3 in 2008,
-  while the ETA report's 42.5 ft is 722 pax/min, the EA's figure for platform 1.
+  while the ETA report's 42'6" is 722 pax/min, the EA's figure for platform 1.
   But the Master Plan probably doesn't include the West End Concourse's VCEs,
   and the EA's data predates Moynihan Train Hall,
-  so platform 3's total width today is probably more than 19.4 ft.
+  so platform 3's total width today is probably more than 19'5".
   With the VCEs on NJT's scaled PCIP Phase 2 plan, whose widths are mostly
-  [estimated](#estimated-widths), it's about 550 in. (45.8 ft), a little more than the ETA report's 42.5 ft,
-  or 516 in. (43 ft) with the Master Plan's widths where it has them, as the model now uses.
+  [estimated](#estimated-widths), it's about 45'10", a little more than the ETA report's 42'6",
+  or 43' with the Master Plan's widths where it has them, as the model now uses.
   Either way, a single total overstates how quickly a platform clears
   if some of that width is at its far west end, far from most of the train's doors.
 - **Positions are approximate.**
-  They're scaled from small drawings, so they're only accurate to within about 10 ft.
+  They're scaled from small drawings, so they're only accurate to within about 10'.
 
 The FRA's Service Optimization Study measured today's VCEs on site,
 but didn't publish the measurements.
@@ -580,43 +580,43 @@ and measures each VCE's width and position into
 [`data/vces.csv`](./data/vces.csv):
 
 - Positions are in the Master Plan's frame, feet east of its plans' west edge.
-  The two drawings register to within about 1.2 ft:
+  The two drawings register to within about 1'2":
   the platforms' east ends on them are all the same distance apart.
   Each platform's east end in that frame, for the model's trains to stop against,
   is in [`data/platform_east_ends.csv`](./data/platform_east_ends.csv):
   the sheet's on platforms 1 to 8, and the Master Plan's on platforms 9 to 11.
-- VCEs matching a Master Plan VCE of the same type within 15 ft
+- VCEs matching a Master Plan VCE of the same type within 15'
   have `width_source` `master_plan`, with the Master Plan's width.
   The rest, 45 of 61, are `estimated`, with only the sheet's width.
 - Their `source` is `pcip_phase_2`.
   Platforms 9 to 11's VCEs, which aren't on the sheet,
   have `source` `njt_directory`: they're from NJT's directory, as described below.
-- For the 10 matched stairs, the sheet's widths differ from the Master Plan's by up to 14 in.
-  (a median of 4 in.), and for the 6 matched escalators, by up to 9 in.
+- For the 10 matched stairs, the sheet's widths differ from the Master Plan's by up to 1'2"
+  (a median of 4"), and for the 6 matched escalators, by up to 9"
 - Escalators' treads are their steps, narrower than their balustrades.
 - The platforms' labels hide what's under them,
-  including an escalator the Master Plan has about 230 ft along each of platforms 3 to 8.
+  including an escalator the Master Plan has about 230' along each of platforms 3 to 8.
 
 | Platform | Stairs on the sheet | Escalators on the sheet | Their total width | Of which estimated | Master Plan VCEs not matched on the sheet |
 |---|---|---|---|---|---|
-| 1 | 6 | 2 | 420 in. (35.0 ft) | 198 in. | 44/57 in. stair at 689 ft; 46 in. escalator at 774 ft; 52 in. stair at 776 ft |
-| 2 | 5 | 4 | 431 in. (35.9 ft) | 276 in. | 52 in. stair at 775 ft; 46 in. escalator at 774 ft |
-| 3 | 6 | 2 | 516 in. (43.0 ft) | 430 in. | 34 in. escalator at 230 ft; 69 in. stair at 278 ft; 44 in. stair at 684 ft |
-| 4 | 5 | 2 | 441 in. (36.8 ft) | 369 in. | 34 in. escalator at 230 ft; 34 in. escalator at 404 ft; 44 in. stair at 683 ft |
-| 5 | 4 | 4 | 438 in. (36.5 ft) | 404 in. | 34 in. escalator at 230 ft; 44 in. stair at 683 ft |
-| 6 | 3 | 4 | 370 in. (30.8 ft) | 286 in. | 34 in. escalator at 230 ft |
-| 7 | 4 | 3 | 393 in. (32.8 ft) | 301 in. | 34 in. escalator at 230 ft |
-| 8 | 5 | 2 | 435 in. (36.2 ft) | 377 in. | 34 in. escalator at 230 ft; 34 in. escalator at 404 ft |
+| 1 | 6 | 2 | 35' | 16'6" | 3'8"/4'9" stair at 689'; 3'10" escalator at 774'; 4'4" stair at 776' |
+| 2 | 5 | 4 | 35'11" | 23' | 4'4" stair at 775'; 3'10" escalator at 774' |
+| 3 | 6 | 2 | 43' | 35'10" | 2'10" escalator at 230'; 5'9" stair at 278'; 3'8" stair at 684' |
+| 4 | 5 | 2 | 36'9" | 30'9" | 2'10" escalator at 230'; 2'10" escalator at 404'; 3'8" stair at 683' |
+| 5 | 4 | 4 | 36'6" | 33'8" | 2'10" escalator at 230'; 3'8" stair at 683' |
+| 6 | 3 | 4 | 30'10" | 23'10" | 2'10" escalator at 230' |
+| 7 | 4 | 3 | 32'9" | 25'1" | 2'10" escalator at 230' |
+| 8 | 5 | 2 | 36'3" | 31'5" | 2'10" escalator at 230'; 2'10" escalator at 404' |
 
 The unmatched Master Plan VCEs are a mix:
-the escalators at 230 ft are hidden under the sheet's labels, so they should be added;
-others, like platform 3's 44 in. stair at 684 ft,
-are probably the same VCEs as similar ones on the sheet 15 to 25 ft away;
-and some disagree on the type, like platform 3's 69 in. stair at 278 ft,
-where the sheet has a 37 in. escalator.
-So platform 3's VCEs total about 550 in. (45.8 ft) with its hidden escalator,
-a little more than the model's 42.5 ft,
-including the 2 West End Concourse stairs (107 and 120 in.) and the Exit Concourse's 2 (61 and 60 in.).
+the escalators at 230' are hidden under the sheet's labels, so they should be added;
+others, like platform 3's 3'8" stair at 684',
+are probably the same VCEs as similar ones on the sheet 15' to 25' away;
+and some disagree on the type, like platform 3's 5'9" stair at 278',
+where the sheet has a 3'1" escalator.
+So platform 3's VCEs total about 45'10" with its hidden escalator,
+a little more than the model's 42'6",
+including the 2 West End Concourse stairs (8'11" and 10') and the Exit Concourse's 2 (5'1" and 5').
 
 These are only estimates:
 
@@ -628,14 +628,14 @@ These are only estimates:
 - The sheet predates NJT's replacement of an escalator on tracks 7/8 (platform 4)
   with stairs in about 2021.
 - The model gives an escalator the TCQSM's capacity for its tread width,
-  so a few inches' error can move it across 32 in., between 34 and 72 pax/min.
+  so a few inches' error can move it across 2'8", between 34 and 72 pax/min.
 
 Platforms 9 to 11 aren't on that plan,
 so their VCEs are estimated from NJT's January 2022 station directory instead,
 whose map is schematic and not to scale.
 Each level of its map is calibrated to feet by matching its icons on platforms 1 to 8,
 and the Master Plan's on platforms 9 and 10, to their positions,
-to within about 20 ft on average.
+to within about 20' on average.
 The directory doesn't show every VCE, so the Master Plan's existing VCEs it doesn't show are added,
 though they're from before Moynihan Train Hall opened.
 Each has the Master Plan's width where it has one,
@@ -656,14 +656,14 @@ The Moynihan Station EA's lower concourse plan
 ([Figure 3-4](https://web.archive.org/web/2017id_/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/03a%20Figure%203-3%20and%203-4.pdf#page=2),
 February 2010) draws them, as a vector drawing:
 a pair of escalators, end to end, down from the Train Hall to each of platforms 3 to 8,
-all at the same position, about 100 to 200 ft west of the West End Concourse,
+all at the same position, about 100' to 200' west of the West End Concourse,
 and the West End Concourse's stairs down to platforms 9 to 11.
 `uv run platform-crowd-model data vces-moynihan-ea`
 ([`vces_moynihan_ea.py`](./src/platform_crowd_model/vces_moynihan_ea.py))
 finds each one's treads, scales the plan by the West End Concourse's dimensioned width of 36'-3",
-which puts its 19' corridor at 19.04 ft,
+which puts its 19' corridor within half an inch of 19',
 and registers it by the West End Concourse's stairs down to platforms 3 to 8
-to where the PCIP Phase 2 plan has them, to within about 2 ft,
+to where the PCIP Phase 2 plan has them, to within about 2',
 into [`data/vces_moynihan_ea.csv`](./data/vces_moynihan_ea.csv),
 which `vces` adds to [`data/vces.csv`](./data/vces.csv) with `source` `moynihan_ea`.
 
@@ -673,11 +673,11 @@ The plan is a design from before the Train Hall was built, so:
   Platform 3's western one is taken as the one that wasn't built,
   since it would run past the platform's west end.
 - The plan doesn't draw the escalators consistently enough to measure their width,
-  so they're taken to be 40 in. wide,
+  so they're taken to be 3'4" wide,
   the 1,000 mm steps [KONE](https://elevatorworld.com/article/let-there-be-light-and-accessibility/) reports for its escalators there.
 - The stairs' widths are their drawn treads':
-  78 in. on platforms 9 and 10, 44 in. on platform 11,
-  and 72 in. for a second stair on platform 9, about 90 ft west of the West End Concourse.
+  6'6" on platforms 9 and 10, 3'8" on platform 11,
+  and 6' for a second stair on platform 9, about 90' west of the West End Concourse.
 
 ### Penn Transformation
 
@@ -685,32 +685,32 @@ The FRA's Penn Station Service Optimization Study
 ([Phase I report](https://railroads.dot.gov/elibrary/new-york-penn-station-service-optimization-study-phase-i-report-final-june-2026), June 2026)
 lays out Penn Transformation's improvements to the platforms:
 up to 23 new VCEs, 19 stairs and 4 escalators, with at least one on every platform;
-Platforms 1 to 3 extended west by about 200 to 350 ft,
+Platforms 1 to 3 extended west by about 200' to 350',
 so 10-car NJT trains can open all of their doors;
 and decluttered platforms, with 2% to 14% more circulation area (Table 1).
 Its Figure 11 shows the new VCEs' "generalized locations" on an aerial image,
 which `uv run platform-crowd-model data vces-transformation-fra-sos`
 ([`vces_transformation_fra_sos.py`](./src/platform_crowd_model/vces_transformation_fra_sos.py))
 finds by their icons, along with the extensions,
-and registers to the Master Plan's frame by the platforms' drawn ends to within about 3 ft,
+and registers to the Master Plan's frame by the platforms' drawn ends to within about 3',
 into [`data/vces_transformation_fra_sos.csv`](./data/vces_transformation_fra_sos.csv)
 and [`data/platforms_transformation_fra_sos.csv`](./data/platforms_transformation_fra_sos.csv).
 They agree with the report's breakdown:
 5 in Moynihan, 2 on Platforms 1 and 2's extensions west of Eighth Avenue, and 16 in Penn Station,
-mostly in two rows, about 175 and 535 ft east of the Master Plan's plans' west edge.
+mostly in two rows, about 175' and 535' east of the Master Plan's plans' west edge.
 
 The report doesn't say which are escalators or how wide any are, so:
 
-- The 4 escalators are taken to be the 4 in Moynihan, about 250 ft west of the West End Concourse,
+- The 4 escalators are taken to be the 4 in Moynihan, about 250' west of the West End Concourse,
   in line with the Train Hall's escalators.
-- Stairs are as wide as the West End Concourse's, 72 in., and escalators as the Train Hall's, 40 in.
+- Stairs are as wide as the West End Concourse's, 6', and escalators as the Train Hall's, 3'4"
   Together, the 23 add about 30% to the existing VCEs' total width,
   close to the 32% more vertical circulation capacity
   [Penn Transformation's designers report](https://www.enr.com/articles/63127-penn-station-renderings-reveal-design-for-8b-reconstruction-beneath-madison-square-garden).
 - Its locations are only general, and a few of them are within a few feet of existing VCEs,
   e.g. on platform 10, whose existing VCEs are only estimated from NJT's directory.
 - Each extended platform's new west end is where its extension's box on Figure 11 ends,
-  185 to 317 ft west of its end in PCIP Phase 1's plan.
+  185' to 317' west of its end in PCIP Phase 1's plan.
 
 ### Platform A
 
@@ -727,14 +727,14 @@ where its west end curves too much for escalators.
 ([`platform_a_pcip_phase_1.py`](./src/platform_crowd_model/platform_a_pcip_phase_1.py))
 measures it and its VCEs on its plan
 ([Appendix A, sheet A-021](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=31)),
-registered to the Master Plan's frame by the existing platforms' east ends to within about 1 ft,
+registered to the Master Plan's frame by the existing platforms' east ends to within about 1',
 into [`data/platform_a_pcip_phase_1.csv`](./data/platform_a_pcip_phase_1.csv)
 and [`data/vces_platform_a_pcip_phase_1.csv`](./data/vces_platform_a_pcip_phase_1.csv):
-1,013 ft long, from 90 ft west of the Master Plan's plans' west edge,
+1,013' long, from 90' west of the Master Plan's plans' west edge,
 with 22,717 sq ft inside its outline.
 The report doesn't give the VCEs' widths,
 so stairs are taken to be the 5'-0" egress stairs it sizes its other alternatives' with,
-and escalators to have 40 in. steps.
+and escalators to have 3'4" steps.
 In the model, it's platform 0.
 
 ### Field Survey
@@ -844,8 +844,8 @@ written by `uv run platform-crowd-model data platforms-osm`
 ([`platforms_osm.py`](./src/platform_crowd_model/platforms_osm.py)),
 since platforms taper toward their ends.
 The outlines have no source, but agree with the PCIP Phase 2 existing plan's widths
-to within about 2 ft, and with the EA's lengths to within about 60 ft,
-except platform 9's outline, which is 178 ft longer than the EA's length.
+to within about 2', and with the EA's lengths to within about 60',
+except platform 9's outline, which is 178' longer than the EA's length.
 The PCIP Phase 2 and Master Plan drawings cut the platforms off at their west ends,
 so they can't give lengths or areas.
 
@@ -857,15 +857,15 @@ so `uv run platform-crowd-model data platform-west-ends-pcip-phase-1`
 ([`platform_west_ends_pcip_phase_1.py`](./src/platform_crowd_model/platform_west_ends_pcip_phase_1.py))
 finds its orange platform edges by color
 and fits them to the platforms' east ends in the Master Plan's frame,
-which comes out at 80.3 ft per inch of the sheet, with every east end within about 1 ft.
+which comes out at 80.3 ft per inch of the sheet, with every east end within about 1'.
 Each platform's west end is in
 [`data/platform_west_ends_pcip_phase_1.csv`](./data/platform_west_ends_pcip_phase_1.csv).
-The lengths between them agree with the EA's to within about 40 ft,
-except platform 9's, which is 134 ft longer, like its outline in OpenStreetMap.
+The lengths between them agree with the EA's to within about 40',
+except platform 9's, which is 134' longer, like its outline in OpenStreetMap.
 
-Platform 11 is 1,007 ft long, a few feet short of a 12-car train at 85 ft per car,
+Platform 11 is 1,007' long, a few feet short of a 12-car train at 85' per car,
 but the EA has it take 12-car LIRR trains,
-so trains can overhang their platform's west end by up to 15 ft.
+so trains can overhang their platform's west end by up to 15'.
 
 ## Results
 
@@ -900,7 +900,7 @@ This table is generated by `uv run platform-crowd-model run --update-readme`.
 Platforms 9 to 11's VCEs are only estimated from NJT's station directory
 (see [Estimated Widths](#estimated-widths)).
 The directory doesn't show every VCE, and the Master Plan has none on platform 11,
-so its VCEs total only 31.6 ft, much less than the ETA report's 43.58 ft,
+so its VCEs total only 31'7", much less than the ETA report's 43'7",
 which likely makes it look much worse than it is.
 Penn Transformation's new VCEs are only at the FRA's "generalized locations",
 with widths assumed from Moynihan's
@@ -1049,9 +1049,9 @@ and each fix's effect is summarized here.
 - **Used each VCE's width from [`data/vces.csv`](./data/vces.csv)**
   on platforms 3 and 6, instead of the ETA report's totals,
   still with arriving passengers spread across the VCEs in proportion to their widths.
-  Platform 3's VCEs total 43 ft instead of 42.5 ft,
+  Platform 3's VCEs total 43' instead of 42'6",
   so with 2-minute headways it clears at 266 s instead of 269 s.
-  Platform 6's total only 30.8 ft instead of 48.168 ft,
+  Platform 6's total only 30'10" instead of 48'2",
   so it clears at 371 s instead of 238 s, and bottoms out at 3.8 sq ft/pax instead of 4.0.
   Penn Reconstruction and platforms 10 and 11 have no per-VCE data, so they're unchanged.
 - **Made each train as long as its platform's tracks allow, up to 12 cars,**
@@ -1064,7 +1064,7 @@ and each fix's effect is summarized here.
   on platforms 3 and 6, instead of spreading them across the VCEs in proportion to their widths.
   Each train's doors are spread evenly along its cars, stopped flush with the platform's east end.
   Narrow VCEs near many doors get long queues while others run dry:
-  on platform 3, the 3.1 ft escalator P3-S3 gets 8 doors' passengers,
+  on platform 3, the 3'1" escalator P3-S3 gets 8 doors' passengers,
   so neither platform clears within the 600 s simulated.
 - **Added the time arriving passengers take to walk from the doors to the VCEs,**
   at the TCQSM's design walking speed, 250 ft/min,
@@ -1084,7 +1084,7 @@ and each fix's effect is summarized here.
 - **Ran escalators one way on platforms 3 and 6** instead of treating them as stairs going both ways:
   a platform's only escalator goes up, and with more,
   one goes up, one goes down, and the rest go up until the platform is nearly fully alighted.
-  Platform 3's 2 escalators leave 2.8 ft less going up,
+  Platform 3's 2 escalators leave 2'10" less going up,
   so with 2-minute headways it clears at 325 s instead of 310 s,
   but the down escalator lets departing passengers board by 457 s instead of 472 s.
   Platform 6 clears at 510 s instead of 469 s, and finishes boarding by 556 s instead of 593 s.
@@ -1104,9 +1104,9 @@ and each fix's effect is summarized here.
 - **Stopped trains where the arriving passengers clear the platform soonest,**
   on platforms 3 and 6, instead of flush with the platform's east end.
   Platform 3 with 2-minute headways clears at 267 s instead of 270 s,
-  with its trains' east ends 45 ft west of the platform's
-  (5 ft with 5-minute headways),
-  and platform 6 at 416 s instead of 453 s, 45 ft west too.
+  with its trains' east ends 45' west of the platform's
+  (5' with 5-minute headways),
+  and platform 6 at 416 s instead of 453 s, 45' west too.
 - **Stopped trains where the longer of their dwells is shortest,**
   instead of where the arriving passengers clear the platform soonest.
   Platform 3 with 2-minute headways has dwells of 251 s and 131 s instead of 256 s and 136 s,
@@ -1124,7 +1124,7 @@ and each fix's effect is summarized here.
   platform 8 at 11:36 instead of 13:57, and platform 9 at 8:22 instead of 10:01,
   and platforms 4 and 5 now evacuate within NFPA 130's 4 minutes.
 - **Modeled every platform with Penn Transformation, instead of platform 3 with Penn Reconstruction,**
-  whose new VCEs were only one stair standing in for the ETA report's extra 2.25 ft of VCEs.
+  whose new VCEs were only one stair standing in for the ETA report's extra 2'3" of VCEs.
   Penn Transformation's 23 new VCEs, platform extensions, and decluttering
   are from the FRA's Service Optimization Study.
   With trains 2 minutes apart, every platform but 10 clears sooner with it,
