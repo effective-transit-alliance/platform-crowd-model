@@ -107,6 +107,18 @@ def platform_west_ends_pcip_phase_1() -> None:
     platform_west_ends_pcip_phase_1.main()
 
 
+@data_app.command("platform-a-pcip-phase-1")
+def platform_a_pcip_phase_1() -> None:
+    """
+    Measure PCIP Phase 1's Platform A and its VCEs on its plan of Alternative 12,
+    writing `data/platform_a_pcip_phase_1.csv` and `data/vces_platform_a_pcip_phase_1.csv`.
+    Run `estimated-vces` first.
+    """
+    from platform_crowd_model import platform_a_pcip_phase_1
+
+    platform_a_pcip_phase_1.main()
+
+
 @data_app.command("vces-transformation-fra-sos")
 def vces_transformation_fra_sos() -> None:
     """
@@ -140,5 +152,6 @@ def all_data() -> None:
     estimated_vces()
     platform_west_ends_pcip_phase_1()
     vces_transformation_fra_sos()
+    platform_a_pcip_phase_1()
     osm_platforms()
     field_survey()

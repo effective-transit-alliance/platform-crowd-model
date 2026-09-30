@@ -200,6 +200,8 @@ each using the passenger counts left by the one before.
   with its new VCEs, platforms 1 to 3 extended to the west for 10-car trains,
   and every platform decluttered, adding the FRA's percentage more area,
   and the extension's length at the platform's average width.
+- Platform A, a new platform PCIP Phase 1 proposes south of platform 1,
+  is modeled, too (see [Platform A](#platform-a)).
 
 ### NFPA 130 Evacuation
 
@@ -701,6 +703,31 @@ The report doesn't say which are escalators or how wide any are, so:
 - Each extended platform's new west end is where its extension's box on Figure 11 ends,
   185 to 317 ft west of its end in PCIP Phase 1's plan.
 
+### Platform A
+
+NJT's PCIP Phase 1 study proposed, as its Alternative 12, a new Platform A
+south of platform 1, under West 31st Street,
+from under the 7th Avenue Subway west under the 8th Avenue Subway,
+long enough for a 12-car train
+([final report, pp. 95 to 97](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-final-rev1-copy.pdf#page=95)).
+It would have 8 stairs, 6 escalators, and 4 elevators:
+6 pairs of a stair and an escalator up to a new Concourse A above it,
+and 2 stairs up to an extension of the West End Concourse,
+where its west end curves too much for escalators.
+`uv run platform-crowd-model data platform-a-pcip-phase-1`
+([`platform_a_pcip_phase_1.py`](./src/platform_crowd_model/platform_a_pcip_phase_1.py))
+measures it and its VCEs on its plan
+([Appendix A, sheet A-021](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=31)),
+registered to the Master Plan's frame by the existing platforms' east ends to within about 1 ft,
+into [`data/platform_a_pcip_phase_1.csv`](./data/platform_a_pcip_phase_1.csv)
+and [`data/vces_platform_a_pcip_phase_1.csv`](./data/vces_platform_a_pcip_phase_1.csv):
+1,013 ft long, from 90 ft west of the Master Plan's plans' west edge,
+with 22,717 sq ft inside its outline.
+The report doesn't give the VCEs' widths,
+so stairs are taken to be the 5'-0" egress stairs it sizes its other alternatives' with,
+and escalators to have 40 in. steps.
+In the model, it's platform 0.
+
 ### Field Survey
 
 Since no public source has every VCE's width,
@@ -830,7 +857,8 @@ so trains can overhang their platform's west end by up to 15 ft.
 Times are in m:ss.
 Headways, time at capacity, and dwells are durations, and the rest are times after the first train arrives.
 
-- **Platform:** the platform's number, with `(transformation)` as Penn Transformation would leave it.
+- **Platform:** the platform's number, with `(transformation)` as Penn Transformation would leave it,
+  or `A` for PCIP Phase 1's Platform A.
 - **Arrivals:** when each train arrives, in order.
   A train arrives later than scheduled if the train before it on its track hasn't departed.
 - **Dwell:** each train's dwell, in the same order:
@@ -867,6 +895,7 @@ with widths assumed from Moynihan's
 <!-- results-table:start -->
 | Platform | Headway | VCE width | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max up rate (pax/s) | Max pax on platform | Max density (pax/m²) | NFPA 130 evacuation |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
+| A | 0:00 | 60 ft | 0:00, 0:00, 0:50, 0:50 | 0:50, 0:50, 0:50, 0:50 | 6:08 | 6:44 | 1:40 | 5:36 | 17.33 | 5824 | 3.68 (E) | 6:42 ✗ |
 | 1 | 0:00 | 35 ft | 0:00, 0:00, 4:34, 4:34 | 4:34, 4:34, 1:04, 1:04 | 8:54 | 9:39 | 5:38 | 7:55 | 9.25 | 3284 | 3.12 (D) | 6:44 ✗ |
 | 1 (transformation) | 0:00 | 47 ft | 0:00, 0:00, 0:48, 0:48 | 0:48, 0:48, 0:48, 0:48 | 7:19 | 8:15 | 1:36 | 5:52 | 12.65 | 5180 | 3.78 (E) | 7:41 ✗ |
 | 2 | 0:00 | 35.92 ft | 0:00, 0:00, 3:51, 3:51 | 3:51, 3:51, 1:05, 1:05 | 8:12 | 9:06 | 4:56 | 6:09 | 10.47 | 3386 | 3.42 (D) | 6:39 ✗ |
@@ -889,6 +918,7 @@ with widths assumed from Moynihan's
 | 10 (transformation) | 0:00 | 77 ft | 0:00, 0:00, 0:56, 0:56 | 0:56, 0:56, 0:56, 0:56 | 4:59 | 6:06 | 1:52 | 4:22 | 21.32 | 5380 | 1.93 (D) | 4:54 ✗ |
 | 11 | 0:00 | 31.58 ft | 0:00, 0:00, 7:10, 7:10 | 7:10, 7:10, 1:05, 1:05 | 12:46 | 13:25 | 8:15 | 10:44 | 9.32 | 3907 | 3.51 (D) | 8:43 ✗ |
 | 11 (transformation) | 0:00 | 43.58 ft | 0:00, 0:00, 4:37, 4:37 | 4:37, 4:37, 1:05, 1:05 | 8:45 | 9:38 | 5:42 | 7:31 | 12.72 | 4202 | 3.70 (E) | 6:45 ✗ |
+| A | 2:00 | 60 ft | 0:00, 2:00, 4:00, 6:00 | 0:50, 1:05, 1:05, 1:05 | 7:22 | 7:52 | 7:05 | 4:40 | 17.33 | 1493 | 0.94 (B) | 2:08 ✓ |
 | 1 | 2:00 | 35 ft | 0:00, 2:00, 4:00, 7:58 | 0:50, 5:58, 3:59, 1:05 | 9:57 | 10:25 | 9:03 | 7:41 | 9.25 | 1365 | 1.30 (C) | 3:50 ✓ |
 | 1 (transformation) | 2:00 | 47 ft | 0:00, 2:00, 4:00, 6:00 | 0:56, 1:05, 2:38, 1:05 | 8:07 | 9:03 | 7:05 | 3:33 | 12.65 | 1549 | 1.13 (C) | 3:06 ✓ |
 | 2 | 2:00 | 35.92 ft | 0:00, 2:00, 4:00, 7:21 | 1:01, 5:21, 3:22, 1:04 | 9:08 | 9:56 | 8:25 | 6:17 | 10.47 | 1322 | 1.33 (C) | 3:38 ✓ |
@@ -911,6 +941,7 @@ with widths assumed from Moynihan's
 | 10 (transformation) | 2:00 | 77 ft | 0:00, 2:00, 4:00, 6:00 | 0:56, 1:05, 1:05, 1:05 | 7:09 | 8:12 | 7:05 | 0:52 | 21.32 | 1468 | 0.53 (A) | 1:40 ✓ |
 | 11 | 2:00 | 31.58 ft | 0:00, 2:00, 4:00, 11:15 | 1:05, 9:15, 7:15, 1:05 | 13:58 | 14:42 | 12:20 | 10:23 | 9.32 | 2314 | 2.08 (D) | 5:27 ✗ |
 | 11 (transformation) | 2:00 | 43.58 ft | 0:00, 2:00, 4:00, 8:26 | 1:01, 6:26, 4:16, 1:05 | 10:37 | 11:22 | 9:31 | 4:51 | 12.72 | 1678 | 1.48 (C) | 3:19 ✓ |
+| A | 5:00 | 60 ft | 0:00, 5:00, 10:00, 15:00 | 0:50, 0:50, 0:50, 0:50 | 16:22 | 16:52 | 15:50 | 4:40 | 17.33 | 1440 | 0.91 (B) | 2:07 ✓ |
 | 1 | 5:00 | 35 ft | 0:00, 5:00, 10:00, 15:00 | 0:50, 0:50, 0:50, 0:50 | 16:59 | 17:27 | 15:50 | 7:04 | 9.25 | 1311 | 1.24 (C) | 3:04 ✓ |
 | 1 (transformation) | 5:00 | 47 ft | 0:00, 5:00, 10:00, 15:00 | 0:48, 0:48, 0:48, 0:48 | 16:38 | 17:24 | 15:48 | 4:32 | 12.65 | 1348 | 0.98 (B) | 2:24 ✓ |
 | 2 | 5:00 | 35.92 ft | 0:00, 5:00, 10:00, 15:00 | 0:57, 0:57, 0:57, 0:57 | 16:49 | 17:39 | 15:57 | 6:04 | 10.47 | 1268 | 1.28 (C) | 2:54 ✓ |
@@ -1084,3 +1115,7 @@ and each fix's effect is summarized here.
   With trains 2 minutes apart, every platform but 10 clears sooner with it,
   e.g. platform 5 at 7:46 instead of 9:45 and platform 11 at 11:22 instead of 14:42,
   and every platform evacuates within NFPA 130's 4 minutes.
+- **Modeled PCIP Phase 1's Platform A,** a new platform south of platform 1,
+  with its 8 stairs and 6 escalators.
+  With trains 2 minutes apart, it clears at 7:52, sooner than any platform as it is today,
+  and evacuates within NFPA 130's 4 minutes.
