@@ -41,15 +41,13 @@ SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
 NFPA_130_EXIT_FLOW = 1.41 * 12
 """
 Exit capacity of stairs and stopped escalators for evacuating a platform (pax/min/ft),
-1.41 pax/min per inch of width in NFPA 130's 2010 edition.
-TCQSM p. 10-51: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
+1.41 pax/min per inch of width, per NFPA 130 (2026 edition) 5.3.5.3.
 """
 
 NFPA_130_PLATFORM_EVACUATION_TIME = timedelta(minutes=4)
 """
-Time within which NFPA 130 requires a platform's occupants,
+Time within which NFPA 130 (2026 edition) 5.3.3.1 requires a platform's occupant load,
 including those on trains, to be able to evacuate it.
-TCQSM p. 10-3: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=7
 """
 
 CLOSE_HEADWAY = timedelta(minutes=2)
@@ -1065,8 +1063,8 @@ class Params:
         """
         How fast the VCEs can evacuate the platform under NFPA 130 (in pax/s),
         at `NFPA_130_EXIT_FLOW`, with the widest escalator out of service,
-        and escalators providing at most half of the capacity.
-        TCQSM p. 10-52: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=56
+        i.e. the one with "the most adverse effect upon egress capacity",
+        and escalators providing at most half of the capacity, per NFPA 130 5.3.5.4 and 5.3.5.6.
         """
         stairs = sum(vce.width for vce in self.vces if vce.type != "escalator")
         escalators = sorted(vce.width for vce in self.vces if vce.type == "escalator")[:-1]
