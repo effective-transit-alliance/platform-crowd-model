@@ -182,6 +182,18 @@ def shapes_moynihan_ea() -> None:
 
 
 @data_app.command()
+def shapes_combined() -> None:
+    """
+    Combine each plan's shapes, taking each part of the station from its best source,
+    writing `data/shapes.geojson`, and in longitude and latitude, `data/shapes.latlon.geojson`.
+    Run each plan's `shapes-*` command first.
+    """
+    from platform_crowd_model import shapes_combined
+
+    shapes_combined.main()
+
+
+@data_app.command()
 def vces_field_survey() -> None:
     """
     Make the field survey sheet for measuring every VCE in person,
@@ -208,4 +220,5 @@ def all_data() -> None:
     shapes_pcip_phase_1()
     shapes_platform_a_pcip_phase_1()
     shapes_moynihan_ea()
+    shapes_combined()
     vces_field_survey()

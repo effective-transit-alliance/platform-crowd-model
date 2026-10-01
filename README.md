@@ -944,6 +944,22 @@ and 10" across them.
 The PCIP Phase 1 plan also shows the escalator about 220' along each of platforms 3 to 8
 that the PCIP Phase 2 plan's labels cover.
 
+They're combined into [`data/shapes.geojson`](./data/shapes.geojson)
+and [`data/shapes.latlon.geojson`](./data/shapes.latlon.geojson)
+by `uv run platform-crowd-model data shapes-combined`
+([`shapes_combined.py`](./src/platform_crowd_model/shapes_combined.py)),
+taking each part of the station from its best source, like `data/vces.csv`:
+
+- Each VCE in `data/vces.csv` is from the plan its row is from,
+  or else, e.g. for platforms 9 to 11's, from NJT's directory, the PCIP Phase 1 plan.
+  15 of platforms 9 to 11's VCEs in `data/vces.csv` are more than 15' from any VCE it draws,
+  since the directory isn't to scale, so they have no footprint,
+  but the PCIP Phase 1 plan's are there, unnamed.
+- Everything else on the platforms is from the PCIP Phase 2 plan where it has the platform,
+  or else the PCIP Phase 1 plan, or else, further west, the Moynihan Station EA's,
+  and each platform's outline is pieced together from them the same way.
+- The concourses are the PCIP Phase 1 plan's, and the Moynihan Station EA's beyond it.
+
 The shapes are 2D, at the platform level unless they say otherwise,
 since what matters on the platform is the space each VCE takes up there;
 going up, a VCE's capacity is already its width.
