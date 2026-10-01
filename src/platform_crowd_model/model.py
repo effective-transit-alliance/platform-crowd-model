@@ -315,7 +315,7 @@ def board_rate(
         return 0
 
 
-def space_per_pax(pax_on_platform: float, area: float) -> float:
+def calc_space_per_pax(pax_on_platform: float, area: float) -> float:
     """
     :param pax_on_platform: people on platform (pax)
     :param area: usable platform area (ft^2)
@@ -327,13 +327,13 @@ def space_per_pax(pax_on_platform: float, area: float) -> float:
         return area
 
 
-def platform_crowd_los(space: float, assumptions: Assumptions) -> str:
+def platform_crowd_los(space_per_pax: float, assumptions: Assumptions) -> str:
     """
-    :param space: space per passenger on the platform (ft^2/pax)
+    :param space_per_pax: space per passenger on the platform (ft^2/pax)
     :return: its LOS, per `Assumptions.platform_los_min_space`
     """
     for grade, min_space in assumptions.platform_los_min_space:
-        if space > min_space:
+        if space_per_pax > min_space:
             return grade
     return "F"
 
@@ -741,7 +741,7 @@ def simulate(
         boarded_time=None,
         max_pax_on_platform=total_pax_on_platform,
         max_occupants=total_pax_on_platform,
-        min_space_per_pax=space_per_pax(total_pax_on_platform, usable_area),
+        min_space_per_pax=calc_space_per_pax(total_pax_on_platform, usable_area),
     )
 
     if print_time_series:
@@ -811,7 +811,7 @@ def simulate(
             boarders_upstairs[train] -= down_rates[train]
             new_pax[train] += on_rates[train]
 
-        space = space_per_pax(total_pax_on_platform, usable_area)
+        space_per_pax = calc_space_per_pax(total_pax_on_platform, usable_area)
         if total_pax_on_platform < 0:
             total_pax_on_platform = 0
         for train in trains:
@@ -868,7 +868,7 @@ def simulate(
             and summary.dwells[train] is None
         )
         summary.max_occupants = max(summary.max_occupants, total_pax_on_platform + aboard)
-        summary.min_space_per_pax = min(summary.min_space_per_pax, space)
+        summary.min_space_per_pax = min(summary.min_space_per_pax, space_per_pax)
 
         if record_time_series:
             net_pax_flow_rate: float = 0
@@ -887,10 +887,10 @@ def simulate(
                 down_rate=sum(down_rates),
                 departing_pax_on_platform=sum(boarders_on_platform),
                 total_pax_on_platform=total_pax_on_platform,
-                platform_crowding=space,
+                platform_crowding=space_per_pax,
                 up_rate=up_rate,
                 net_pax_flow_rate=net_pax_flow_rate,
-                platform_crowd_los=platform_crowd_los(space, assumptions),
+                platform_crowd_los=platform_crowd_los(space_per_pax, assumptions),
                 egress_los=egress_crowd_los(params.total_vce_width, up_rate, assumptions),
             )
 
