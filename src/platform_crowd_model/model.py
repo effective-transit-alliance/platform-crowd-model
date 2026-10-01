@@ -949,9 +949,12 @@ class Params:
 
     @property
     def name(self) -> str:
-        """The platform's name in the results table, e.g. `3 (transformation)`."""
+        """
+        The platform's name in the results table, e.g. `3T` for `transformation`,
+        its number followed by its modifier's initial, to keep the table narrow.
+        """
         number = "A" if self.platform == PLATFORM_A else str(self.platform)
-        return f"{number} ({self.modifier})" if self.modifier else number
+        return number + (self.modifier[0].upper() if self.modifier else "")
 
     @property
     def filename_prefix(self) -> str:
