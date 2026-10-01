@@ -456,6 +456,26 @@ def annotated_field_values(
         yield attr, value, field
 
 
+@dataclass(frozen=True)
+class Vce:
+    """A VCE (vertical circulation element), i.e. a stair or escalator going upstairs."""
+
+    name: str
+    """Its name, e.g. `P3-S4`."""
+
+    width: float
+    """Its width (in feet)."""
+
+
+def pooled_vces(total_width: float) -> tuple[Vce, ...]:
+    """
+    A single VCE standing in for all of a platform's VCEs, as one pooled queue.
+    Per the ETA report, `total_width` excludes one VCE per platform,
+    e.g. an escalator running the other way.
+    """
+    return (Vce(name="All VCEs", width=total_width),)
+
+
 PLATFORM_LENGTHS = DATA_DIR / "platform_lengths_moynihan_ea.csv"
 """Each platform's length, from the Moynihan Station EA's Table 4.4-10."""
 
@@ -509,15 +529,8 @@ class Params:
     The first arrives at 0 s, on one track, and the second on the other.
     """
 
-    total_vce_width: Annotated[float, Field(name="Total VCE Width", units="ft")]
-    """
-    Total width (in feet) of all of the VCEs (vertical circulation elements) going upstairs.
-    Per the ETA report, this excludes one VCE per platform,
-    e.g. an escalator running the other way.
-    """
-
-    vce_widths: list[float]
-    """Widths (in feet) of each VCE (vertical circulation element)."""
+    vces: tuple[Vce, ...]
+    """The VCEs (vertical circulation elements) going upstairs."""
 
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
     """Trains arriving, alternating between the platform's two tracks."""
@@ -585,6 +598,11 @@ class Params:
         which accounts for platforms tapering.
         """
         return platform_areas()[self.platform]
+
+    @property
+    def total_vce_width(self) -> Annotated[float, Field(name="Total VCE Width", units="ft")]:
+        """Total width (in feet) of all of the VCEs."""
+        return sum(vce.width for vce in self.vces)
 
     @property
     def nfpa_130_exit_capacity(
@@ -750,11 +768,6 @@ def simulate(
     usable_area = params.platform_area * assumptions.usable_platform_area_multiplier
     door_rate = params.doors_per_train * assumptions.door_flow_rate
 
-    vce_widths = params.vce_widths
-
-    if print_time_series:
-        print("vce_widths = ", vce_widths)
-
     # Initialize counters
     arriving_pax_on_platform: float = 0
     trains = range(params.trains)
@@ -783,10 +796,11 @@ def simulate(
     gone_up: float = 0
     """Arriving passengers who've gone up, for `check_conservation`."""
 
+    total_vce_width = params.total_vce_width
     max_pax_in_stair_queues = (
-        params.total_vce_width * assumptions.stair_queue_length / assumptions.stair_queue_space
+        total_vce_width * assumptions.stair_queue_length / assumptions.stair_queue_space
     )
-    capacity = stair_flow(assumptions.stair_capacity, params.total_vce_width)
+    capacity = stair_flow(assumptions.stair_capacity, total_vce_width)
     summary = Summary(
         max_up_rate=0,
         time_at_capacity=timedelta(0),
@@ -827,7 +841,7 @@ def simulate(
             off_rates.append(off_rate)
         total_pax_on_platform += sum(off_rates)
         arriving_pax_on_platform += sum(off_rates)
-        up_rate = platform_clearance(arriving_pax_on_platform, params.total_vce_width, assumptions)
+        up_rate = platform_clearance(arriving_pax_on_platform, total_vce_width, assumptions)
         gone_up += up_rate
         arriving_pax_on_platform -= up_rate
         if arriving_pax_on_platform < 0:
@@ -841,7 +855,7 @@ def simulate(
         down_rates = [
             platform_ingress(
                 boarders_upstairs[train],
-                params.total_vce_width * boarder_fractions[train],
+                total_vce_width * boarder_fractions[train],
                 up_rate * boarder_fractions[train],
                 assumptions,
             )
@@ -947,7 +961,7 @@ def simulate(
                 up_rate=up_rate,
                 net_pax_flow_rate=net_pax_flow_rate,
                 platform_crowd_los=platform_crowd_los(space_per_pax, assumptions),
-                egress_los=egress_crowd_los(params.total_vce_width, up_rate, assumptions),
+                egress_los=egress_crowd_los(total_vce_width, up_rate, assumptions),
             )
 
             time_series.instants.append(instant)
@@ -1206,46 +1220,39 @@ def main(update_readme: bool = False, charts: bool = False) -> None:
     params_p3120 = Params(
         platform=3,
         headway=CLOSE_HEADWAY,
-        total_vce_width=42.5,
-        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
+        vces=pooled_vces(42.5),
     )
     params_p3300 = Params(
         platform=3,
         headway=NORMAL_HEADWAY,
-        total_vce_width=42.5,
-        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
+        vces=pooled_vces(42.5),
     )
     params_p3recon120 = Params(
         platform=3,
         modifier="recon",
         headway=CLOSE_HEADWAY,
-        total_vce_width=44.75,
-        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
+        vces=pooled_vces(44.75),
     )
     params_p3recon300 = Params(
         platform=3,
         modifier="recon",
         headway=NORMAL_HEADWAY,
-        total_vce_width=44.75,
-        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
+        vces=pooled_vces(44.75),
     )
     params_p60 = Params(
         platform=6,
         headway=timedelta(0),
-        total_vce_width=48.168,
-        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
+        vces=pooled_vces(48.168),
     )
     params_p10120 = Params(
         platform=10,
         headway=CLOSE_HEADWAY,
-        total_vce_width=70.58,
-        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
+        vces=pooled_vces(70.58),
     )
     params_p11120 = Params(
         platform=11,
         headway=CLOSE_HEADWAY,
-        total_vce_width=43.58,
-        vce_widths=[w / 12 for w in (60, 60, 40, 54, 40, 54, 54, 54, 54, 54, 54)],
+        vces=pooled_vces(43.58),
     )
     params_p30 = dataclasses.replace(params_p3120, headway=timedelta(0))
     params_p3recon0 = dataclasses.replace(params_p3recon120, headway=timedelta(0))
