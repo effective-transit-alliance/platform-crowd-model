@@ -966,16 +966,16 @@ RESULTS_COLUMNS = [
     "Platform",
     "Headway",
     "VCE width",
+    "NFPA 130 evacuation",
     "Arrivals",
     "Dwell",
     "Taper time",
     "Clear time",
     "Boarded time",
     "Time at capacity",
-    "Max up rate (pax/s)",
     "Max pax on platform",
     "Max density (pax/m²)",
-    "NFPA 130 evacuation",
+    "Max up rate (pax/s)",
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
@@ -1125,15 +1125,16 @@ def run_model(params: Params, charts: bool) -> str:
 
     return (
         f"| {params.name} | {fmt_time(headway)} | {fmt_ft_in(params.total_vce_width)}"
+        f" | {fmt_time(evacuation_time)} {evacuation_ok}"
         f" | {', '.join(fmt_time(arrival) for arrival in summary.arrival_times)}"
         f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
         f" | {fmt_time(summary.boarded_time)}"
-        f" | {fmt_time(summary.time_at_capacity)} | {summary.max_up_rate:.2f}"
+        f" | {fmt_time(summary.time_at_capacity)}"
         f" | {summary.max_pax_on_platform:.0f}"
         f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
         f" ({platform_crowd_los(summary.min_space_per_pax, params.assumptions)})"
-        f" | {fmt_time(evacuation_time)} {evacuation_ok} |"
+        f" | {summary.max_up_rate:.2f} |"
     )
 
 
