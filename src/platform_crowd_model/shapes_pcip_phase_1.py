@@ -82,10 +82,13 @@ def read_plan(
     source: str,
     fills: dict[str, tuple[float, ...]],
     names: Callable[[str, str], list[tuple[float, str]]] | None = None,
+    fit_y: bool = True,
 ) -> Plan:
     """
     The plan on `page_number`, a sheet drawn like the existing plan,
     with platforms besides the existing ones filled with `fills`, e.g. Platform A.
+    Without `fit_y`, y isn't fitted to the PCIP Phase 2 plan's,
+    but only scaled like x, for where only positions along the platforms matter.
     """
     page = pdf()[page_number - 1]
     rotate = page.rotation_matrix
@@ -133,30 +136,36 @@ def read_plan(
         ):
             labels.append(polygon)
 
-    # y: fit each platform's centerline to the PCIP Phase 2 plan's.
-    with PCIP_PHASE_2_GEOJSON.open() as f:
-        pcip_2 = {
-            feature["properties"]["platform"]: Polygon(feature["geometry"]["coordinates"][0])
-            for feature in json.load(f)["features"]
-            if feature["properties"]["type"] == "platform"
-        }
-    rotated_ys = []
-    ft_ys = []
-    for platform in Y_FIT_PLATFORMS:
-        _, y0, _, y1 = unary_union(pieces[platform]).bounds
-        rotated_ys.append((y0 + y1) / 2)
-        _, fy0, _, fy1 = pcip_2[platform].bounds
-        ft_ys.append((fy0 + fy1) / 2)
-    y_per_unit, y_offset = np.polyfit(rotated_ys, ft_ys, 1)
-    residuals = [f - (y_per_unit * y + y_offset) for y, f in zip(rotated_ys, ft_ys, strict=True)]
-    print(
-        f"{-y_per_unit:.4f} ft per PDF unit across the platforms, "
-        f"centerlines off by up to {max(map(abs, residuals)):.1f} ft"
-    )
-    if abs(-y_per_unit / ft_per_unit - 1) > MAX_SCALE_DIFFERENCE:
-        raise RuntimeError(f"the sheet's scales differ: {ft_per_unit:.4f} and {-y_per_unit:.4f}")
-    if max(map(abs, residuals)) > MAX_Y_RESIDUAL_FT:
-        raise RuntimeError("the platforms' centerlines don't fit the PCIP Phase 2 plan's")
+    y_per_unit, y_offset = -ft_per_unit, 0.0
+    if fit_y:
+        # y: fit each platform's centerline to the PCIP Phase 2 plan's.
+        with PCIP_PHASE_2_GEOJSON.open() as f:
+            pcip_2 = {
+                feature["properties"]["platform"]: Polygon(feature["geometry"]["coordinates"][0])
+                for feature in json.load(f)["features"]
+                if feature["properties"]["type"] == "platform"
+            }
+        rotated_ys = []
+        ft_ys = []
+        for platform in Y_FIT_PLATFORMS:
+            _, y0, _, y1 = unary_union(pieces[platform]).bounds
+            rotated_ys.append((y0 + y1) / 2)
+            _, fy0, _, fy1 = pcip_2[platform].bounds
+            ft_ys.append((fy0 + fy1) / 2)
+        y_per_unit, y_offset = np.polyfit(rotated_ys, ft_ys, 1)
+        residuals = [
+            f - (y_per_unit * y + y_offset) for y, f in zip(rotated_ys, ft_ys, strict=True)
+        ]
+        print(
+            f"{-y_per_unit:.4f} ft per PDF unit across the platforms, "
+            f"centerlines off by up to {max(map(abs, residuals)):.1f} ft"
+        )
+        if abs(-y_per_unit / ft_per_unit - 1) > MAX_SCALE_DIFFERENCE:
+            raise RuntimeError(
+                f"the sheet's scales differ: {ft_per_unit:.4f} and {-y_per_unit:.4f}"
+            )
+        if max(map(abs, residuals)) > MAX_Y_RESIDUAL_FT:
+            raise RuntimeError("the platforms' centerlines don't fit the PCIP Phase 2 plan's")
 
     def rotated_to_ft(x: float, y: float) -> XY:
         return x_ft(x), float(y_per_unit * y + y_offset)

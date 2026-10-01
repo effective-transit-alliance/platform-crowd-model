@@ -31,6 +31,7 @@ from platform_crowd_model.paths import DATA_DIR
 from platform_crowd_model.vces import (
     DIRECTORY_VCE_SOURCE,
     MOYNIHAN_EA_VCE_SOURCE,
+    PCIP_PHASE_1_VCE_SOURCE,
     PCIP_PHASE_2_VCE_SOURCE,
 )
 
@@ -41,6 +42,7 @@ OUT_CSV = DATA_DIR / "vces_field_survey.csv"
 
 SOURCE_LABELS = {
     PCIP_PHASE_2_VCE_SOURCE: "PCIP Phase 2 existing plan",
+    PCIP_PHASE_1_VCE_SOURCE: "PCIP Phase 1 existing plan",
     DIRECTORY_VCE_SOURCE: "2022 directory, positioned",
     MOYNIHAN_EA_VCE_SOURCE: "Moynihan Station EA plan",
 }

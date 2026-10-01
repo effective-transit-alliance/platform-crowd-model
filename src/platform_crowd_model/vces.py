@@ -67,6 +67,12 @@ SOURCE = f"PCIP Phase 2 Appendix A, sheet A-001, November 2020, PDF page {PAGE}"
 PCIP_PHASE_2_VCE_SOURCE = "pcip_phase_2"
 """`data/vces.csv`'s `source` for VCEs measured on this sheet (`SOURCE`)."""
 
+PCIP_PHASE_1_VCE_SOURCE = "pcip_phase_1"
+"""
+`data/vces.csv`'s `source` for platforms 9 to 11's VCEs measured on
+NJT's PCIP Phase 1 existing plan (Appendix A, sheet A-001, July 2019).
+"""
+
 MOYNIHAN_EA_VCE_SOURCE = "moynihan_ea"
 """`data/vces.csv`'s `source` for VCEs from the Moynihan Station EA's plan, in `MOYNIHAN_EA_CSV`."""
 
@@ -460,7 +466,7 @@ def main() -> None:
         }
     # The directory is calibrated against the sheet's VCEs alone,
     # before the Moynihan EA's join them.
-    out += directory_vces(out, master_plan)
+    out += with_pcip_phase_1(directory_vces(out, master_plan), master_plan)
     out += moynihan_ea_vces()
     out.sort(key=lambda v: (v["platform"], v["west_end_ft"]))
     numbers: dict[int, int] = {}
@@ -696,3 +702,122 @@ def directory_vces(
                 }
             )
     return out
+
+
+WIDEST_MASTER_PLAN_STAIR_IN = 108
+
+WEST_END_CONCOURSE_EAST_FT = 20
+"""
+VCEs west of this (ft) on platforms 9 to 11 are the West End Concourse's,
+which the Moynihan Station EA's plan has, so the PCIP Phase 1 plan's aren't added.
+"""
+
+
+def pcip_phase_1_vces() -> list[tuple[int, str, float, float, float]]:
+    """
+    Every VCE on `DIRECTORY_PLATFORMS` that the PCIP Phase 1 existing plan draws treads for,
+    east of the West End Concourse: its platform, type, west and east ends (ft), and width (in.),
+    the width across its treads at its narrowest flight.
+    """
+    from platform_crowd_model import shapes, shapes_pcip_phase_1
+
+    plan = shapes_pcip_phase_1.read_plan(
+        shapes_pcip_phase_1.PAGE, shapes_pcip_phase_1.SOURCE, {}, fit_y=False
+    )
+    out: list[tuple[int, str, float, float, float]] = []
+    for v in shapes.vces(plan):
+        vce = (int(v.platform), v.type, v.box[0], v.box[2], min(f.width_in for f in v.flights))
+        # Some VCEs are found twice, as flights drawn twice.
+        if (
+            v.platform.isdigit()
+            and int(v.platform) in DIRECTORY_PLATFORMS
+            and v.box[0] >= WEST_END_CONCOURSE_EAST_FT
+            and vce not in out
+        ):
+            out.append(vce)
+    return out
+
+
+def with_pcip_phase_1(
+    directory: list[dict[str, object]], master_plan: list[dict[str, str]]
+) -> list[dict[str, object]]:
+    """
+    `directory`'s VCEs, from NJT's directory, which isn't to scale,
+    at the positions the PCIP Phase 1 existing plan draws them, where it does,
+    matching each platform's nearest first, within `UNMATCHED_ICON_COST_FT`,
+    with the plan's width where the Master Plan has none,
+    and the plan's VCEs that the directory doesn't show.
+    The directory's VCEs the plan doesn't draw treads for keep the directory's positions.
+    """
+    measured = pcip_phase_1_vces()
+    out: list[dict[str, object]] = []
+    for p in DIRECTORY_PLATFORMS:
+        mine = [v for v in directory if v["platform"] == p]
+        theirs = [v for v in measured if v[0] == p]
+
+        def mid(v: dict[str, object]) -> float:
+            return (float(str(v["west_end_ft"])) + float(str(v["east_end_ft"]))) / 2
+
+        # Matching nearest first, not in order, since some are side by side,
+        # e.g. a stair beside an escalator, which the two sources may order differently.
+        costs = sorted(
+            (
+                abs(mid(v) - (m[2] + m[3]) / 2) + (WRONG_TYPE_COST_FT if v["type"] != m[1] else 0),
+                i,
+                j,
+            )
+            for i, v in enumerate(mine)
+            for j, m in enumerate(theirs)
+        )
+        matches: dict[int, int] = {}
+        used: set[int] = set()
+        for cost, i, j in costs:
+            if cost <= UNMATCHED_ICON_COST_FT and i not in matches and j not in used:
+                matches[i] = j
+                used.add(j)
+        for i, v in enumerate(mine):
+            if i not in matches:
+                notes = f"{v['notes']} The PCIP Phase 1 plan doesn't draw its treads."
+                out.append({**v, "notes": notes})
+                continue
+            out.append(
+                measured_row(theirs[matches[i]], master_plan, "NJT's directory shows it, too.")
+            )
+        for i, m in enumerate(theirs):
+            if i not in used:
+                out.append(measured_row(m, master_plan, "NJT's directory doesn't show it."))
+    return out
+
+
+def measured_row(
+    vce: tuple[int, str, float, float, float], master_plan: list[dict[str, str]], note: str
+) -> dict[str, object]:
+    """A VCE measured on the PCIP Phase 1 plan, as a row of `OUT_CSV`."""
+    platform, vce_type, west, east, width = vce
+    mid = (west + east) / 2
+    same = [
+        m
+        for m in master_plan
+        if int(m["platform"]) == platform
+        and m["type"] == vce_type
+        and abs(float(m["midpoint_ft"]) - mid) <= SAME_VCE_TOLERANCE_FT
+    ]
+    match = min(same, key=lambda m: abs(float(m["midpoint_ft"]) - mid), default=None)
+    return {
+        "platform": platform,
+        "vce_name": "",
+        "type": vce_type,
+        "west_end_ft": round(west),
+        "east_end_ft": round(east),
+        "estimated_width_in": round(width),
+        # Where the Master Plan's alternatives disagree, e.g. 66/72, the narrowest.
+        "master_plan_width_in": match["width_in"].split("/")[0] if match else "",
+        "width_source": "master_plan" if match else "estimated",
+        "source": PCIP_PHASE_1_VCE_SOURCE,
+        "notes": f"Measured on the PCIP Phase 1 existing plan. {note}"
+        + (
+            " It's wider than any stair the Master Plan has, so it may be two side by side."
+            if width > WIDEST_MASTER_PLAN_STAIR_IN and not match
+            else ""
+        ),
+    }

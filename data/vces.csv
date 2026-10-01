@@ -82,30 +82,33 @@ platform,vce_name,type,west_end_ft,east_end_ft,estimated_width_in,master_plan_wi
 8,P8-S10,stair,650,662,70,,estimated,pcip_phase_2,
 9,P9-S1,stair,-98,-86,72,,estimated,moynihan_ea,
 9,P9-S2,stair,-16,8,78,,estimated,moynihan_ea,
-9,P9-S3,escalator,264,279,35,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-9,P9-S4,stair,272,286,,60,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale.
-9,P9-S5,stair,361,375,,66,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale.
-9,P9-S6,stair,400,413,,72,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale.
-9,P9-S7,stair,472,486,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-9,P9-S8,stair,531,544,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-9,P9-S9,stair,628,642,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-9,P9-S10,stair,881,895,,68,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale.
+9,P9-S3,stair,225,234,56,,estimated,pcip_phase_1,Measured on the PCIP Phase 1 existing plan. NJT's directory doesn't show it.
+9,P9-S4,escalator,264,279,35,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+9,P9-S5,stair,267,276,62,60,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+9,P9-S6,stair,372,378,49,66,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+9,P9-S7,stair,400,413,,72,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+9,P9-S8,stair,472,486,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+9,P9-S9,stair,538,548,49,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+9,P9-S10,stair,651,663,43,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+9,P9-S11,stair,877,896,58,68,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
 10,P10-S1,stair,-16,8,78,,estimated,moynihan_ea,
-10,P10-S2,stair,259,273,,92,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale.
-10,P10-S3,escalator,264,279,,38,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale.
-10,P10-S4,escalator,360,376,,34,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale.
-10,P10-S5,stair,361,375,,108,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale.
-10,P10-S6,stair,400,413,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-10,P10-S7,stair,472,486,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-10,P10-S8,stair,531,544,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-10,P10-S9,stair,560,574,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-10,P10-S10,stair,613,626,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-10,P10-S11,stair,765,779,,94,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale.
-10,P10-S12,stair,863,877,,108,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale.
+10,P10-S2,escalator,252,268,39,38,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+10,P10-S3,stair,255,267,90,92,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+10,P10-S4,escalator,376,390,41,34,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+10,P10-S5,stair,381,388,53,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+10,P10-S6,stair,400,413,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+10,P10-S7,stair,472,486,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+10,P10-S8,stair,541,548,112,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too. It's wider than any stair the Master Plan has, so it may be two side by side."
+10,P10-S9,stair,560,574,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+10,P10-S10,stair,651,655,213,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too. It's wider than any stair the Master Plan has, so it may be two side by side."
+10,P10-S11,stair,770,780,64,94,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+10,P10-S12,stair,858,877,92,108,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
 11,P11-S1,stair,0,13,44,,estimated,moynihan_ea,
-11,P11-S2,escalator,267,282,35,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-11,P11-S3,stair,331,345,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-11,P11-S4,stair,424,437,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-11,P11-S5,stair,477,490,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-11,P11-S6,stair,524,538,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
-11,P11-S7,stair,637,650,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale.
+11,P11-S2,stair,271,282,58,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+11,P11-S3,stair,331,345,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+11,P11-S4,stair,417,423,69,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+11,P11-S5,stair,477,490,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+11,P11-S6,stair,543,553,62,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+11,P11-S7,escalator,621,636,39,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+11,P11-S8,stair,698,708,69,,estimated,pcip_phase_1,Measured on the PCIP Phase 1 existing plan. NJT's directory doesn't show it.
+11,P11-S9,stair,889,895,69,,estimated,pcip_phase_1,Measured on the PCIP Phase 1 existing plan. NJT's directory doesn't show it.
