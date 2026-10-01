@@ -125,6 +125,16 @@ class Assumptions:
     Not from any source.
     """
 
+    stopping_dwell_tolerance: Annotated[
+        timedelta, Field(name="Stopping Dwell Tolerance", units="s")
+    ] = timedelta(minutes=1)
+    """
+    How much longer than the shortest it can be
+    the longest dwell can be where `best_stopping_position` stops the trains,
+    so it can stop them where the platform can be evacuated soonest instead.
+    Not from any source.
+    """
+
     doors_per_car: Annotated[int, Field(name="Doors per Car", units="door")] = 4
     """
     Doors (single-door equivalents) on each car on the platform side.
@@ -1626,8 +1636,11 @@ a car's length, before trying every `STOPPING_POSITION_STEP` around the best of 
 
 def best_stopping_position(params: Params) -> Params:
     """
-    `params` with the trains stopped where the longest of their dwells is shortest,
-    or if tied, where their total dwell is shortest,
+    `params` with the trains stopped where the platform could be evacuated soonest
+    under NFPA 130, i.e. with the fewest occupants at once,
+    of the positions where the longest of their dwells is within `stopping_dwell_tolerance`
+    of the shortest it can be,
+    and if tied, where the longest and then the total dwell are shortest,
     of every position `STOPPING_POSITION_STEP` apart with the train on the platform.
     """
     platform_west_end = params.platform_east_end - params.platform_length
@@ -1639,30 +1652,39 @@ def best_stopping_position(params: Params) -> Params:
         candidates.append(dataclasses.replace(params, train_east_end=train_east_end))
         train_east_end -= STOPPING_POSITION_STEP
 
-    def score(candidate: Params) -> tuple[timedelta, timedelta]:
+    def score(candidate: Params) -> tuple[timedelta, timedelta, float]:
+        """Its longest and total dwells, and its most occupants at once."""
         # Only the summary matters.
         _time_series, summary = simulate(
             candidate, record_time_series=False, print_time_series=False
         )
         dwells = summary.dwells
         if any(dwell is None for dwell in dwells):
-            return timedelta.max, timedelta.max
+            return timedelta.max, timedelta.max, summary.max_occupants
         finished = [dwell for dwell in dwells if dwell is not None]
-        return max(finished), sum(finished, timedelta(0))
+        return max(finished), sum(finished, timedelta(0)), summary.max_occupants
 
-    scores: dict[float, tuple[timedelta, timedelta]] = {}
+    scores: dict[float, tuple[timedelta, timedelta, float]] = {}
 
-    def cached_score(candidate: Params) -> tuple[timedelta, timedelta]:
+    def cached_score(candidate: Params) -> tuple[timedelta, timedelta, float]:
         assert candidate.train_east_end is not None
         if candidate.train_east_end not in scores:
             scores[candidate.train_east_end] = score(candidate)
         return scores[candidate.train_east_end]
 
+    def best(of: list[Params]) -> Params:
+        longest = min(cached_score(c)[0] for c in of)
+        tolerance = params.assumptions.stopping_dwell_tolerance
+        within = [c for c in of if cached_score(c)[0] - tolerance <= longest]
+        return min(within, key=lambda c: (cached_score(c)[2], *cached_score(c)[:2]))
+
     # Try every car length first, then every `STOPPING_POSITION_STEP` within a car length of it.
     coarse_step = COARSE_STOPPING_POSITION_STEP // STOPPING_POSITION_STEP
-    coarse = min(candidates[::coarse_step], key=cached_score)
+    coarse = best(candidates[::coarse_step])
     i = candidates.index(coarse)
-    return min(candidates[max(0, i - coarse_step) : i + coarse_step + 1], key=cached_score)
+    nearby = candidates[max(0, i - coarse_step) : i + coarse_step + 1]
+    # Every position tried counts toward the shortest longest dwell.
+    return best([c for c in candidates if c.train_east_end in scores] + nearby)
 
 
 OUTPUT_DIR = Path("output")
