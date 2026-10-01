@@ -172,21 +172,35 @@ each using the passenger counts left by the one before.
 
 ### NFPA 130 Evacuation
 
-NFPA 130 requires enough exit capacity to evacuate a platform's occupants,
-including those on its trains, in 4 minutes or less
-([TCQSM p. 10-3](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=7)).
-The model checks this at the moment the most passengers are on the platform or aboard its trains,
-counting each train from its arrival until it departs.
+NFPA 130 (2026 edition, 5.3.3.1) requires "sufficient egress capacity to evacuate the platform occupant load
+… from the station platform in 4 minutes or less".
+Its Annex C computes this as the platform occupant load divided by the egress capacity,
+without walking time, which is part of its separate 6-minute limit to reach a point of safety (5.3.3.2).
+NFPA 130's text isn't free to read, so these are from its 2007 edition,
+with the changes since from NFPA's public [revision reports](https://docinfofiles.nfpa.org/files/AboutTheCodes/130/),
+e.g. the [2023 edition's First Draft Report](https://docinfofiles.nfpa.org/files/AboutTheCodes/130/130_A2022_FKT_AAA_FRReport.pdf).
 
-- Stairs and stopped escalators carry 1.41 pax/min per inch of width, i.e. 16.92 pax/min/ft
-  ([TCQSM p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
-- NFPA 130 also takes the widest escalator out of service,
-  and lets escalators provide at most half of the exit capacity
-  ([TCQSM p. 10-52](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=56)),
+- NFPA 130's platform occupant load is, for each track, its train load plus its entraining load (5.3.2.5),
+  each "per train headway factored to account for service disruptions and system reaction time",
+  usually by doubling one headway (A.5.3.2.5(2)),
+  with the train load at most the trains' capacity,
+  and the results checked not to "exceed the system service capacity".
+  At Penn Station, the North River Tunnels cap the headways,
+  so the model instead checks the moment the most passengers are on the platform or aboard its trains
+  in each simulated headway,
+  counting each train from its arrival until it departs,
+  so a disruption is the 0-minute headway scenario, with two trains arriving at once.
+- Trains carry their seated capacity, like the rest of the Penn Station literature,
+  not their "maximum passenger capacity" with standees (5.3.2.5(5)),
+  though no more seated passengers have been measured through the North River Tunnels,
+  24 trains per hour × 12 cars × 135 seats.
+- Stairs and stopped escalators carry 1.41 pax/min per inch of width, i.e. 16.92 pax/min/ft (5.3.5.3).
+- NFPA 130 also takes the escalator "having the most adverse effect upon egress capacity" out of service,
+  and lets escalators provide at most half of the egress capacity (5.3.5.4, 5.3.5.6),
   but the model doesn't know which VCEs are escalators yet,
   so it counts the total VCE width, which overstates the exit capacity.
-- It ignores walking time to the VCEs, and NFPA 130's separate 6-minute limit
-  to reach a point of safety, so it's a lower bound.
+- It ignores NFPA 130's separate 6-minute limit to reach a point of safety,
+  so it's a lower bound.
 
 ## Assumptions
 
@@ -254,8 +268,9 @@ or **unclear** (it could go either way).
 - **Neutral:** Each second, passengers alight, then go upstairs, then come downstairs, then board,
   each using the counts left by the previous step.
 - **Neutral:** The stair LOS grades only the upward flow, not the downward flow.
-- **Optimistic:** The NFPA 130 evacuation time ignores walking time to the VCEs,
-  and the 6-minute limit to reach a point of safety.
+- **Optimistic:** The NFPA 130 evacuation time uses the simulated peak occupants,
+  without NFPA 130's accumulation of waiting passengers over a doubled headway, or standees,
+  and ignores the 6-minute limit to reach a point of safety.
 - **Optimistic:** The NFPA 130 evacuation time counts every VCE's full width,
   without taking the widest escalator out of service
   or limiting escalators to half of the exit capacity.
