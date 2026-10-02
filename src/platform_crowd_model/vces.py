@@ -279,7 +279,7 @@ def main() -> None:
     # The directory is calibrated against the sheet's VCEs alone,
     # before the Moynihan EA's join them.
     out += with_pcip_phase_1(directory_vces(out, master_plan), master_plan)
-    out += moynihan_ea_vces()
+    out += west_of_platforms(out, moynihan_ea_vces(), master_plan)
     out.sort(key=lambda v: (v["platform"], v["west_end_ft"]))
     numbers: dict[int, int] = {}
     for v in out:
@@ -606,6 +606,53 @@ def with_pcip_phase_1(
             if i not in used:
                 out.append(measured_row(m, master_plan, "NJT's directory doesn't show it."))
     return out
+
+
+MOYNIHAN_EA_SAME_VCE_TOLERANCE_FT = 20
+"""
+A Moynihan Station EA VCE within this many feet of one on the PCIP Phase 1 plan
+is the same VCE, more than `SAME_VCE_TOLERANCE_FT`, since the EA's plan is a 2010 design,
+e.g. its stair at the west end of platform 9 is about 20 ft west of the PCIP Phase 1 plan's.
+"""
+
+
+def west_of_platforms(
+    out: list[dict[str, Any]], moynihan_ea: list[dict[str, Any]], master_plan: list[dict[str, str]]
+) -> list[dict[str, Any]]:
+    """
+    The VCEs west of `WEST_END_CONCOURSE_EAST_FT` that aren't already in `out`:
+    the PCIP Phase 1 plan's, which is newer than the Moynihan Station EA's,
+    in place of the EA's VCE within `MOYNIHAN_EA_SAME_VCE_TOLERANCE_FT`, if any,
+    and the rest of `moynihan_ea`'s, e.g. Moynihan Train Hall's escalators,
+    which opened after the PCIP Phase 1 plan was drawn.
+    """
+
+    def mid(v: dict[str, Any]) -> float:
+        return (float(v["west_end_ft"]) + float(v["east_end_ft"])) / 2
+
+    replaced: set[int] = set()
+    added: list[dict[str, Any]] = []
+    for m in pcip_phase_1_found():
+        platform, _, west, east, _ = m
+        m_mid = (west + east) / 2
+        if west >= WEST_END_CONCOURSE_EAST_FT or any(
+            v["platform"] == platform and abs(mid(v) - m_mid) <= SAME_VCE_TOLERANCE_FT for v in out
+        ):
+            continue
+        same = [
+            i
+            for i, v in enumerate(moynihan_ea)
+            if v["platform"] == platform
+            and i not in replaced
+            and abs(mid(v) - m_mid) <= MOYNIHAN_EA_SAME_VCE_TOLERANCE_FT
+        ]
+        if same:
+            replaced.add(min(same, key=lambda i: abs(mid(moynihan_ea[i]) - m_mid)))
+            note = "The Moynihan Station EA's plan, a 2010 design, has it, too."
+        else:
+            note = "No other source has it, so it's unconfirmed."
+        added.append(measured_row(m, master_plan, note))
+    return added + [v for i, v in enumerate(moynihan_ea) if i not in replaced]
 
 
 def measured_row(
