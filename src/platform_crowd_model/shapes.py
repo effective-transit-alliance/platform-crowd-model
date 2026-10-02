@@ -124,6 +124,9 @@ MIN_WALL_LENGTH_FT = 1
 SAME_VCE_TOLERANCE_FT = 15
 """A VCE in `VCES_CSV` of the same type within this many feet is the same VCE."""
 
+OTHER_VCE_TYPE = {"stair": "escalator", "escalator": "stair"}
+"""Each VCE type's other type, for naming a VCE a plan draws as the other."""
+
 CURVE_SAMPLES = 8
 
 FT_DECIMALS = 1
@@ -658,18 +661,26 @@ def shapes(plan: Plan) -> list[tuple[dict[str, str], list[XY]]]:
     ]:
         if not any(outline.intersects(m) for _, _, m in measured):
             found.append((platform, vce_type, outline))
-    # Each name goes to the nearest VCE of the same type, so no two VCEs get the same one.
-    names: dict[int, str] = {}
+    # Each name goes to the nearest VCE of the same type, so no two VCEs get the same one,
+    # and then the rest to the nearest VCE of the other type, taking its type,
+    # e.g. an escalator whose balustrades are drawn as wide as a stair.
+    names: dict[int, tuple[str, str]] = {}
     pairs = sorted(
-        (abs(m - (g.bounds[0] + g.bounds[2]) / 2), i, name)
+        (other, abs(m - (g.bounds[0] + g.bounds[2]) / 2), i, name, named_type)
         for i, (platform, vce_type, g) in enumerate(found)
-        for m, name in (plan.names or vce_names)(platform, vce_type)
+        for other, named_type in ((False, vce_type), (True, OTHER_VCE_TYPE[vce_type]))
+        for m, name in (plan.names or vce_names)(platform, named_type)
     )
-    for distance, i, name in pairs:
-        if distance <= SAME_VCE_TOLERANCE_FT and i not in names and name not in names.values():
-            names[i] = name
+    for _, distance, i, name, named_type in pairs:
+        if (
+            distance <= SAME_VCE_TOLERANCE_FT
+            and i not in names
+            and name not in (n for n, _ in names.values())
+        ):
+            names[i] = name, named_type
     for i, (platform, vce_type, g) in enumerate(found):
-        props = {"type": vce_type, "platform": platform, "vce_name": names.get(i, "")}
+        name, named_type = names.get(i, ("", vce_type))
+        props = {"type": named_type, "platform": platform, "vce_name": name}
         out.append((props, [(float(x), float(y)) for x, y in g.exterior.coords]))
     shapes_found: list[BaseGeometry] = [g for _, _, g in found]
     for kind, boxes in (

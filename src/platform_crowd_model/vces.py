@@ -403,12 +403,23 @@ def sheet_vces() -> tuple[list[dict[str, Any]], dict[int, int]]:
         same_type = [m for m in near if v.hidden or m["type"] == v.type]
         match = min(same_type, key=lambda m: abs(float(m["midpoint_ft"]) - mid), default=None)
         vce_type = match["type"] if v.hidden and match else v.type
+        west, east = ft(v.x0), ft(v.x1)
+        source = PCIP_PHASE_2_VCE_SOURCE
         notes = []
         if v.hidden:
-            notes.append(
-                "Its treads are under the sheet's platform label, which clips them, "
-                "so its type and width are the Master Plan's."
-            )
+            ends = under_label(v.platform, west, east)
+            if ends is not None:
+                (west, east), source = ends, PCIP_PHASE_1_VCE_SOURCE
+                notes.append(
+                    "Its treads are under the PCIP Phase 2 plan's platform label, "
+                    "which clips them, so its position is the PCIP Phase 1 plan's, "
+                    "and its type and width are the Master Plan's."
+                )
+            else:
+                notes.append(
+                    "Its treads are under the sheet's platform label, which clips them, "
+                    "so its type and width are the Master Plan's."
+                )
         if match is None and near:
             other = min(near, key=lambda m: abs(float(m["midpoint_ft"]) - mid))
             notes.append(
@@ -423,12 +434,12 @@ def sheet_vces() -> tuple[list[dict[str, Any]], dict[int, int]]:
                 "platform": v.platform,
                 "vce_name": f"P{v.platform}-S{numbers[v.platform]}",
                 "type": vce_type,
-                "west_end_ft": ft(v.x0),
-                "east_end_ft": ft(v.x1),
+                "west_end_ft": west,
+                "east_end_ft": east,
                 "estimated_width_in": "" if v.hidden else round(v.width_in),
                 "master_plan_width_in": match["width_in"] if match else "",
                 "width_source": "master_plan" if match else "estimated",
-                "source": PCIP_PHASE_2_VCE_SOURCE,
+                "source": source,
                 "notes": " ".join(notes),
             }
         )
@@ -713,10 +724,11 @@ which the Moynihan Station EA's plan has, so the PCIP Phase 1 plan's aren't adde
 """
 
 
-def pcip_phase_1_vces() -> list[tuple[int, str, float, float, float]]:
+@cache
+def pcip_phase_1_found() -> list[tuple[int, str, float, float, float]]:
     """
-    Every VCE on `DIRECTORY_PLATFORMS` that the PCIP Phase 1 existing plan draws treads for,
-    east of the West End Concourse: its platform, type, west and east ends (ft), and width (in.),
+    Every VCE on the numbered platforms that the PCIP Phase 1 existing plan draws treads for:
+    its platform, type, west and east ends (ft), and width (in.),
     the width across its treads at its narrowest flight.
     """
     from platform_crowd_model import shapes, shapes_pcip_phase_1
@@ -728,14 +740,35 @@ def pcip_phase_1_vces() -> list[tuple[int, str, float, float, float]]:
     for v in shapes.vces(plan):
         vce = (int(v.platform), v.type, v.box[0], v.box[2], min(f.width_in for f in v.flights))
         # Some VCEs are found twice, as flights drawn twice.
-        if (
-            v.platform.isdigit()
-            and int(v.platform) in DIRECTORY_PLATFORMS
-            and v.box[0] >= WEST_END_CONCOURSE_EAST_FT
-            and vce not in out
-        ):
+        if v.platform.isdigit() and vce not in out:
             out.append(vce)
     return out
+
+
+def pcip_phase_1_vces() -> list[tuple[int, str, float, float, float]]:
+    """
+    Every VCE on `DIRECTORY_PLATFORMS` that the PCIP Phase 1 existing plan draws treads for,
+    east of the West End Concourse, as in `pcip_phase_1_found`.
+    """
+    return [
+        v
+        for v in pcip_phase_1_found()
+        if v[0] in DIRECTORY_PLATFORMS and v[2] >= WEST_END_CONCOURSE_EAST_FT
+    ]
+
+
+def under_label(platform: int, west: int, east: int) -> tuple[int, int] | None:
+    """
+    The west and east ends (ft) of the VCE on `platform` that the PCIP Phase 1 existing plan draws
+    nearest a VCE between `west` and `east` under the PCIP Phase 2 plan's label,
+    which clips its treads, if it draws one within `SAME_VCE_TOLERANCE_FT`.
+    """
+    mid = (west + east) / 2
+    near = [v for v in pcip_phase_1_found() if v[0] == platform]
+    best = min(near, key=lambda v: abs((v[2] + v[3]) / 2 - mid), default=None)
+    if best is None or abs((best[2] + best[3]) / 2 - mid) > SAME_VCE_TOLERANCE_FT:
+        return None
+    return round(best[2]), round(best[3])
 
 
 def with_pcip_phase_1(
