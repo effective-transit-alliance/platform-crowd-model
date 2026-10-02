@@ -87,10 +87,12 @@ IN_LINE_TOLERANCE_FT = 0.55
 MAX_ESCALATOR_WIDTH_IN = 42
 """Flights narrower than this are escalators; the Master Plan's narrowest stair is 44 in."""
 
-MIN_CURVED_TREAD_FT = 3
+MIN_CURVED_TREAD_FT = 2.4
 """
 Shorter lines aren't a curved stair's treads,
 but, e.g., pieces of a wall's two curved faces, which are side by side, too.
+Long enough for a slightly skewed stair's half treads,
+e.g. the PCIP Phase 1 plan's on platform 9, about 400' along it.
 """
 DUPLICATE_TREAD_FT = 0.4
 """Lines whose midpoints are this close, at about the same angle, are the same line drawn twice."""

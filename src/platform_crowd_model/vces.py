@@ -599,9 +599,22 @@ def with_pcip_phase_1(
                 notes = f"{v['notes']} The PCIP Phase 1 plan doesn't draw its treads."
                 out.append({**v, "notes": notes})
                 continue
-            out.append(
-                measured_row(theirs[matches[i]], master_plan, "NJT's directory shows it, too.")
-            )
+            drawn = theirs[matches[i]]
+            row = measured_row(drawn, master_plan, "NJT's directory shows it, too.")
+            if drawn[1] != v["type"] and v["width_source"] == "master_plan":
+                # The directory and the Master Plan agree on its type, so the plan draws it oddly,
+                # e.g. only half of each tread, so its type and width are the Master Plan's.
+                row |= {
+                    "type": v["type"],
+                    "estimated_width_in": "",
+                    "master_plan_width_in": v["master_plan_width_in"],
+                    "width_source": "master_plan",
+                    "notes": f"{row['notes']} The plan draws it as "
+                    f"{'an escalator' if drawn[1] == 'escalator' else 'a stair'}, "
+                    f"but NJT's directory and the Master Plan have a {v['type']}, "
+                    "so its type and width are theirs.",
+                }
+            out.append(row)
         for i, m in enumerate(theirs):
             if i not in used:
                 out.append(measured_row(m, master_plan, "NJT's directory doesn't show it."))

@@ -89,7 +89,7 @@ platform,vce_name,type,west_end_ft,east_end_ft,estimated_width_in,master_plan_wi
 9,P9-S4,escalator,262,281,34,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
 9,P9-S5,stair,266,276,62,60,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
 9,P9-S6,stair,364,379,49,66,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
-9,P9-S7,stair,400,414,,72,master_plan,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+9,P9-S7,stair,407,414,,72,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too. The plan draws it as an escalator, but NJT's directory and the Master Plan have a stair, so its type and width are theirs."
 9,P9-S8,stair,475,489,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
 9,P9-S9,stair,537,549,49,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
 9,P9-S10,stair,651,665,43,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
