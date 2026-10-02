@@ -27,7 +27,8 @@ From its lines and fills, this finds:
 
 What's under the platforms' labels is hidden, so it's left out.
 
-Each plan's shapes are written as GeoJSON with one feature per line, in two files:
+Each plan's shapes are written as indented GeoJSON, with each geometry's coordinates on one line,
+in two files:
 `data/shapes_<source>.geojson`, in feet in the frame,
 and `data/shapes_<source>.latlon.geojson`, in longitude and latitude, as GeoJSON requires,
 registered to OpenStreetMap's platform outlines, so it can be viewed on a map, e.g. on GitHub.
@@ -35,6 +36,7 @@ registered to OpenStreetMap's platform outlines, so it can be viewed on a map, e
 
 import csv
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -833,15 +835,28 @@ def to_lonlat(plan_east_ends: dict[str, XY]) -> Callable[[XY], XY]:
     return convert
 
 
+COORDINATES_PLACEHOLDER = re.compile(r'"\\u0000(\d+)"')
+"""A geometry's coordinates' index, as a string starting with a NUL, which no real string has."""
+
+
 def write_geojson(path: Path, features: list[dict[str, Any]], frame: str | None) -> None:
-    """Write `features` as a GeoJSON FeatureCollection with one feature per line."""
-    header: dict[str, str] = {"type": "FeatureCollection"}
+    """
+    Write `features` as an indented GeoJSON FeatureCollection,
+    with each geometry's coordinates on one line.
+    """
+    collection: dict[str, Any] = {"type": "FeatureCollection"}
     if frame:
         # A foreign member: GeoJSON has no way to say coordinates aren't longitude and latitude.
-        header["frame"] = frame
-    head = json.dumps(header)[:-1]
-    lines = ",\n".join(json.dumps(f, ensure_ascii=False) for f in features)
-    path.write_text(f'{head}, "features": [\n{lines}\n]}}\n')
+        collection["frame"] = frame
+    # Indent everything but the coordinates, which are swapped in afterwards on one line.
+    coordinates = [f["geometry"]["coordinates"] for f in features]
+    collection["features"] = [
+        {**f, "geometry": {**f["geometry"], "coordinates": f"\0{i}"}}
+        for i, f in enumerate(features)
+    ]
+    text = json.dumps(collection, indent=2, ensure_ascii=False)
+    text = COORDINATES_PLACEHOLDER.sub(lambda m: json.dumps(coordinates[int(m[1])]), text)
+    path.write_text(text + "\n")
 
 
 FRAME_GEOJSON = DATA_DIR / "shapes_pcip_phase_2.geojson"

@@ -1023,7 +1023,7 @@ The shapes are 2D, at the platform level unless they say otherwise,
 since what matters on the platform is the space each VCE takes up there;
 going up, a VCE's capacity is already its width.
 
-They're GeoJSON, one feature per line, in two files for each plan:
+They're indented GeoJSON, with each geometry's coordinates on one line, in two files for each plan:
 
 - `data/shapes_<plan>.geojson`, e.g.
   [`data/shapes_pcip_phase_1.geojson`](./data/shapes_pcip_phase_1.geojson),
