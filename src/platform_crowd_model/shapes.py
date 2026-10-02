@@ -276,6 +276,34 @@ class Vce:
         return "escalator" if all(f.escalator for f in self.flights) else "stair"
 
     @property
+    def width_in(self) -> float:
+        """
+        The width across the treads, at the narrowest flight.
+        Flights side by side along the same stretch, e.g. treads drawn in two halves,
+        are one flight, so their widths add up.
+        A T-shaped stair's width is its upper flight's,
+        the one perpendicular to its two flights along the platform.
+        """
+        flights = self.flights
+        if len({f.along_x for f in flights}) == 2:
+            flights = [f for f in flights if not f.along_x]
+        runs: list[list[Flight]] = []
+        for f in flights:
+            for run in runs:
+                if any(side_by_side(f, g) for g in run):
+                    run.append(f)
+                    break
+            else:
+                runs.append([f])
+        widths = []
+        for run in runs:
+            along_x = run[0].along_x
+            lo = min(f.y0 if along_x else f.x0 for f in run)
+            hi = max(f.y1 if along_x else f.x1 for f in run)
+            widths.append((hi - lo) * 12)
+        return min(widths)
+
+    @property
     def box(self) -> tuple[float, float, float, float]:
         return (
             min(f.x0 for f in self.flights),
@@ -286,7 +314,7 @@ class Vce:
 
 
 def flights(drawing: Drawing) -> list[Flight]:
-    """Runs of evenly spaced, equally long, parallel treads, as in `vces.flights`."""
+    """Runs of evenly spaced, equally long, parallel treads."""
     treads: set[tuple[bool, float, float, float]] = set()
     for a, b in drawing.segments():
         if abs(a[0] - b[0]) < AXIS_TOLERANCE_FT and abs(a[1] - b[1]) >= MIN_TREAD_FT:
@@ -322,8 +350,17 @@ def flights(drawing: Drawing) -> list[Flight]:
     return out
 
 
+def side_by_side(a: Flight, b: Flight) -> bool:
+    """Whether the flights run along the same stretch, overlapping by at least half."""
+    if a.along_x != b.along_x:
+        return False
+    a0, a1, b0, b1 = (a.x0, a.x1, b.x0, b.x1) if a.along_x else (a.y0, a.y1, b.y0, b.y1)
+    overlap = min(a1, b1) - max(a0, b0)
+    return overlap >= min(a1 - a0, b1 - b0) / 2
+
+
 def touching(a: Flight, b: Flight) -> bool:
-    """Whether the flights are part of the same VCE, as in `vces.touching`."""
+    """Whether the flights are part of the same VCE: touching, or across a short landing."""
     if a.escalator != b.escalator:
         return False
     in_line = (
@@ -342,7 +379,11 @@ def touching(a: Flight, b: Flight) -> bool:
 
 
 def vces(plan: Plan) -> list[Vce]:
-    """The VCEs on the platforms, as in `vces.vces`."""
+    """
+    The VCEs on the platforms, as connected flights,
+    each on the platform whose row it's in, with at least one flight on a platform's outline,
+    since some stairs' upper flights are drawn past the platform's edge.
+    """
     by_platform: dict[str, list[Flight]] = {}
     for f in flights(plan.drawing):
         if plan.hidden.contains(Point(f.center)):
@@ -436,12 +477,12 @@ def vce_outline(vce: Vce, segments: list[tuple[XY, XY]]) -> Polygon:
     return joined if isinstance(joined, Polygon) else joined.convex_hull
 
 
-def curved_vces(plan: Plan, platforms: BaseGeometry) -> list[tuple[str, str, Polygon]]:
+def curved_vces(plan: Plan, platforms: BaseGeometry) -> list[tuple[str, str, Polygon, float]]:
     """
     Curved or diagonal stairs and escalators on the platforms:
     runs of evenly spaced, nearly parallel, equally long treads
     that aren't horizontal or vertical, so `flights` doesn't find them.
-    Each one's footprint is the band its treads sweep.
+    Each one's footprint is the band its treads sweep, and its width is its treads' median length.
     """
     treads = [
         (a, b)
@@ -509,10 +550,31 @@ def curved_vces(plan: Plan, platforms: BaseGeometry) -> list[tuple[str, str, Pol
         if platform is None:
             continue
         width_in = float(np.median(lengths[component])) * 12
-        out.append(
-            (platform, "escalator" if width_in < MAX_ESCALATOR_WIDTH_IN else "stair", outline)
-        )
+        vce_type = "escalator" if width_in < MAX_ESCALATOR_WIDTH_IN else "stair"
+        out.append((platform, vce_type, outline, width_in))
     return out
+
+
+def found_vces(plan: Plan) -> list[tuple[str, str, Polygon, float | None]]:
+    """
+    Every VCE on `plan`'s platforms: its platform, type, footprint, and width (in.),
+    from `plan.vce_boxes`, without widths, or else as runs of treads (`vces`),
+    or curved (`curved_vces`).
+    `data/vces.csv` takes its VCEs from these, too, so they match the shapes.
+    """
+    platforms = unary_union([o for _, o in plan.outlines])
+    segments = plan.drawing.segments()
+    measured: list[tuple[str, str, Polygon, float | None]] = [
+        (p, t, box(*b), None) for p, t, b in plan.vce_boxes or []
+    ]
+    found = list(measured)
+    for platform, vce_type, outline, width_in in [
+        *((vce.platform, vce.type, vce_outline(vce, segments), vce.width_in) for vce in vces(plan)),
+        *curved_vces(plan, platforms),
+    ]:
+        if not any(outline.intersects(m) for _, _, m, _ in measured):
+            found.append((platform, vce_type, outline, width_in))
+    return found
 
 
 def bounds(points: tuple[XY, ...] | list[XY]) -> tuple[float, float, float, float]:
@@ -652,15 +714,7 @@ def shapes(plan: Plan) -> list[tuple[dict[str, str], list[XY]]]:
             ({"type": "platform", "platform": name}, [(x, y) for x, y in outline.exterior.coords])
         )
     platforms = unary_union([o for _, o in plan.outlines])
-    segments = plan.drawing.segments()
-    measured = [(p, t, box(*b)) for p, t, b in plan.vce_boxes or []]
-    found: list[tuple[str, str, Polygon]] = list(measured)
-    for platform, vce_type, outline in [
-        *((vce.platform, vce.type, vce_outline(vce, segments)) for vce in vces(plan)),
-        *curved_vces(plan, platforms),
-    ]:
-        if not any(outline.intersects(m) for _, _, m in measured):
-            found.append((platform, vce_type, outline))
+    found = [(platform, vce_type, g) for platform, vce_type, g, _ in found_vces(plan)]
     # Each name goes to the nearest VCE of the same type, so no two VCEs get the same one,
     # and then the rest to the nearest VCE of the other type, taking its type,
     # e.g. an escalator whose balustrades are drawn as wide as a stair.

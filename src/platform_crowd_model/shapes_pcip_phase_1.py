@@ -13,18 +13,19 @@ so its platforms are told apart by which row of the sheet they're in.
 It's marked not to scale, so it's registered to the frame like Platform A's plan:
 x by fitting the platforms' east ends to `data/platform_east_ends.csv`,
 and y, separately, by fitting platforms 3 to 8's centerlines to the PCIP Phase 2 plan's,
-in `data/shapes_pcip_phase_2.geojson`; the two scales agree to within 1%.
+as `shapes_pcip_phase_2.read_plan` reads them; the two scales agree to within 1%.
+`data/vces.csv` reads the plan the same way, so its VCEs match the shapes.
 
 Writes `data/shapes_pcip_phase_1.geojson` and `data/shapes_pcip_phase_1.latlon.geojson`.
 """
 
-import json
 from collections.abc import Callable
 
 import numpy as np
 import pymupdf
 from shapely import Point, Polygon, box, unary_union
 
+from platform_crowd_model import shapes_pcip_phase_2
 from platform_crowd_model.paths import DATA_DIR
 from platform_crowd_model.platform_a_pcip_phase_1 import (
     EXISTING_PLATFORM_FILL,
@@ -37,7 +38,6 @@ PAGE = 24
 """1-indexed PDF page of sheet A-001, "Existing Plan Overall"."""
 SOURCE = f"PCIP Phase 1 Appendix A, sheet A-001, July 2019, PDF page {PAGE}"
 
-PCIP_PHASE_2_GEOJSON = DATA_DIR / "shapes_pcip_phase_2.geojson"
 OUT_GEOJSON = DATA_DIR / "shapes_pcip_phase_1.geojson"
 LATLON_GEOJSON = DATA_DIR / "shapes_pcip_phase_1.latlon.geojson"
 
@@ -82,13 +82,11 @@ def read_plan(
     source: str,
     fills: dict[str, tuple[float, ...]],
     names: Callable[[str, str], list[tuple[float, str]]] | None = None,
-    fit_y: bool = True,
 ) -> Plan:
     """
     The plan on `page_number`, a sheet drawn like the existing plan,
     with platforms besides the existing ones filled with `fills`, e.g. Platform A.
-    Without `fit_y`, y isn't fitted to the PCIP Phase 2 plan's,
-    but only scaled like x, for where only positions along the platforms matter.
+    y is fitted to the PCIP Phase 2 plan's platforms (`shapes_pcip_phase_2.read_plan`).
     """
     page = pdf()[page_number - 1]
     rotate = page.rotation_matrix
@@ -136,36 +134,26 @@ def read_plan(
         ):
             labels.append(polygon)
 
-    y_per_unit, y_offset = -ft_per_unit, 0.0
-    if fit_y:
-        # y: fit each platform's centerline to the PCIP Phase 2 plan's.
-        with PCIP_PHASE_2_GEOJSON.open() as f:
-            pcip_2 = {
-                feature["properties"]["platform"]: Polygon(feature["geometry"]["coordinates"][0])
-                for feature in json.load(f)["features"]
-                if feature["properties"]["type"] == "platform"
-            }
-        rotated_ys = []
-        ft_ys = []
-        for platform in Y_FIT_PLATFORMS:
-            _, y0, _, y1 = unary_union(pieces[platform]).bounds
-            rotated_ys.append((y0 + y1) / 2)
-            _, fy0, _, fy1 = pcip_2[platform].bounds
-            ft_ys.append((fy0 + fy1) / 2)
-        y_per_unit, y_offset = np.polyfit(rotated_ys, ft_ys, 1)
-        residuals = [
-            f - (y_per_unit * y + y_offset) for y, f in zip(rotated_ys, ft_ys, strict=True)
-        ]
-        print(
-            f"{-y_per_unit:.4f} ft per PDF unit across the platforms, "
-            f"centerlines off by up to {max(map(abs, residuals)):.1f} ft"
-        )
-        if abs(-y_per_unit / ft_per_unit - 1) > MAX_SCALE_DIFFERENCE:
-            raise RuntimeError(
-                f"the sheet's scales differ: {ft_per_unit:.4f} and {-y_per_unit:.4f}"
-            )
-        if max(map(abs, residuals)) > MAX_Y_RESIDUAL_FT:
-            raise RuntimeError("the platforms' centerlines don't fit the PCIP Phase 2 plan's")
+    # y: fit each platform's centerline to the PCIP Phase 2 plan's.
+    _plan, pcip_2_outlines = shapes_pcip_phase_2.read_plan()
+    pcip_2 = dict(pcip_2_outlines)
+    rotated_ys = []
+    ft_ys = []
+    for platform in Y_FIT_PLATFORMS:
+        _, y0, _, y1 = unary_union(pieces[platform]).bounds
+        rotated_ys.append((y0 + y1) / 2)
+        _, fy0, _, fy1 = pcip_2[platform].bounds
+        ft_ys.append((fy0 + fy1) / 2)
+    y_per_unit, y_offset = np.polyfit(rotated_ys, ft_ys, 1)
+    residuals = [f - (y_per_unit * y + y_offset) for y, f in zip(rotated_ys, ft_ys, strict=True)]
+    print(
+        f"{-y_per_unit:.4f} ft per PDF unit across the platforms, "
+        f"centerlines off by up to {max(map(abs, residuals)):.1f} ft"
+    )
+    if abs(-y_per_unit / ft_per_unit - 1) > MAX_SCALE_DIFFERENCE:
+        raise RuntimeError(f"the sheet's scales differ: {ft_per_unit:.4f} and {-y_per_unit:.4f}")
+    if max(map(abs, residuals)) > MAX_Y_RESIDUAL_FT:
+        raise RuntimeError("the platforms' centerlines don't fit the PCIP Phase 2 plan's")
 
     def rotated_to_ft(x: float, y: float) -> XY:
         return x_ft(x), float(y_per_unit * y + y_offset)

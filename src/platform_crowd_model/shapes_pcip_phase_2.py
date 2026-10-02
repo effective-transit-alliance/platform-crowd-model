@@ -37,7 +37,8 @@ CONCOURSE_FILL = (0.97, 0.97, 0.88)
 """The sheet's fill color for existing concourses."""
 
 
-def main() -> None:
+def read_plan() -> tuple[Plan, list[tuple[str, Polygon]]]:
+    """The plan, and its platforms' outlines, named e.g. `3`, or `1/2` for one they share."""
     page = pdf()[PAGE - 1]
     labels = platform_labels(page)
     outlines = platform_outlines(page)
@@ -85,5 +86,10 @@ def main() -> None:
         wall_grays=WALL_GRAYS,
         concourse_fill=CONCOURSE_FILL,
     )
+    return plan, named_outlines
+
+
+def main() -> None:
+    plan, named_outlines = read_plan()
     # This plan defines the frame, and `shapes.frame_outlines` reads it from `OUT_GEOJSON`.
     write(plan, OUT_GEOJSON, LATLON_GEOJSON, registration=named_outlines)
