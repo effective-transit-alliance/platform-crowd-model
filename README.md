@@ -215,10 +215,9 @@ e.g. the [2023 edition's First Draft Report](https://docinfofiles.nfpa.org/files
   though no more seated passengers have been measured through the North River Tunnels,
   24 trains per hour × 12 cars × 135 seats.
 - Stairs and stopped escalators carry 1.41 pax/min per inch of width, i.e. 16.92 pax/min/ft (5.3.5.3).
-- The widest escalator is out of service, as in the simulation,
-  taken as the one "having the most adverse effect upon egress capacity" (5.3.5.4).
-  NFPA 130 also lets escalators provide at most half of the egress capacity (5.3.5.6),
-  but the model doesn't limit them yet, which overstates the exit capacity.
+- The widest escalator is out of service, taken as the one "having the most adverse effect upon egress capacity",
+  and escalators provide at most half of the egress capacity (5.3.5.4, 5.3.5.6).
+  No platform's escalators come close to half: they provide at most 44%, on platform 6.
 
 NFPA 130 also requires evacuating "from the most remote point on the platform to a point of safety in 6 minutes or less" (5.3.3.2).
 The model checks this per its Annex C, at the same moment:
@@ -314,7 +313,6 @@ or **unclear** (it could go either way).
   which NFPA 130 only allows where an engineering analysis shows it's protected (5.3.3.4).
 - **Pessimistic:** The NFPA 130 time to the concourse has the farthest occupant walk 325',
   the farthest NFPA 130 allows, instead of to their nearest VCE.
-- **Optimistic:** The NFPA 130 evacuation time doesn't limit escalators to half of the exit capacity.
 
 ## Limitations
 
@@ -1042,3 +1040,5 @@ and each fix's effect is summarized here.
   With trains 2 minutes apart, it clears at 7:57,
   and with two trains arriving at once, it fails both NFPA 130 checks, taking 6:53 and 7:14.
   The other platforms are unchanged.
+- **Limited escalators to half of NFPA 130's exit capacity,** as NFPA 130 requires (5.3.5.6).
+  No effect on results, since no platform's escalators provide more than 44% of it.

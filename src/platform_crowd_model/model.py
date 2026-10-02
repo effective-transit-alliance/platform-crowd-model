@@ -784,14 +784,13 @@ class Params:
     ) -> Annotated[float, Field(name="NFPA 130 Exit Capacity", units="pax/s")]:
         """
         How fast the VCEs can evacuate the platform under NFPA 130 (in pax/s),
-        at `NFPA_130_EXIT_FLOW`, through `total_vce_width`,
-        which leaves out the widest escalator,
-        like NFPA 130 takes the one with "the most adverse effect upon egress capacity"
-        out of service (5.3.5.4).
-        NFPA 130 also lets escalators provide at most half of the capacity (5.3.5.6),
-        but this doesn't limit them yet, and so is optimistic.
+        at `NFPA_130_EXIT_FLOW`, with the widest escalator out of service,
+        i.e. the one with "the most adverse effect upon egress capacity",
+        and escalators providing at most half of the capacity, per NFPA 130 5.3.5.4 and 5.3.5.6.
         """
-        return stair_flow(NFPA_130_EXIT_FLOW, self.total_vce_width)
+        stairs = sum(vce.width for vce in self.vces if vce.type != "escalator")
+        escalators = sorted(vce.width for vce in self.vces if vce.type == "escalator")[:-1]
+        return stair_flow(NFPA_130_EXIT_FLOW, stairs + min(sum(escalators), stairs))
 
     def nfpa_130_evacuation_time(self, occupants: float) -> timedelta:
         """
