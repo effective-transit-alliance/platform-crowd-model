@@ -526,6 +526,15 @@ def platform_lengths() -> dict[int, int]:
 
 
 @cache
+def platform_tracks() -> dict[int, int]:
+    """How many tracks each platform serves, from `PLATFORM_LENGTHS`."""
+    with PLATFORM_LENGTHS.open() as f:
+        return {
+            int(row["platform"]): len(row["track_numbers"].split("/")) for row in csv.DictReader(f)
+        }
+
+
+@cache
 def platform_max_cars() -> dict[int, int]:
     """Cars in the longest train that fits on each platform's tracks, from `PLATFORM_MAX_CARS`."""
     with PLATFORM_MAX_CARS.open() as f:
@@ -558,7 +567,7 @@ class Params:
     """The VCEs (vertical circulation elements) going upstairs."""
 
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
-    """Trains arriving, alternating between the platform's two tracks."""
+    """Trains arriving, alternating between the platform's tracks."""
 
     assumptions: Assumptions = dataclasses.field(default_factory=Assumptions)
     """What the model assumes, the same for every scenario unless overridden."""
@@ -588,6 +597,14 @@ class Params:
     def platform_max_cars(self) -> Annotated[int, Field(name="Platform Max Cars", units="car")]:
         """Cars in the longest train that fits on its tracks, from `PLATFORM_MAX_CARS`."""
         return platform_max_cars()[self.platform]
+
+    @property
+    def tracks(self) -> Annotated[int, Field(name="Tracks", units="track")]:
+        """
+        Tracks the platform serves, from `PLATFORM_LENGTHS`: 2 for an island platform,
+        or 1 for platform 9, which only serves track 17.
+        """
+        return platform_tracks()[self.platform]
 
     @property
     def cars(self) -> Annotated[int, Field(name="Cars per Train", units="car")]:
@@ -803,10 +820,10 @@ def simulate(
     arriving_pax_on_platform: float = 0
     trains = range(params.trains)
     arrival_times: list[timedelta | None] = [
-        train * params.headway if train < 2 else None for train in trains
+        train * params.headway if train < params.tracks else None for train in trains
     ]
     """
-    When each train arrives: the first two as scheduled,
+    When each train arrives: the first on each track as scheduled,
     and each later one once it's scheduled and the train before it on its track has departed.
     """
     remaining_arrivals = [float(params.arriving_pax_per_train) for _ in trains]
@@ -958,8 +975,10 @@ def simulate(
             ):
                 summary.dwells[train] = time_after - arrival_time
                 # The next train on its track arrives once it's scheduled and this one departs.
-                if train + 2 < params.trains:
-                    arrival_times[train + 2] = max((train + 2) * params.headway, time_after)
+                if train + params.tracks < params.trains:
+                    arrival_times[train + params.tracks] = max(
+                        (train + params.tracks) * params.headway, time_after
+                    )
         summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
         aboard = sum(
             remaining_arrivals[train] + new_pax[train]
