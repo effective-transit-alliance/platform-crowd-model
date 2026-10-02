@@ -1333,3 +1333,6 @@ and each fix's effect is summarized here.
   which draws them, instead of by their clipped treads,
   so platform 3's, `P3-S4`, has a shape, too.
   They move by about 1', which changes only a few results by a few seconds.
+- **Stopped rounding errors in departing passengers upstairs from never finishing a simulation:**
+  a train's could end at about 1e-15 instead of 0, giving it nearly infinite shares of the VCEs.
+  No results change.
