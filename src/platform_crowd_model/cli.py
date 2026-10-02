@@ -104,6 +104,18 @@ def platform_west_ends_pcip_phase_1() -> None:
 
 
 @data_app.command()
+def platform_a_pcip_phase_1() -> None:
+    """
+    Measure PCIP Phase 1's Platform A and its VCEs on its plan of Alternative 12,
+    writing `data/platform_a_pcip_phase_1.csv` and `data/vces_platform_a_pcip_phase_1.csv`.
+    Run `vces` first.
+    """
+    from platform_crowd_model import platform_a_pcip_phase_1
+
+    platform_a_pcip_phase_1.main()
+
+
+@data_app.command()
 def vces_transformation_fra_sos() -> None:
     """
     Measure Penn Transformation's new VCEs and platform extensions on the FRA's SOS report,
@@ -124,4 +136,5 @@ def all_data() -> None:
     vces()
     platform_west_ends_pcip_phase_1()
     vces_transformation_fra_sos()
+    platform_a_pcip_phase_1()
     platforms_osm()
