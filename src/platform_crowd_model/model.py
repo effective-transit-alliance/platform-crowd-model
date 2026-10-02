@@ -466,6 +466,12 @@ class Vce:
     width: float
     """Its width (in feet)."""
 
+    west_end: float
+    """Where it starts along the platform (ft east of the Master Plan's plans' west edge)."""
+
+    east_end: float
+    """Where it ends along the platform (ft east of the Master Plan's plans' west edge)."""
+
     type: str = "stair"
     """`stair` or `escalator`."""
 
@@ -482,6 +488,12 @@ PLATFORM_MAX_CARS = DATA_DIR / "platform_max_cars_track_map.csv"
 Cars in the longest train that fits on each platform's tracks,
 from a track map of unknown origin found at Railfan Guides of the U.S.:
 https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
+"""
+
+PLATFORM_EAST_ENDS = DATA_DIR / "platform_east_ends.csv"
+"""
+Where each platform ends to the east (ft east of the Master Plan's plans' west edge),
+via `platform-crowd-model data vces`.
 """
 
 PLATFORM_WEST_ENDS = DATA_DIR / "platform_west_ends_pcip_phase_1.csv"
@@ -540,6 +552,8 @@ def platform_vces(platform: int) -> tuple[Vce, ...]:
                     name=f"PA-{row['label']}" + ("-E" if row["type"] == "escalator" else ""),
                     width=float(row["width_in"]) / 12,
                     type=row["type"],
+                    west_end=float(row["west_end_ft"]),
+                    east_end=float(row["east_end_ft"]),
                 )
                 for row in csv.DictReader(f)
             )
@@ -549,6 +563,8 @@ def platform_vces(platform: int) -> tuple[Vce, ...]:
                 name=row["vce_name"],
                 width=float(row["master_plan_width_in"] or row["estimated_width_in"]) / 12,
                 type=row["type"],
+                west_end=float(row["west_end_ft"]),
+                east_end=float(row["east_end_ft"]),
             )
             for row in csv.DictReader(f)
             if int(row["platform"]) == platform
@@ -587,6 +603,16 @@ def platform_max_cars() -> dict[int, int]:
         return {
             PLATFORM_A: int(platform_a()["max_cars"]),
             **{int(row["platform"]): int(row["max_cars"]) for row in csv.DictReader(f)},
+        }
+
+
+@cache
+def platform_east_ends() -> dict[int, float]:
+    """Where each platform ends to the east (ft), from `PLATFORM_EAST_ENDS`, and Platform A."""
+    with PLATFORM_EAST_ENDS.open() as f:
+        return {
+            PLATFORM_A: float(platform_a()["east_end_ft"]),
+            **{int(row["platform"]): float(row["east_end_ft"]) for row in csv.DictReader(f)},
         }
 
 
@@ -635,7 +661,13 @@ def transformation_vces(platform: int) -> tuple[Vce, ...]:
     with TRANSFORMATION_VCES.open() as f:
         rows = [row for row in csv.DictReader(f) if int(row["platform"]) == platform]
     return tuple(
-        Vce(name=f"P{platform}-T{n}", width=float(row["width_in"]) / 12, type=row["type"])
+        Vce(
+            name=f"P{platform}-T{n}",
+            width=float(row["width_in"]) / 12,
+            west_end=float(row["west_end_ft"]),
+            east_end=float(row["east_end_ft"]),
+            type=row["type"],
+        )
         for n, row in enumerate(rows, start=1)
     )
 
@@ -703,6 +735,14 @@ class Params:
         """How far Penn Transformation extends the platform to the west (ft), if at all."""
         west_end = self.transformation_platform.get("west_end_ft")
         return platform_west_ends()[self.platform] - float(west_end) if west_end else 0
+
+    @property
+    def platform_east_end(self) -> float:
+        """
+        Where the platform ends to the east (ft east of the Master Plan's plans' west edge),
+        from `PLATFORM_EAST_ENDS`.
+        """
+        return platform_east_ends()[self.platform]
 
     @property
     def platform_length(self) -> Annotated[float, Field(name="Platform Length", units="ft")]:
@@ -779,18 +819,60 @@ class Params:
         return sum(vce.width for vce in self.vces) - max(escalators, default=0)
 
     @property
+    def nfpa_130_out_of_service_choices(self) -> list[Vce]:
+        """
+        Each escalator NFPA 130 could take out of service,
+        the one "having the most adverse effect upon egress capacity" (5.3.5.4),
+        i.e. the widest, since every VCE has the same capacity per width,
+        or each of the widest if they tie, or none if there are no escalators.
+        """
+        escalators = [vce for vce in self.vces if vce.type == "escalator"]
+        widest = max((vce.width for vce in escalators), default=None)
+        return [vce for vce in escalators if vce.width == widest]
+
+    def nfpa_130_exit_capacity_without(self, out_of_service: Vce | None) -> float:
+        """
+        How fast the VCEs can evacuate the platform under NFPA 130 (in pax/s),
+        at `NFPA_130_EXIT_FLOW`, with `out_of_service` out of service,
+        and escalators providing at most half of the capacity, per NFPA 130 5.3.5.6.
+        """
+        exits = [vce for vce in self.vces if vce is not out_of_service]
+        stairs = sum(vce.width for vce in exits if vce.type != "escalator")
+        escalators = sum(vce.width for vce in exits if vce.type == "escalator")
+        return stair_flow(NFPA_130_EXIT_FLOW, stairs + min(escalators, stairs))
+
+    @property
     def nfpa_130_exit_capacity(
         self,
     ) -> Annotated[float, Field(name="NFPA 130 Exit Capacity", units="pax/s")]:
         """
-        How fast the VCEs can evacuate the platform under NFPA 130 (in pax/s),
-        at `NFPA_130_EXIT_FLOW`, with the widest escalator out of service,
-        i.e. the one with "the most adverse effect upon egress capacity",
-        and escalators providing at most half of the capacity, per NFPA 130 5.3.5.4 and 5.3.5.6.
+        `nfpa_130_exit_capacity_without` the widest escalator,
+        the same for each of `nfpa_130_out_of_service_choices`.
         """
-        stairs = sum(vce.width for vce in self.vces if vce.type != "escalator")
-        escalators = sorted(vce.width for vce in self.vces if vce.type == "escalator")[:-1]
-        return stair_flow(NFPA_130_EXIT_FLOW, stairs + min(sum(escalators), stairs))
+        return self.nfpa_130_exit_capacity_without(
+            next(iter(self.nfpa_130_out_of_service_choices), None)
+        )
+
+    def nfpa_130_longest_walk_without(self, out_of_service: Vce | None) -> float:
+        """
+        Farthest anyone on the platform is from their nearest VCE (ft),
+        with `out_of_service` out of service, if any,
+        from either end of the platform, or from halfway between two VCEs.
+        """
+        exits = sorted(
+            (vce for vce in self.vces if vce is not out_of_service), key=lambda vce: vce.west_end
+        )
+        # From the west end to the first exit, and from the last exit to the east end.
+        longest = max(
+            exits[0].west_end - (self.platform_east_end - self.platform_length),
+            self.platform_east_end - max(vce.east_end for vce in exits),
+        )
+        # Halfway between each exit and the next.
+        east = exits[0].east_end
+        for vce in exits[1:]:
+            longest = max(longest, (vce.west_end - east) / 2)
+            east = max(east, vce.east_end)
+        return max(longest, 0)
 
     def nfpa_130_evacuation_time(self, occupants: float) -> timedelta:
         """
@@ -806,14 +888,26 @@ class Params:
         their walk along the platform to their nearest exit at `NFPA_130_PLATFORM_WALKING_SPEED`,
         plus their wait there, the rest of the platform's flow time after that walk,
         plus their climb up `PLATFORM_TO_CONCOURSE_RISE` at `NFPA_130_STAIR_VERTICAL_SPEED`.
-        We don't know where the VCEs are yet,
-        so the walk is the farthest NFPA 130 allows, `NFPA_130_MAX_TRAVEL_DISTANCE`,
-        and so is pessimistic.
+        Both the walk and the flow time are with the widest escalator out of service (5.3.5.4).
+        NFPA 130 doesn't say which to choose if the widest tie,
+        so this is the shortest with each of `nfpa_130_out_of_service_choices`.
+        NFPA 130's travel distance limit (5.3.3.5) doesn't take an escalator out of service,
+        so its walk is `nfpa_130_longest_walk_without(None)` instead.
         """
-        walk = NFPA_130_MAX_TRAVEL_DISTANCE / NFPA_130_PLATFORM_WALKING_SPEED
-        flow = occupants / self.nfpa_130_exit_capacity
         climb = PLATFORM_TO_CONCOURSE_RISE / NFPA_130_STAIR_VERTICAL_SPEED
-        return timedelta(seconds=ceil(max(walk, flow) + climb))
+        return min(
+            timedelta(
+                seconds=ceil(
+                    max(
+                        self.nfpa_130_longest_walk_without(out_of_service)
+                        / NFPA_130_PLATFORM_WALKING_SPEED,
+                        occupants / self.nfpa_130_exit_capacity_without(out_of_service),
+                    )
+                    + climb
+                )
+            )
+            for out_of_service in self.nfpa_130_out_of_service_choices or [None]
+        )
 
 
 @dataclass
