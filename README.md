@@ -113,7 +113,8 @@ each using the passenger counts left by the one before.
    Once a train arrives, its passengers step off onto the platform
    at 1 pax/s per single-door equivalent.
    - Every train is as long as its platform's tracks and the platform itself allow, up to 12 cars:
-     9 cars on platforms 1 and 2, 10 on platforms 3 and 9, and 12 on the rest.
+     9 cars on platforms 1 and 2, 10 on platforms 3 and 9, and 12 on the rest,
+     or with Penn Transformation's extensions, 10 on platforms 1 and 2.
      - The tracks' limits are from
        [a track map of unknown origin](https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg)
        found at Railfan Guides of the U.S.,
@@ -181,9 +182,11 @@ each using the passenger counts left by the one before.
   once the train before it on its track has departed at the end of its dwell.
   0 minutes apart, the first two arrive together and the last two as soon as they depart,
   or on platform 9, each as soon as the one before it departs.
-- Every platform, 1 to 11, is modeled,
-  and platform 3 also with its VCEs after Penn Reconstruction, `(recon)`,
-  with the ETA report's total width for them, 44'9".
+- Every platform, 1 to 11, is modeled both as it is and as Penn Transformation would leave it
+  (see [Penn Transformation](#penn-transformation)):
+  with its new VCEs, platforms 1 to 3 extended to the west for 10-car trains,
+  and every platform decluttered, adding the FRA's percentage more area,
+  and the extension's length at the platform's average width.
 
 ### NFPA 130 Evacuation
 
@@ -263,6 +266,8 @@ or **unclear** (it could go either way).
 - **Unclear:** Most VCEs' widths are estimated from a scaled plan,
   and platforms 9 to 11's positions are partly from a schematic map
   (see [VCE Width Data](#vce-width-data)).
+- **Unclear:** Penn Transformation's new VCEs' widths and types aren't published,
+  so they're assumed (see [Penn Transformation](#penn-transformation)).
 - **Optimistic:** All VCEs act as one pooled queue:
   passengers spread across them in proportion to their widths,
   with no preference for any exit, e.g. toward 7th Avenue.
@@ -389,7 +394,7 @@ So the usable area, and the space per passenger, are likely overstated (optimist
 ### Total VCE Width
 
 The ETA report's total VCE widths, whose source is unknown,
-are only used for platform 3 with Penn Reconstruction, since each VCE now has its own width.
+aren't used, since each VCE has its own width.
 Its platforms 10 and 11's match the
 [Moynihan Station EA's](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22)
 2008 per-platform stair capacities divided by 17 pax/min/ft,
@@ -679,6 +684,53 @@ a 4'8" stair on platform 7 about 65' west of the West End Concourse
 and a 3'5" escalator on platform 8 about 73' west of it,
 which are in `data/vces.csv`, too, noted as unconfirmed until they're checked in person.
 
+### Penn Transformation
+
+The FRA's Penn Station Service Optimization Study
+([Phase I report](https://railroads.dot.gov/elibrary/new-york-penn-station-service-optimization-study-phase-i-report-final-june-2026), June 2026)
+lays out Penn Transformation's improvements to the platforms:
+up to 23 new VCEs, 19 stairs and 4 escalators, with at least one on every platform;
+Platforms 1 to 3 extended west by about 200' to 350',
+so 10-car NJT trains can open all of their doors;
+and decluttered platforms, with 2% to 14% more circulation area (Table 1).
+Its Figure 11 shows the new VCEs' "generalized locations" on an aerial image,
+which `uv run platform-crowd-model data vces-transformation-fra-sos`
+([`vces_transformation_fra_sos.py`](./src/platform_crowd_model/vces_transformation_fra_sos.py))
+finds by their icons, along with the extensions,
+and registers to the Master Plan's frame by the platforms' drawn ends to within about 3',
+into [`data/vces_transformation_fra_sos.csv`](./data/vces_transformation_fra_sos.csv)
+and [`data/platforms_transformation_fra_sos.csv`](./data/platforms_transformation_fra_sos.csv).
+They agree with the report's breakdown:
+5 in Moynihan, 2 on Platforms 1 and 2's extensions west of Eighth Avenue, and 16 in Penn Station,
+mostly in two rows, about 175' and 535' east of the Master Plan's plans' west edge.
+
+The report doesn't say which are escalators or how wide any are, so:
+
+- The 4 escalators are taken to be the 4 in Moynihan, about 250' west of the West End Concourse,
+  in line with the Train Hall's escalators.
+- Stairs are as wide as the West End Concourse's, 6', and escalators as the Train Hall's, 3'4"
+  Together, the 23 add about 30% to the existing VCEs' total width,
+  close to the 32% more vertical circulation capacity
+  [Penn Transformation's designers report](https://www.enr.com/articles/63127-penn-station-renderings-reveal-design-for-8b-reconstruction-beneath-madison-square-garden).
+- Its locations are only general, and a few of them are within a few feet of existing VCEs,
+  e.g. on platform 10.
+- Each extended platform's new west end is where its extension's box on Figure 11 ends,
+  185' to 317' west of its end in PCIP Phase 1's plan.
+
+Each platform's west end today is from NJT's PCIP Phase 1 existing track plan
+([Appendix A, sheet TK-003](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=8),
+July 2019), since the PCIP Phase 2 and Master Plan drawings cut the platforms off at their west ends.
+It's a scan at 1" = 80',
+so `uv run platform-crowd-model data platform-west-ends-pcip-phase-1`
+([`platform_west_ends_pcip_phase_1.py`](./src/platform_crowd_model/platform_west_ends_pcip_phase_1.py))
+finds its orange platform edges by color
+and fits them to the platforms' east ends in the Master Plan's frame,
+which comes out at 80.3 ft per inch of the sheet, with every east end within about 1'.
+Each platform's west end is in
+[`data/platform_west_ends_pcip_phase_1.csv`](./data/platform_west_ends_pcip_phase_1.csv).
+The lengths between them agree with the EA's to within about 40',
+except platform 9's, which is 134' longer, like its outline in OpenStreetMap.
+
 ### Sources and Their Dates
 
 Penn Station's VCEs have changed over time,
@@ -748,7 +800,7 @@ Notes:
 Times are in m:ss.
 Headways, time at capacity, and dwells are durations, and the rest are times after the first train arrives.
 
-- **Platform:** the platform's number, with `(recon)` for its VCEs after Penn Reconstruction.
+- **Platform:** the platform's number, followed by `T` as Penn Transformation would leave it, e.g. `3T`.
 - **NFPA 130 evacuation:** how long the platform's peak occupants, including those aboard its trains,
   take to evacuate at NFPA 130's exit capacity, marked ✗ if it's over its 4-minute limit.
 - **NFPA 130 to concourse:** how long the farthest of those occupants takes to reach the concourse,
@@ -779,41 +831,71 @@ This table is generated by `uv run platform-crowd-model run --update-readme`:
 | Platform | Headway | VCE width | NFPA 130 evacuation | NFPA 130 to concourse | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max pax on platform | Max density (pax/m²) | Max up rate (pax/s) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 1 | 0:00 | 31'6" | 6:36 ✗ | 6:57 ✗ | 0:00, 0:00, 5:31, 5:31 | 5:31, 5:31, 0:46, 0:46 | 9:49 | 10:04 | 6:17 | 9:04 | 3206 | 3.04 (D) | 8.93 |
+| 1T | 0:00 | 43'6" | 5:42 ✗ | 6:03 ✗ | 0:00, 0:00, 3:48, 3:48 | 3:48, 3:48, 0:44, 0:44 | 7:12 | 7:27 | 4:32 | 7:18 | 3772 | 2.75 (D) | 12.32 |
 | 2 | 0:00 | 32'7" | 6:27 ✗ | 6:47 ✗ | 0:00, 0:00, 5:16, 5:16 | 5:16, 5:16, 0:46, 0:46 | 9:25 | 9:40 | 6:02 | 8:46 | 3233 | 3.26 (D) | 9.23 |
+| 2T | 0:00 | 44'7" | 5:37 ✗ | 5:58 ✓ | 0:00, 0:00, 3:40, 3:40 | 3:40, 3:40, 0:44, 0:44 | 6:59 | 7:14 | 4:24 | 7:06 | 3799 | 2.85 (D) | 12.63 |
 | 3 | 0:00 | 45'9" | 5:31 ✗ | 5:52 ✓ | 0:00, 0:00, 3:31, 3:31 | 3:31, 3:31, 0:44, 0:44 | 6:45 | 7:00 | 4:15 | 6:56 | 3828 | 3.02 (D) | 12.96 |
-| 3 (recon) | 0:00 | 44'9" | 5:36 ✗ | 5:57 ✓ | 0:00, 0:00, 3:38, 3:38 | 3:38, 3:38, 0:44, 0:44 | 6:56 | 7:11 | 7:12 | 7:04 | 3803 | 3.00 (D) | 12.68 |
+| 3T | 0:00 | 61'1" | 5:16 ✗ | 5:37 ✓ | 0:00, 0:00, 0:44, 0:44 | 0:44, 0:44, 0:44, 0:44 | 4:57 | 5:12 | 1:28 | 5:12 | 4850 | 2.76 (D) | 17.31 |
 | 4 | 0:00 | 42'8" | 6:31 ✗ | 6:52 ✗ | 0:00, 0:00, 4:40, 4:40 | 4:40, 4:40, 0:43, 0:43 | 8:53 | 9:08 | 5:23 | 8:56 | 4292 | 2.74 (D) | 12.09 |
+| 4T | 0:00 | 54'8" | 7:10 ✗ | 7:30 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:44 | 6:59 | 1:26 | 6:58 | 6087 | 3.77 (E) | 15.49 |
 | 5 | 0:00 | 53'11" | 7:16 ✗ | 7:37 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:50 | 7:05 | 1:26 | 7:04 | 6104 | 3.17 (D) | 15.28 |
+| 5T | 0:00 | 69'3" | 5:30 ✗ | 5:51 ✓ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 5:16 | 5:31 | 1:26 | 5:30 | 5769 | 2.88 (D) | 19.62 |
 | 6 | 0:00 | 40'6" | 6:46 ✗ | 7:07 ✗ | 0:00, 0:00, 5:01, 5:01 | 5:01, 5:01, 0:43, 0:43 | 9:29 | 9:44 | 5:44 | 9:24 | 4238 | 2.38 (D) | 11.47 |
+| 6T | 0:00 | 52'6" | 7:29 ✗ | 7:50 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 7:01 | 7:16 | 1:26 | 7:15 | 6135 | 3.33 (D) | 14.88 |
 | 7 | 0:00 | 46'11" | 8:28 ✗ | 8:49 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 7:53 | 8:08 | 1:26 | 8:07 | 6256 | 3.28 (D) | 13.29 |
+| 7T | 0:00 | 56'3" | 6:56 ✗ | 7:17 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:32 | 6:47 | 1:26 | 6:46 | 6053 | 3.04 (D) | 15.94 |
 | 8 | 0:00 | 45'10" | 6:13 ✗ | 6:34 ✗ | 0:00, 0:00, 4:12, 4:12 | 4:12, 4:12, 0:43, 0:43 | 8:07 | 8:22 | 4:55 | 8:18 | 4370 | 3.05 (D) | 12.99 |
+| 8T | 0:00 | 55'2" | 7:05 ✗ | 7:26 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:40 | 6:55 | 1:26 | 6:54 | 6076 | 4.06 (E) | 15.63 |
 | 9 | 0:00 | 47' | 5:05 ✗ | 5:26 ✓ | 0:00, 0:44, 1:28, 2:12 | 0:44, 0:44, 0:44, 0:44 | 6:31 | 6:46 | 2:56 | 6:45 | 3589 | 2.69 (D) | 13.32 |
+| 9T | 0:00 | 59' | 3:36 ✓ | 3:57 ✓ | 0:00, 0:44, 1:28, 2:12 | 0:44, 0:44, 0:44, 0:44 | 5:08 | 5:23 | 2:56 | 5:23 | 3025 | 2.23 (D) | 16.72 |
 | 10 | 0:00 | 86'6" | 4:16 ✗ | 4:37 ✓ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 4:10 | 4:25 | 1:26 | 4:24 | 5393 | 2.21 (D) | 24.51 |
+| 10T | 0:00 | 92'6" | 3:56 ✓ | 4:17 ✓ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 3:53 | 4:08 | 1:26 | 4:07 | 5262 | 1.89 (D) | 26.21 |
 | 11 | 0:00 | 41'8" | 6:38 ✗ | 6:59 ✗ | 0:00, 0:00, 4:49, 4:49 | 4:49, 4:49, 0:43, 0:43 | 9:09 | 9:24 | 5:32 | 9:08 | 4267 | 3.83 (E) | 11.81 |
+| 11T | 0:00 | 53'8" | 7:18 ✗ | 7:39 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:52 | 7:07 | 1:26 | 7:06 | 6109 | 5.38 (F) | 15.21 |
 | 1 | 2:00 | 31'6" | 3:03 ✓ | 3:24 ✓ | 0:00, 2:00, 4:00, 9:02 | 0:46, 7:02, 5:02, 0:46 | 11:04 | 11:19 | 9:48 | 9:04 | 1320 | 1.25 (C) | 8.93 |
+| 1T | 2:00 | 43'6" | 2:24 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 7:05 | 0:44, 5:05, 3:05, 0:44 | 8:40 | 8:55 | 7:49 | 7:16 | 1343 | 0.98 (B) | 12.32 |
 | 2 | 2:00 | 32'7" | 2:57 ✓ | 3:18 ✓ | 0:00, 2:00, 4:00, 8:44 | 0:46, 6:44, 4:44, 0:46 | 10:41 | 10:56 | 9:30 | 8:45 | 1310 | 1.32 (C) | 9.23 |
+| 2T | 2:00 | 44'7" | 2:21 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:55 | 0:44, 4:55, 2:55, 0:44 | 8:27 | 8:42 | 7:39 | 7:04 | 1333 | 1.00 (B) | 12.63 |
 | 3 | 2:00 | 45'9" | 2:18 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:44 | 0:44, 4:44, 2:44, 0:44 | 8:14 | 8:29 | 7:28 | 6:56 | 1322 | 1.04 (B) | 12.96 |
-| 3 (recon) | 2:00 | 44'9" | 2:20 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:53 | 0:44, 4:53, 2:53, 0:44 | 8:25 | 8:40 | 7:37 | 7:04 | 1332 | 1.05 (B) | 12.68 |
+| 3T | 2:00 | 61'1" | 1:43 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:44, 0:44, 0:44, 0:44 | 7:03 | 7:18 | 6:44 | 5:12 | 1179 | 0.67 (A) | 17.31 |
 | 4 | 2:00 | 42'8" | 2:49 ✓ | 3:10 ✓ | 0:00, 2:00, 4:00, 8:21 | 0:43, 6:21, 4:21, 0:43 | 10:20 | 10:35 | 9:04 | 8:56 | 1621 | 1.04 (B) | 12.09 |
+| 4T | 2:00 | 54'8" | 2:37 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:31 | 0:43, 4:31, 4:17, 1:46 | 8:01 | 8:16 | 8:17 | 6:56 | 1509 | 0.93 (B) | 15.49 |
 | 5 | 2:00 | 53'11" | 2:16 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:36 | 0:43, 4:36, 2:36, 0:43 | 8:07 | 8:22 | 7:19 | 7:04 | 1516 | 0.79 (A) | 15.28 |
+| 5T | 2:00 | 69'3" | 1:45 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 7:08 | 7:23 | 6:43 | 5:28 | 1373 | 0.68 (A) | 19.62 |
 | 6 | 2:00 | 40'6" | 3:06 ✓ | 3:27 ✓ | 0:00, 2:00, 4:00, 8:47 | 0:43, 6:47, 4:47, 0:43 | 10:54 | 11:09 | 11:09 | 9:24 | 1716 | 0.96 (B) | 11.47 |
+| 6T | 2:00 | 52'6" | 2:18 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:47 | 0:43, 4:47, 2:47, 0:43 | 8:21 | 8:36 | 7:30 | 7:12 | 1529 | 0.83 (B) | 14.88 |
 | 7 | 2:00 | 46'11" | 2:34 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 7:36 | 0:43, 5:36, 3:36, 0:43 | 9:23 | 9:38 | 8:19 | 8:06 | 1581 | 0.83 (B) | 13.29 |
+| 7T | 2:00 | 56'3" | 2:33 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:20 | 0:43, 4:20, 4:03, 1:43 | 7:47 | 8:02 | 8:03 | 6:44 | 1494 | 0.75 (A) | 15.94 |
 | 8 | 2:00 | 45'10" | 2:38 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 7:46 | 0:43, 5:46, 3:46, 0:43 | 9:36 | 9:51 | 8:29 | 8:18 | 1591 | 1.11 (C) | 12.99 |
+| 8T | 2:00 | 55'2" | 2:18 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:28 | 0:43, 4:28, 2:28, 0:43 | 7:57 | 8:12 | 7:11 | 6:52 | 1504 | 1.01 (B) | 15.63 |
 | 9 | 2:00 | 47' | 2:46 ✓ | 3:07 ✓ | 0:00, 2:00, 4:52, 6:00 | 0:44, 2:52, 0:44, 0:44 | 8:00 | 8:15 | 6:44 | 6:44 | 1742 | 1.30 (C) | 13.32 |
+| 9T | 2:00 | 59' | 1:47 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:44, 0:44, 0:44, 0:44 | 7:06 | 7:21 | 6:44 | 5:20 | 1198 | 0.88 (B) | 16.72 |
 | 10 | 2:00 | 86'6" | 1:24 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 6:51 | 7:07 | 6:43 | 4:24 | 1211 | 0.50 (A) | 24.51 |
+| 10T | 2:00 | 92'6" | 1:19 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 6:47 | 7:02 | 6:43 | 4:04 | 1155 | 0.41 (A) | 26.21 |
 | 11 | 2:00 | 41'8" | 2:54 ✓ | 3:15 ✓ | 0:00, 2:00, 4:00, 8:33 | 0:43, 6:33, 4:33, 0:43 | 10:36 | 10:51 | 9:16 | 9:08 | 1630 | 1.47 (C) | 11.81 |
+| 11T | 2:00 | 53'8" | 2:16 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 6:38 | 0:43, 4:38, 2:38, 0:43 | 8:10 | 8:25 | 7:21 | 7:04 | 1518 | 1.34 (C) | 15.21 |
 | 1 | 5:00 | 31'6" | 3:02 ✓ | 3:23 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:46, 0:46, 0:46, 0:46 | 17:02 | 17:17 | 15:46 | 9:04 | 1312 | 1.24 (C) | 8.93 |
+| 1T | 5:00 | 43'6" | 2:23 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:35 | 16:50 | 15:44 | 7:16 | 1331 | 0.97 (B) | 12.32 |
 | 2 | 5:00 | 32'7" | 2:56 ✓ | 3:17 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:46, 0:46, 0:46, 0:46 | 16:57 | 17:12 | 15:46 | 8:44 | 1301 | 1.31 (C) | 9.23 |
+| 2T | 5:00 | 44'7" | 2:20 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:32 | 16:47 | 15:44 | 7:04 | 1321 | 0.99 (B) | 12.63 |
 | 3 | 5:00 | 45'9" | 2:16 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:30 | 16:45 | 15:44 | 6:56 | 1309 | 1.03 (B) | 12.96 |
-| 3 (recon) | 5:00 | 44'9" | 2:19 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:32 | 16:47 | 15:44 | 7:04 | 1319 | 1.04 (B) | 12.68 |
+| 3T | 5:00 | 61'1" | 1:42 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:03 | 16:18 | 15:44 | 5:12 | 1162 | 0.66 (A) | 17.31 |
 | 4 | 5:00 | 42'8" | 2:48 ✓ | 3:09 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:59 | 17:14 | 15:43 | 8:56 | 1609 | 1.03 (B) | 12.09 |
+| 4T | 5:00 | 54'8" | 2:12 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:30 | 16:45 | 15:43 | 6:56 | 1493 | 0.93 (B) | 15.49 |
 | 5 | 5:00 | 53'11" | 2:13 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:31 | 16:46 | 15:43 | 7:04 | 1501 | 0.78 (A) | 15.28 |
+| 5T | 5:00 | 69'3" | 1:44 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:08 | 16:23 | 15:43 | 5:28 | 1353 | 0.67 (A) | 19.62 |
 | 6 | 5:00 | 40'6" | 2:57 ✓ | 3:18 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 17:07 | 17:22 | 15:43 | 9:24 | 1630 | 0.91 (B) | 11.47 |
+| 6T | 5:00 | 52'6" | 2:17 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:34 | 16:49 | 15:43 | 7:12 | 1514 | 0.82 (A) | 14.88 |
 | 7 | 5:00 | 46'11" | 2:33 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:47 | 17:02 | 15:43 | 8:04 | 1568 | 0.82 (A) | 13.29 |
+| 7T | 5:00 | 56'3" | 2:08 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:27 | 16:42 | 15:43 | 6:44 | 1478 | 0.74 (A) | 15.94 |
 | 8 | 5:00 | 45'10" | 2:37 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:50 | 17:05 | 15:43 | 8:16 | 1578 | 1.10 (C) | 12.99 |
+| 8T | 5:00 | 55'2" | 2:10 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:29 | 16:44 | 15:43 | 6:52 | 1489 | 0.99 (B) | 15.63 |
 | 9 | 5:00 | 47' | 2:13 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:27 | 16:42 | 15:44 | 6:44 | 1297 | 0.97 (B) | 13.32 |
+| 9T | 5:00 | 59' | 1:46 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:06 | 16:21 | 15:44 | 5:20 | 1182 | 0.87 (B) | 16.72 |
 | 10 | 5:00 | 86'6" | 1:23 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 15:51 | 16:07 | 15:43 | 4:24 | 1187 | 0.49 (A) | 24.51 |
+| 10T | 5:00 | 92'6" | 1:18 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 15:47 | 16:02 | 15:43 | 4:04 | 1129 | 0.40 (A) | 26.21 |
 | 11 | 5:00 | 41'8" | 2:52 ✓ | 3:13 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 17:03 | 17:18 | 15:43 | 9:08 | 1619 | 1.45 (C) | 11.81 |
+| 11T | 5:00 | 53'8" | 2:14 ✓ | 2:59 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:32 | 16:47 | 15:43 | 7:04 | 1503 | 1.32 (C) | 15.21 |
 <!-- results-table:end -->
 
 ### History
@@ -913,3 +995,14 @@ and each fix's effect is summarized here.
   now reaching the concourse within NFPA 130's 6 minutes, in 5:26.
   With trains 2 minutes apart, the third arrives at 4:52 instead of 4:00,
   and the platform peaks at 1742 passengers instead of 1311.
+- **Modeled every platform as Penn Transformation would leave it, too,** e.g. `3T`,
+  with the FRA's new VCEs, platforms 1 to 3's extensions, and decluttering,
+  instead of only platform 3 with Penn Reconstruction, with the ETA report's total width for it.
+  With trains 2 minutes apart, every platform clears sooner,
+  e.g. platform 1 at 8:55 instead of 11:19, with 43'6" of VCEs instead of 31'6",
+  and platform 3 at 7:18 instead of 8:29, with 61'1" instead of 45'9".
+  With two trains arriving at once, platforms 9T and 10T pass NFPA 130's 4 minutes,
+  and 2T, 3T, 5T, 9T, and 10T reach the concourse within 6 minutes.
+  But 4T, 6T, 8T, and 11T take longer than they do today:
+  their departing passengers board sooner, so the last two trains arrive at 0:43,
+  and all four trains' passengers are on the platform at once.
