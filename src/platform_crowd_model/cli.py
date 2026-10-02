@@ -91,6 +91,30 @@ def platforms_osm() -> None:
     platforms_osm.main()
 
 
+@data_app.command()
+def platform_west_ends_pcip_phase_1() -> None:
+    """
+    Measure where each platform ends to the west on PCIP Phase 1's existing track plan,
+    writing `data/platform_west_ends_pcip_phase_1.csv`.
+    Run `vces` first.
+    """
+    from platform_crowd_model import platform_west_ends_pcip_phase_1
+
+    platform_west_ends_pcip_phase_1.main()
+
+
+@data_app.command()
+def vces_transformation_fra_sos() -> None:
+    """
+    Measure Penn Transformation's new VCEs and platform extensions on the FRA's SOS report,
+    writing `data/vces_transformation_fra_sos.csv` and `data/platforms_transformation_fra_sos.csv`.
+    Run `vces` and `platform-west-ends-pcip-phase-1` first.
+    """
+    from platform_crowd_model import vces_transformation_fra_sos
+
+    vces_transformation_fra_sos.main()
+
+
 @data_app.command("all")
 def all_data() -> None:
     """Regenerate everything in `data/` that's generated, in order."""
@@ -98,4 +122,6 @@ def all_data() -> None:
     vces_njt_directory()
     vces_moynihan_ea()
     vces()
+    platform_west_ends_pcip_phase_1()
+    vces_transformation_fra_sos()
     platforms_osm()
