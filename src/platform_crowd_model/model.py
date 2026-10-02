@@ -40,15 +40,13 @@ SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
 NFPA_130_EXIT_FLOW = 1.41 * 12
 """
 Exit capacity of stairs and stopped escalators for evacuating a platform (pax/min/ft),
-1.41 pax/min per inch of width in NFPA 130's 2010 edition.
-TCQSM p. 10-51: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
+1.41 pax/min per inch of width, per NFPA 130 (2026 edition) 5.3.5.3.
 """
 
 NFPA_130_PLATFORM_EVACUATION_TIME = timedelta(minutes=4)
 """
-Time within which NFPA 130 requires a platform's occupants,
+Time within which NFPA 130 (2026 edition) 5.3.3.1 requires a platform's occupant load,
 including those on trains, to be able to evacuate it.
-TCQSM p. 10-3: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=7
 """
 
 CLOSE_HEADWAY = timedelta(minutes=2)
@@ -559,9 +557,8 @@ class Params:
         """
         How fast the VCEs can evacuate the platform under NFPA 130 (in pax/s),
         at `NFPA_130_EXIT_FLOW`.
-        NFPA 130 also takes the widest escalator out of service,
-        and lets escalators provide at most half of the capacity
-        (TCQSM p. 10-52: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=56),
+        NFPA 130 also takes the escalator with "the most adverse effect upon egress capacity"
+        out of service, and lets escalators provide at most half of the capacity (5.3.5.4, 5.3.5.6),
         but we don't know which VCEs are escalators yet,
         so this counts all of `total_vce_width`, and so is optimistic.
         """
@@ -966,16 +963,16 @@ RESULTS_COLUMNS = [
     "Platform",
     "Headway",
     "VCE width",
+    "NFPA 130 evacuation",
     "Arrivals",
     "Dwell",
     "Taper time",
     "Clear time",
     "Boarded time",
     "Time at capacity",
-    "Max up rate (pax/s)",
     "Max pax on platform",
     "Max density (pax/m²)",
-    "NFPA 130 evacuation",
+    "Max up rate (pax/s)",
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
@@ -1125,15 +1122,16 @@ def run_model(params: Params, charts: bool) -> str:
 
     return (
         f"| {params.name} | {fmt_time(headway)} | {fmt_ft_in(params.total_vce_width)}"
+        f" | {fmt_time(evacuation_time)} {evacuation_ok}"
         f" | {', '.join(fmt_time(arrival) for arrival in summary.arrival_times)}"
         f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
         f" | {fmt_time(summary.boarded_time)}"
-        f" | {fmt_time(summary.time_at_capacity)} | {summary.max_up_rate:.2f}"
+        f" | {fmt_time(summary.time_at_capacity)}"
         f" | {summary.max_pax_on_platform:.0f}"
         f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
         f" ({platform_crowd_los(summary.min_space_per_pax, params.assumptions)})"
-        f" | {fmt_time(evacuation_time)} {evacuation_ok} |"
+        f" | {summary.max_up_rate:.2f} |"
     )
 
 
