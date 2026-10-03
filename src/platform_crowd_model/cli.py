@@ -38,8 +38,64 @@ def callback() -> None:
 
 
 @data_app.command()
+def vce_positions_master_plan() -> None:
+    """
+    Extract each VCE's position from the Master Plan's platform-level plans,
+    writing `data/vce_positions_master_plan.csv`, `data/vces_existing_master_plan.csv`,
+    and `data/platform_east_ends_master_plan.csv`.
+    """
+    from platform_crowd_model import vce_positions_master_plan
+
+    vce_positions_master_plan.main()
+
+
+@data_app.command()
+def vces_njt_directory() -> None:
+    """
+    Extract each platform's VCEs from NJT's January 2022 station directory,
+    writing `data/vces_njt_directory.csv`.
+    """
+    from platform_crowd_model import vces_njt_directory
+
+    vces_njt_directory.main()
+
+
+@data_app.command()
+def vces_moynihan_ea() -> None:
+    """
+    Measure the VCEs around Moynihan Train Hall on the Moynihan Station EA's plan,
+    writing `data/vces_moynihan_ea.csv`.
+    """
+    from platform_crowd_model import vces_moynihan_ea
+
+    vces_moynihan_ea.main()
+
+
+@data_app.command()
+def vces() -> None:
+    """
+    Estimate every VCE's width and position from the PCIP Phase 2 plan and the directory,
+    writing `data/vces.csv` and `data/platform_east_ends.csv`.
+    Run `vce-positions-master-plan` and `vces-njt-directory` first.
+    """
+    from platform_crowd_model import vces
+
+    vces.main()
+
+
+@data_app.command()
 def platforms_osm() -> None:
     """Measure each platform from OpenStreetMap, writing `data/platforms_osm.csv`."""
     from platform_crowd_model import platforms_osm
 
     platforms_osm.main()
+
+
+@data_app.command("all")
+def all_data() -> None:
+    """Regenerate everything in `data/` that's generated, in order."""
+    vce_positions_master_plan()
+    vces_njt_directory()
+    vces_moynihan_ea()
+    vces()
+    platforms_osm()

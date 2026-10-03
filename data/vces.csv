@@ -1,0 +1,117 @@
+platform,vce_name,type,west_end_ft,east_end_ft,estimated_width_in,master_plan_width_in,width_source,source,notes
+1,P1-S1,stair,262,284,58,60,master_plan,pcip_phase_2,
+1,P1-S2,stair,365,377,57,58,master_plan,pcip_phase_2,
+1,P1-S3,stair,404,416,62,58,master_plan,pcip_phase_2,
+1,P1-S4,stair,477,488,59,,estimated,pcip_phase_2,
+1,P1-S5,stair,542,556,60,,estimated,pcip_phase_2,
+1,P1-S6,escalator,668,679,37,46,master_plan,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+1,P1-S7,escalator,789,808,34,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+1,P1-S8,stair,838,845,49,,estimated,pcip_phase_2,
+2,P2-S1,stair,261,276,58,64,master_plan,pcip_phase_2,
+2,P2-S2,stair,357,366,60,57,master_plan,pcip_phase_2,
+2,P2-S3,escalator,380,399,36,34,master_plan,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+2,P2-S4,stair,477,490,58,,estimated,pcip_phase_2,
+2,P2-S5,stair,542,555,60,,estimated,pcip_phase_2,
+2,P2-S6,escalator,659,678,34,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+2,P2-S7,escalator,692,703,36,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+2,P2-S8,escalator,789,807,34,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+2,P2-S9,stair,828,835,50,,estimated,pcip_phase_2,
+3,P3-S1,escalator,-150,-101,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
+3,P3-S2,stair,-83,-61,107,,estimated,pcip_phase_2,
+3,P3-S3,stair,-17,18,120,,estimated,pcip_phase_2,
+3,P3-S4,escalator,221,235,,34,master_plan,pcip_phase_1,"Its treads are under the PCIP Phase 2 plan's platform label, which clips them, so its position is the PCIP Phase 1 plan's, and its type and width are the Master Plan's."
+3,P3-S5,escalator,263,285,37,,estimated,pcip_phase_2,"The Master Plan has a 69 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades."
+3,P3-S6,stair,357,366,66,52,master_plan,pcip_phase_2,
+3,P3-S7,escalator,380,399,37,34,master_plan,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+3,P3-S8,stair,477,490,61,,estimated,pcip_phase_2,
+3,P3-S9,stair,542,555,60,,estimated,pcip_phase_2,
+3,P3-S10,stair,658,667,44,,estimated,pcip_phase_2,
+4,P4-S1,escalator,-203,-154,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
+4,P4-S2,escalator,-151,-101,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
+4,P4-S3,stair,-17,18,121,,estimated,pcip_phase_2,NJT replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S4,escalator,218,236,,34,master_plan,pcip_phase_1,"Its treads are under the PCIP Phase 2 plan's platform label, which clips them, so its position is the PCIP Phase 1 plan's, and its type and width are the Master Plan's. NJT replaced an escalator on tracks 7/8 with stairs in about 2021."
+4,P4-S5,escalator,263,284,35,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades. NJT replaced an escalator on tracks 7/8 with stairs in about 2021."
+4,P4-S6,stair,355,372,58,72,master_plan,pcip_phase_2,NJT replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S7,stair,407,424,60,,estimated,pcip_phase_2,The Master Plan has a 34 in. escalator here instead. NJT replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S8,stair,483,491,58,,estimated,pcip_phase_2,NJT replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S9,stair,542,555,57,,estimated,pcip_phase_2,NJT replaced an escalator on tracks 7/8 with stairs in about 2021.
+4,P4-S10,escalator,661,679,35,,estimated,pcip_phase_2,"The Master Plan has a 44 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades. NJT replaced an escalator on tracks 7/8 with stairs in about 2021."
+5,P5-S1,stair,-414,-383,41,,estimated,moynihan_ea,"Down from the baggage and egress corridor. Unconfirmed: the plan is a 2010 design, and the PCIP plans cut the platform off before it."
+5,P5-S2,escalator,-204,-154,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
+5,P5-S3,escalator,-150,-101,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
+5,P5-S4,stair,-17,18,120,,estimated,pcip_phase_2,
+5,P5-S5,escalator,221,239,,34,master_plan,pcip_phase_1,"Its treads are under the PCIP Phase 2 plan's platform label, which clips them, so its position is the PCIP Phase 1 plan's, and its type and width are the Master Plan's."
+5,P5-S6,escalator,263,284,34,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+5,P5-S7,stair,372,389,63,,estimated,pcip_phase_2,
+5,P5-S8,escalator,403,430,34,34,master_plan,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+5,P5-S9,stair,484,500,59,,estimated,pcip_phase_2,
+5,P5-S10,stair,530,542,96,,estimated,pcip_phase_2,
+5,P5-S11,stair,564,581,60,,estimated,pcip_phase_2,
+5,P5-S12,escalator,659,679,33,,estimated,pcip_phase_2,"The Master Plan has a 44 in. stair here instead. An escalator's treads are its steps, narrower than its balustrades."
+5,P5-S13,escalator,753,764,33,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+6,P6-S1,stair,-414,-383,42,,estimated,moynihan_ea,"Down from the baggage and egress corridor. Unconfirmed: the plan is a 2010 design, and the PCIP plans cut the platform off before it."
+6,P6-S2,escalator,-204,-154,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
+6,P6-S3,escalator,-151,-101,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
+6,P6-S4,stair,-17,18,121,,estimated,pcip_phase_2,
+6,P6-S5,escalator,221,239,,34,master_plan,pcip_phase_1,"Its treads are under the PCIP Phase 2 plan's platform label, which clips them, so its position is the PCIP Phase 1 plan's, and its type and width are the Master Plan's."
+6,P6-S6,escalator,263,284,34,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+6,P6-S7,stair,368,385,59,50,master_plan,pcip_phase_2,
+6,P6-S8,escalator,405,419,33,34,master_plan,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+6,P6-S9,stair,461,485,58,,estimated,pcip_phase_2,
+6,P6-S10,escalator,672,690,34,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+6,P6-S11,escalator,774,782,39,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+7,P7-S1,stair,-414,-383,42,,estimated,moynihan_ea,"Down from the baggage and egress corridor. Unconfirmed: the plan is a 2010 design, and the PCIP plans cut the platform off before it."
+7,P7-S2,escalator,-204,-154,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
+7,P7-S3,escalator,-150,-101,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
+7,P7-S4,stair,-70,-61,56,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. No other source has it, so it's unconfirmed."
+7,P7-S5,stair,-17,18,121,,estimated,pcip_phase_2,
+7,P7-S6,escalator,222,233,,34,master_plan,pcip_phase_1,"Its treads are under the PCIP Phase 2 plan's platform label, which clips them, so its position is the PCIP Phase 1 plan's, and its type and width are the Master Plan's."
+7,P7-S7,escalator,254,274,38,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+7,P7-S8,stair,365,382,60,58,master_plan,pcip_phase_2,
+7,P7-S9,escalator,402,420,34,34,master_plan,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+7,P7-S10,stair,536,549,58,,estimated,pcip_phase_2,
+7,P7-S11,escalator,629,648,22,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+7,P7-S12,stair,646,660,60,,estimated,pcip_phase_2,
+8,P8-S1,escalator,-204,-153,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
+8,P8-S2,escalator,-151,-100,40,,estimated,moynihan_ea,"Its width is KONE's 1,000 mm steps, not measured on the plan."
+8,P8-S3,escalator,-80,-66,41,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. No other source has it, so it's unconfirmed."
+8,P8-S4,stair,-17,18,121,,estimated,pcip_phase_2,
+8,P8-S5,escalator,221,238,,34,master_plan,pcip_phase_1,"Its treads are under the PCIP Phase 2 plan's platform label, which clips them, so its position is the PCIP Phase 1 plan's, and its type and width are the Master Plan's."
+8,P8-S6,escalator,254,274,39,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+8,P8-S7,stair,358,375,59,58,master_plan,pcip_phase_2,
+8,P8-S8,stair,404,421,58,,estimated,pcip_phase_2,The Master Plan has a 34 in. escalator here instead.
+8,P8-S9,stair,541,554,51,,estimated,pcip_phase_2,
+8,P8-S10,escalator,626,645,39,,estimated,pcip_phase_2,"An escalator's treads are its steps, narrower than its balustrades."
+8,P8-S11,stair,657,662,70,,estimated,pcip_phase_2,
+9,P9-S1,escalator,-79,-66,40,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. The Moynihan Station EA's plan, a 2010 design, has it, too."
+9,P9-S2,stair,-2,8,56,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. The Moynihan Station EA's plan, a 2010 design, has it, too."
+9,P9-S3,stair,223,235,56,,estimated,pcip_phase_1,Measured on the PCIP Phase 1 existing plan. NJT's directory doesn't show it.
+9,P9-S4,escalator,262,281,34,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+9,P9-S5,stair,266,276,62,60,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+9,P9-S6,stair,364,379,49,66,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+9,P9-S7,stair,407,414,,72,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too. The plan draws it as an escalator, but NJT's directory and the Master Plan have a stair, so its type and width are theirs."
+9,P9-S8,stair,475,489,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+9,P9-S9,stair,537,549,49,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+9,P9-S10,stair,651,665,43,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+9,P9-S11,stair,877,896,59,68,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+10,P10-S1,stair,-1,8,89,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. The Moynihan Station EA's plan, a 2010 design, has it, too."
+10,P10-S2,escalator,252,268,39,38,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+10,P10-S3,stair,254,269,90,92,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+10,P10-S4,escalator,374,393,41,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+10,P10-S5,stair,378,388,112,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too. It's wider than any stair the Master Plan has, so it may be two side by side."
+10,P10-S6,stair,400,414,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+10,P10-S7,stair,476,490,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+10,P10-S8,stair,538,548,112,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too. It's wider than any stair the Master Plan has, so it may be two side by side."
+10,P10-S9,stair,560,574,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+10,P10-S10,stair,651,655,213,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too. It's wider than any stair the Master Plan has, so it may be two side by side."
+10,P10-S11,stair,769,780,64,94,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+10,P10-S12,stair,858,877,92,108,master_plan,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+11,P11-S1,stair,6,16,52,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. The Moynihan Station EA's plan, a 2010 design, has it, too."
+11,P11-S2,stair,271,282,59,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+11,P11-S3,stair,330,344,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+11,P11-S4,stair,417,424,69,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+11,P11-S5,stair,480,494,60,,typical,njt_directory,Its position is only approximate; the directory isn't to scale. The PCIP Phase 1 plan doesn't draw its treads.
+11,P11-S6,stair,543,553,62,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+11,P11-S7,escalator,619,638,39,,estimated,pcip_phase_1,"Measured on the PCIP Phase 1 existing plan. NJT's directory shows it, too."
+11,P11-S8,stair,698,708,69,,estimated,pcip_phase_1,Measured on the PCIP Phase 1 existing plan. NJT's directory doesn't show it.
+11,P11-S9,stair,888,897,69,,estimated,pcip_phase_1,Measured on the PCIP Phase 1 existing plan. NJT's directory doesn't show it.

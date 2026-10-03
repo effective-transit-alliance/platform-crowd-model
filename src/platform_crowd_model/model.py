@@ -466,6 +466,9 @@ class Vce:
     width: float
     """Its width (in feet)."""
 
+    type: str = "stair"
+    """`stair` or `escalator`."""
+
 
 def pooled_vces(total_width: float) -> tuple[Vce, ...]:
     """
@@ -474,6 +477,10 @@ def pooled_vces(total_width: float) -> tuple[Vce, ...]:
     e.g. an escalator running the other way.
     """
     return (Vce(name="All VCEs", width=total_width),)
+
+
+VCE_DATA = DATA_DIR / "vces.csv"
+"""Every VCE on platforms 1 to 11, via `platform-crowd-model data vces`."""
 
 
 PLATFORM_LENGTHS = DATA_DIR / "platform_lengths_moynihan_ea.csv"
@@ -494,10 +501,37 @@ via `platform-crowd-model data platforms-osm`.
 
 
 @cache
+def platform_vces(platform: int) -> tuple[Vce, ...]:
+    """
+    Every VCE on `platform`, from `VCE_DATA`,
+    with the Master Plan's width where it has one, or else the estimated width.
+    """
+    with VCE_DATA.open() as f:
+        return tuple(
+            Vce(
+                name=row["vce_name"],
+                width=float(row["master_plan_width_in"] or row["estimated_width_in"]) / 12,
+                type=row["type"],
+            )
+            for row in csv.DictReader(f)
+            if int(row["platform"]) == platform
+        )
+
+
+@cache
 def platform_lengths() -> dict[int, int]:
     """Each platform's length (ft), from `PLATFORM_LENGTHS`."""
     with PLATFORM_LENGTHS.open() as f:
         return {int(row["platform"]): int(row["length_ft"]) for row in csv.DictReader(f)}
+
+
+@cache
+def platform_tracks() -> dict[int, int]:
+    """How many tracks each platform serves, from `PLATFORM_LENGTHS`."""
+    with PLATFORM_LENGTHS.open() as f:
+        return {
+            int(row["platform"]): len(row["track_numbers"].split("/")) for row in csv.DictReader(f)
+        }
 
 
 @cache
@@ -521,7 +555,7 @@ def platform_areas() -> dict[int, int]:
 @dataclass
 class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
-    """Which platform it is, e.g. 3."""
+    """Which platform it is, 1 to 11, whose dimensions are in `data/`."""
 
     headway: Annotated[timedelta, Field(name="Headway", units="s")]
     """
@@ -533,7 +567,7 @@ class Params:
     """The VCEs (vertical circulation elements) going upstairs."""
 
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
-    """Trains arriving, alternating between the platform's two tracks."""
+    """Trains arriving, alternating between the platform's tracks."""
 
     assumptions: Assumptions = dataclasses.field(default_factory=Assumptions)
     """What the model assumes, the same for every scenario unless overridden."""
@@ -563,6 +597,14 @@ class Params:
     def platform_max_cars(self) -> Annotated[int, Field(name="Platform Max Cars", units="car")]:
         """Cars in the longest train that fits on its tracks, from `PLATFORM_MAX_CARS`."""
         return platform_max_cars()[self.platform]
+
+    @property
+    def tracks(self) -> Annotated[int, Field(name="Tracks", units="track")]:
+        """
+        Tracks the platform serves, from `PLATFORM_LENGTHS`: 2 for an island platform,
+        or 1 for platform 9, which only serves track 17.
+        """
+        return platform_tracks()[self.platform]
 
     @property
     def cars(self) -> Annotated[int, Field(name="Cars per Train", units="car")]:
@@ -601,8 +643,13 @@ class Params:
 
     @property
     def total_vce_width(self) -> Annotated[float, Field(name="Total VCE Width", units="ft")]:
-        """Total width (in feet) of all of the VCEs."""
-        return sum(vce.width for vce in self.vces)
+        """
+        Total width (in feet) of the VCEs, all treated as stairs,
+        but the widest escalator, which is left out,
+        like the ETA report's one VCE per platform, e.g. an escalator running the other way.
+        """
+        escalators = [vce.width for vce in self.vces if vce.type == "escalator"]
+        return sum(vce.width for vce in self.vces) - max(escalators, default=0)
 
     @property
     def nfpa_130_exit_capacity(
@@ -610,11 +657,12 @@ class Params:
     ) -> Annotated[float, Field(name="NFPA 130 Exit Capacity", units="pax/s")]:
         """
         How fast the VCEs can evacuate the platform under NFPA 130 (in pax/s),
-        at `NFPA_130_EXIT_FLOW`.
-        NFPA 130 also takes the escalator with "the most adverse effect upon egress capacity"
-        out of service, and lets escalators provide at most half of the capacity (5.3.5.4, 5.3.5.6),
-        but we don't know which VCEs are escalators yet,
-        so this counts all of `total_vce_width`, and so is optimistic.
+        at `NFPA_130_EXIT_FLOW`, through `total_vce_width`,
+        which leaves out the widest escalator,
+        like NFPA 130 takes the one with "the most adverse effect upon egress capacity"
+        out of service (5.3.5.4).
+        NFPA 130 also lets escalators provide at most half of the capacity (5.3.5.6),
+        but this doesn't limit them yet, and so is optimistic.
         """
         return stair_flow(NFPA_130_EXIT_FLOW, self.total_vce_width)
 
@@ -772,10 +820,10 @@ def simulate(
     arriving_pax_on_platform: float = 0
     trains = range(params.trains)
     arrival_times: list[timedelta | None] = [
-        train * params.headway if train < 2 else None for train in trains
+        train * params.headway if train < params.tracks else None for train in trains
     ]
     """
-    When each train arrives: the first two as scheduled,
+    When each train arrives: the first on each track as scheduled,
     and each later one once it's scheduled and the train before it on its track has departed.
     """
     remaining_arrivals = [float(params.arriving_pax_per_train) for _ in trains]
@@ -927,8 +975,10 @@ def simulate(
             ):
                 summary.dwells[train] = time_after - arrival_time
                 # The next train on its track arrives once it's scheduled and this one departs.
-                if train + 2 < params.trains:
-                    arrival_times[train + 2] = max((train + 2) * params.headway, time_after)
+                if train + params.tracks < params.trains:
+                    arrival_times[train + params.tracks] = max(
+                        (train + params.tracks) * params.headway, time_after
+                    )
         summary.max_pax_on_platform = max(summary.max_pax_on_platform, total_pax_on_platform)
         aboard = sum(
             remaining_arrivals[train] + new_pax[train]
@@ -1212,80 +1262,32 @@ def run_model(params: Params, charts: bool) -> str:
     )
 
 
+def scenarios() -> list[Params]:
+    """Every scenario, grouped by headway first, then by platform, as in the results table."""
+    platforms = [
+        Params(platform=platform, headway=timedelta(0), vces=platform_vces(platform))
+        for platform in range(1, 12)
+    ]
+    # Platform 3 with its VCEs after Penn Reconstruction, with the ETA report's total width.
+    platforms.insert(
+        3, Params(platform=3, modifier="recon", headway=timedelta(0), vces=pooled_vces(44.75))
+    )
+    return [
+        dataclasses.replace(params, headway=headway)
+        for headway in (timedelta(0), CLOSE_HEADWAY, NORMAL_HEADWAY)
+        for params in platforms
+    ]
+
+
 def main(update_readme: bool = False, charts: bool = False) -> None:
     """Run every scenario and print a table of their results."""
-
-    # params are labeled  with p<platform number><time in seconds>
-    # recon indicates that a platform was modelled accounting for penn reconstruction plans
-    params_p3120 = Params(
-        platform=3,
-        headway=CLOSE_HEADWAY,
-        vces=pooled_vces(42.5),
-    )
-    params_p3300 = Params(
-        platform=3,
-        headway=NORMAL_HEADWAY,
-        vces=pooled_vces(42.5),
-    )
-    params_p3recon120 = Params(
-        platform=3,
-        modifier="recon",
-        headway=CLOSE_HEADWAY,
-        vces=pooled_vces(44.75),
-    )
-    params_p3recon300 = Params(
-        platform=3,
-        modifier="recon",
-        headway=NORMAL_HEADWAY,
-        vces=pooled_vces(44.75),
-    )
-    params_p60 = Params(
-        platform=6,
-        headway=timedelta(0),
-        vces=pooled_vces(48.168),
-    )
-    params_p10120 = Params(
-        platform=10,
-        headway=CLOSE_HEADWAY,
-        vces=pooled_vces(70.58),
-    )
-    params_p11120 = Params(
-        platform=11,
-        headway=CLOSE_HEADWAY,
-        vces=pooled_vces(43.58),
-    )
-    params_p30 = dataclasses.replace(params_p3120, headway=timedelta(0))
-    params_p3recon0 = dataclasses.replace(params_p3recon120, headway=timedelta(0))
-    params_p6120 = dataclasses.replace(params_p60, headway=CLOSE_HEADWAY)
-    params_p6300 = dataclasses.replace(params_p60, headway=NORMAL_HEADWAY)
-    params_p100 = dataclasses.replace(params_p10120, headway=timedelta(0))
-    params_p10300 = dataclasses.replace(params_p10120, headway=NORMAL_HEADWAY)
-    params_p110 = dataclasses.replace(params_p11120, headway=timedelta(0))
-    params_p11300 = dataclasses.replace(params_p11120, headway=NORMAL_HEADWAY)
     if charts:
         OUTPUT_DIR.mkdir(exist_ok=True)
     with ProcessPoolExecutor() as executor:
         rows = list(
             executor.map(
                 functools.partial(run_model, charts=charts),
-                # Group the results by headway first, then by platform.
-                [
-                    params_p30,
-                    params_p3recon0,
-                    params_p60,
-                    params_p100,
-                    params_p110,
-                    params_p3120,
-                    params_p3recon120,
-                    params_p6120,
-                    params_p10120,
-                    params_p11120,
-                    params_p3300,
-                    params_p3recon300,
-                    params_p6300,
-                    params_p10300,
-                    params_p11300,
-                ],
+                scenarios(),
             )
         )
     table = "\n".join([RESULTS_HEADER, *rows])
