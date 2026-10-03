@@ -278,6 +278,13 @@ def platform_ingress(
     return min(departing_pax_upstairs, stair_flow(assumptions.stair_capacity, vce_width) - up_rate)
 
 
+ROUNDING_TOLERANCE = 1e-9
+"""
+Passengers (pax) left over from rounding, e.g. 1e-15 after the last of them come downstairs,
+which count as nobody.
+"""
+
+
 def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
     """
     :param train_boarders: one train's departing passengers upstairs (pax)
@@ -285,7 +292,8 @@ def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
     :return: that train's share of them
     """
     total = sum(all_boarders)
-    if total > 0:
+    # A total of only rounding errors would give a share of nearly 1 / 0.
+    if total > ROUNDING_TOLERANCE:
         return train_boarders / total
     else:
         return 1
