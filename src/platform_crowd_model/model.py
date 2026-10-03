@@ -470,15 +470,6 @@ class Vce:
     """`stair` or `escalator`."""
 
 
-def pooled_vces(total_width: float) -> tuple[Vce, ...]:
-    """
-    A single VCE standing in for all of a platform's VCEs, as one pooled queue.
-    Per the ETA report, `total_width` excludes one VCE per platform,
-    e.g. an escalator running the other way.
-    """
-    return (Vce(name="All VCEs", width=total_width),)
-
-
 VCE_DATA = DATA_DIR / "vces.csv"
 """Every VCE on platforms 1 to 11, via `platform-crowd-model data vces`."""
 
@@ -493,19 +484,65 @@ from a track map of unknown origin found at Railfan Guides of the U.S.:
 https://www.railfanguides.us/ny/penntonewrochelle/PennStationLayout1.jpg
 """
 
+PLATFORM_WEST_ENDS = DATA_DIR / "platform_west_ends_pcip_phase_1.csv"
+"""
+Where each platform ends to the west (ft east of the Master Plan's plans' west edge),
+via `platform-crowd-model data platform-west-ends-pcip-phase-1`.
+"""
+
+TRANSFORMATION_VCES = DATA_DIR / "vces_transformation_fra_sos.csv"
+"""Penn Transformation's new VCEs, via `platform-crowd-model data vces-transformation-fra-sos`."""
+
+TRANSFORMATION_PLATFORMS = DATA_DIR / "platforms_transformation_fra_sos.csv"
+"""
+Penn Transformation's platform extensions and decluttering,
+via `platform-crowd-model data vces-transformation-fra-sos`.
+"""
+
+PLATFORM_A_DATA = DATA_DIR / "platform_a_pcip_phase_1.csv"
+"""
+PCIP Phase 1's Platform A, a new platform south of Platform 1,
+via `platform-crowd-model data platform-a-pcip-phase-1`.
+"""
+
+PLATFORM_A_VCES = DATA_DIR / "vces_platform_a_pcip_phase_1.csv"
+"""Platform A's VCEs, via `platform-crowd-model data platform-a-pcip-phase-1`."""
+
+PLATFORM_A = 0
+"""Platform A's number in the model, since the existing platforms are numbered 1 to 11."""
+
 PLATFORMS_OSM = DATA_DIR / "platforms_osm.csv"
 """
-Each platform's outline's area, from OpenStreetMap,
+Each platform's outline's area and average width, from OpenStreetMap,
 via `platform-crowd-model data platforms-osm`.
 """
+
+
+@cache
+def platform_a() -> dict[str, str]:
+    """Platform A's row of `PLATFORM_A_DATA`."""
+    with PLATFORM_A_DATA.open() as f:
+        (row,) = csv.DictReader(f)
+    return row
 
 
 @cache
 def platform_vces(platform: int) -> tuple[Vce, ...]:
     """
     Every VCE on `platform`, from `VCE_DATA`,
-    with the Master Plan's width where it has one, or else the estimated width.
+    with the Master Plan's width where it has one, or else the estimated width,
+    or on Platform A, from `PLATFORM_A_VCES`.
     """
+    if platform == PLATFORM_A:
+        with PLATFORM_A_VCES.open() as f:
+            return tuple(
+                Vce(
+                    name=f"PA-{row['label']}" + ("-E" if row["type"] == "escalator" else ""),
+                    width=float(row["width_in"]) / 12,
+                    type=row["type"],
+                )
+                for row in csv.DictReader(f)
+            )
     with VCE_DATA.open() as f:
         return tuple(
             Vce(
@@ -520,42 +557,95 @@ def platform_vces(platform: int) -> tuple[Vce, ...]:
 
 @cache
 def platform_lengths() -> dict[int, int]:
-    """Each platform's length (ft), from `PLATFORM_LENGTHS`."""
+    """Each platform's length (ft), from `PLATFORM_LENGTHS`, and Platform A's."""
     with PLATFORM_LENGTHS.open() as f:
-        return {int(row["platform"]): int(row["length_ft"]) for row in csv.DictReader(f)}
+        lengths = {int(row["platform"]): int(row["length_ft"]) for row in csv.DictReader(f)}
+    a = platform_a()
+    return {PLATFORM_A: int(a["east_end_ft"]) - int(a["west_end_ft"]), **lengths}
 
 
 @cache
 def platform_tracks() -> dict[int, int]:
-    """How many tracks each platform serves, from `PLATFORM_LENGTHS`."""
+    """How many tracks each platform serves, from `PLATFORM_LENGTHS`, and Platform A."""
     with PLATFORM_LENGTHS.open() as f:
         return {
-            int(row["platform"]): len(row["track_numbers"].split("/")) for row in csv.DictReader(f)
+            PLATFORM_A: int(platform_a()["tracks"]),
+            **{
+                int(row["platform"]): len(row["track_numbers"].split("/"))
+                for row in csv.DictReader(f)
+            },
         }
 
 
 @cache
 def platform_max_cars() -> dict[int, int]:
-    """Cars in the longest train that fits on each platform's tracks, from `PLATFORM_MAX_CARS`."""
+    """
+    Cars in the longest train that fits on each platform's tracks, from `PLATFORM_MAX_CARS`,
+    and Platform A's.
+    """
     with PLATFORM_MAX_CARS.open() as f:
-        return {int(row["platform"]): int(row["max_cars"]) for row in csv.DictReader(f)}
+        return {
+            PLATFORM_A: int(platform_a()["max_cars"]),
+            **{int(row["platform"]): int(row["max_cars"]) for row in csv.DictReader(f)},
+        }
 
 
 @cache
 def platform_areas() -> dict[int, int]:
-    """Each platform's area (sq ft), from `PLATFORMS_OSM`."""
+    """Each platform's area (sq ft), from `PLATFORMS_OSM`, and Platform A's."""
     with PLATFORMS_OSM.open() as f:
         return {
-            int(row["platform"]): int(row["area_sq_ft"])
+            PLATFORM_A: int(platform_a()["area_sq_ft"]),
+            **{
+                int(row["platform"]): int(row["area_sq_ft"])
+                for row in csv.DictReader(f)
+                if row["platform"] and row["level"] == "-3"
+            },
+        }
+
+
+@cache
+def platform_west_ends() -> dict[int, float]:
+    """Where each platform ends to the west (ft), from `PLATFORM_WEST_ENDS`."""
+    with PLATFORM_WEST_ENDS.open() as f:
+        return {int(row["platform"]): float(row["west_end_ft"]) for row in csv.DictReader(f)}
+
+
+@cache
+def platform_widths() -> dict[int, float]:
+    """Each platform's average width (ft), from `PLATFORMS_OSM`."""
+    with PLATFORMS_OSM.open() as f:
+        return {
+            int(row["platform"]): float(row["width_ft"])
             for row in csv.DictReader(f)
             if row["platform"] and row["level"] == "-3"
         }
 
 
+@cache
+def transformation_platforms() -> dict[int, dict[str, str]]:
+    """Each platform's row of `TRANSFORMATION_PLATFORMS`."""
+    with TRANSFORMATION_PLATFORMS.open() as f:
+        return {int(row["platform"]): row for row in csv.DictReader(f)}
+
+
+@cache
+def transformation_vces(platform: int) -> tuple[Vce, ...]:
+    """Penn Transformation's new VCEs on `platform`, from `TRANSFORMATION_VCES`, e.g. `P3-T1`."""
+    with TRANSFORMATION_VCES.open() as f:
+        rows = [row for row in csv.DictReader(f) if int(row["platform"]) == platform]
+    return tuple(
+        Vce(name=f"P{platform}-T{n}", width=float(row["width_in"]) / 12, type=row["type"])
+        for n, row in enumerate(rows, start=1)
+    )
+
+
 @dataclass
 class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
-    """Which platform it is, 1 to 11, whose dimensions are in `data/`."""
+    """
+    Which platform it is, 1 to 11, or `PLATFORM_A`, 0, whose dimensions are in `data/`.
+    """
 
     headway: Annotated[timedelta, Field(name="Headway", units="s")]
     """
@@ -572,31 +662,61 @@ class Params:
     assumptions: Assumptions = dataclasses.field(default_factory=Assumptions)
     """What the model assumes, the same for every scenario unless overridden."""
 
+    transformation: bool = False
+    """
+    Whether the platform is as Penn Transformation would leave it,
+    extended, with longer trains, and decluttered, per `TRANSFORMATION_PLATFORMS`.
+    Its new VCEs, `transformation_vces`, are in `vces`.
+    """
+
     modifier: str | None = None
     """
     What sets this scenario apart from the platform's others,
-    e.g. `recon` for its VCEs after Penn Reconstruction.
+    e.g. `transformation` for Penn Transformation.
     """
 
     @property
     def name(self) -> str:
-        """The platform's name in the results table, e.g. `3 (recon)`."""
-        return f"{self.platform} ({self.modifier})" if self.modifier else str(self.platform)
+        """
+        The platform's name in the results table, e.g. `3T` for `transformation`,
+        its number followed by its modifier's initial, to keep the table narrow.
+        """
+        number = "A" if self.platform == PLATFORM_A else str(self.platform)
+        return number + (self.modifier[0].upper() if self.modifier else "")
 
     @property
     def filename_prefix(self) -> str:
-        """Prefix of the filenames to save the time series and charts in, e.g. `platform3_recon`."""
-        return f"platform{self.platform}" + (f"_{self.modifier}" if self.modifier else "")
+        """
+        Prefix of the filenames to save its time series and charts in,
+        e.g. `platform3_transformation`.
+        """
+        number = "A" if self.platform == PLATFORM_A else str(self.platform)
+        return f"platform{number}" + (f"_{self.modifier}" if self.modifier else "")
 
     @property
-    def platform_length(self) -> Annotated[int, Field(name="Platform Length", units="ft")]:
-        """Platform length (in feet), from the Moynihan Station EA."""
-        return platform_lengths()[self.platform]
+    def transformation_platform(self) -> dict[str, str]:
+        """The platform's row of `TRANSFORMATION_PLATFORMS`, if `transformation`, or else none."""
+        return transformation_platforms()[self.platform] if self.transformation else {}
+
+    @property
+    def platform_extension(self) -> Annotated[float, Field(name="Platform Extension", units="ft")]:
+        """How far Penn Transformation extends the platform to the west (ft), if at all."""
+        west_end = self.transformation_platform.get("west_end_ft")
+        return platform_west_ends()[self.platform] - float(west_end) if west_end else 0
+
+    @property
+    def platform_length(self) -> Annotated[float, Field(name="Platform Length", units="ft")]:
+        """Platform length (in feet), from the Moynihan Station EA, plus `platform_extension`."""
+        return platform_lengths()[self.platform] + self.platform_extension
 
     @property
     def platform_max_cars(self) -> Annotated[int, Field(name="Platform Max Cars", units="car")]:
-        """Cars in the longest train that fits on its tracks, from `PLATFORM_MAX_CARS`."""
-        return platform_max_cars()[self.platform]
+        """
+        Cars in the longest train that fits on its tracks, from `PLATFORM_MAX_CARS`,
+        or with Penn Transformation's extension, from `TRANSFORMATION_PLATFORMS`.
+        """
+        max_cars = self.transformation_platform.get("max_cars")
+        return int(max_cars) if max_cars else platform_max_cars()[self.platform]
 
     @property
     def tracks(self) -> Annotated[int, Field(name="Tracks", units="track")]:
@@ -634,12 +754,19 @@ class Params:
         return self.cars * self.assumptions.doors_per_car
 
     @property
-    def platform_area(self) -> Annotated[int, Field(name="Platform Area", units="ft^2")]:
+    def platform_area(self) -> Annotated[float, Field(name="Platform Area", units="ft^2")]:
         """
         Platform area (in square feet), from OpenStreetMap's outline of it,
         which accounts for platforms tapering.
+        With Penn Transformation, decluttering adds the FRA's percentage more circulation area,
+        and `platform_extension` adds its length at the platform's average width.
         """
-        return platform_areas()[self.platform]
+        area = platform_areas()[self.platform]
+        row = self.transformation_platform
+        if not row:
+            return area
+        decluttered = int(row["added_circulation_area_sq_ft"]) / int(row["circulation_area_sq_ft"])
+        return area * (1 + decluttered) + self.platform_extension * platform_widths()[self.platform]
 
     @property
     def total_vce_width(self) -> Annotated[float, Field(name="Total VCE Width", units="ft")]:
@@ -1264,14 +1391,30 @@ def run_model(params: Params, charts: bool) -> str:
 
 def scenarios() -> list[Params]:
     """Every scenario, grouped by headway first, then by platform, as in the results table."""
+
+    def platform_params(platform: int) -> Params:
+        """`platform` with its VCEs, before choosing a headway."""
+        return Params(platform=platform, headway=timedelta(0), vces=platform_vces(platform))
+
+    def transformation_params(platform: int) -> Params:
+        """`platform` as Penn Transformation would leave it, with its new VCEs."""
+        params = platform_params(platform)
+        return dataclasses.replace(
+            params,
+            transformation=True,
+            modifier="transformation",
+            vces=(*params.vces, *transformation_vces(platform)),
+        )
+
     platforms = [
-        Params(platform=platform, headway=timedelta(0), vces=platform_vces(platform))
-        for platform in range(1, 12)
+        # PCIP Phase 1's Platform A, south of Platform 1, which isn't part of Penn Transformation.
+        platform_params(PLATFORM_A),
+        *(
+            params
+            for platform in range(1, 12)
+            for params in (platform_params(platform), transformation_params(platform))
+        ),
     ]
-    # Platform 3 with its VCEs after Penn Reconstruction, with the ETA report's total width.
-    platforms.insert(
-        3, Params(platform=3, modifier="recon", headway=timedelta(0), vces=pooled_vces(44.75))
-    )
     return [
         dataclasses.replace(params, headway=headway)
         for headway in (timedelta(0), CLOSE_HEADWAY, NORMAL_HEADWAY)
