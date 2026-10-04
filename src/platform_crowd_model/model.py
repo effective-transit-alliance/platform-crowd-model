@@ -1439,6 +1439,11 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
     fig.savefig(stem.with_suffix(".svg"))
 
 
+def checkmark(ok: bool) -> str:
+    """✓ if `ok`, or else ✗, for marking checks in the results table."""
+    return "✓" if ok else "✗"
+
+
 def run_model(params: Params, charts: bool) -> str:
     """
     Run the model, return its row of the results table,
@@ -1463,11 +1468,11 @@ def run_model(params: Params, charts: bool) -> str:
         )
 
     evacuation_time = params.nfpa_130_evacuation_time(summary.max_occupants)
-    evacuation_ok = "✓" if evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME else "✗"
+    evacuation_ok = checkmark(evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME)
     travel_distance = params.nfpa_130_longest_walk_without(None)
-    travel_distance_ok = "✓" if travel_distance <= NFPA_130_MAX_TRAVEL_DISTANCE else "✗"
+    travel_distance_ok = checkmark(travel_distance <= NFPA_130_MAX_TRAVEL_DISTANCE)
     to_concourse = params.nfpa_130_time_to_concourse(summary.max_occupants)
-    to_concourse_ok = "✓" if to_concourse <= NFPA_130_POINT_OF_SAFETY_TIME else "✗"
+    to_concourse_ok = checkmark(to_concourse <= NFPA_130_POINT_OF_SAFETY_TIME)
 
     def fmt_time(t: timedelta | None) -> str:
         """`t` as `m:ss`."""
