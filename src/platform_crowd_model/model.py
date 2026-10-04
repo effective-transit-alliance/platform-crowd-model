@@ -1324,6 +1324,7 @@ RESULTS_COLUMNS = [
     "Max pax on platform",
     "Max density (pax/m²)",
     "Max up rate (pax/s)",
+    "NFPA 130 travel distance",
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
@@ -1463,6 +1464,8 @@ def run_model(params: Params, charts: bool) -> str:
 
     evacuation_time = params.nfpa_130_evacuation_time(summary.max_occupants)
     evacuation_ok = "✓" if evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME else "✗"
+    travel_distance = params.nfpa_130_longest_walk_without(None)
+    travel_distance_ok = "✓" if travel_distance <= NFPA_130_MAX_TRAVEL_DISTANCE else "✗"
     to_concourse = params.nfpa_130_time_to_concourse(summary.max_occupants)
     to_concourse_ok = "✓" if to_concourse <= NFPA_130_POINT_OF_SAFETY_TIME else "✗"
 
@@ -1485,7 +1488,8 @@ def run_model(params: Params, charts: bool) -> str:
         f" | {summary.max_pax_on_platform:.0f}"
         f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
         f" ({platform_crowd_los(summary.min_space_per_pax, params.assumptions)})"
-        f" | {summary.max_up_rate:.2f} |"
+        f" | {summary.max_up_rate:.2f}"
+        f" | {fmt_ft_in(travel_distance)} {travel_distance_ok} |"
     )
 
 
