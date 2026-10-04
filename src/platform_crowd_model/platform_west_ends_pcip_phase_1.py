@@ -22,11 +22,7 @@ import pymupdf
 from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
 
 PDF_CACHE = CACHE_DIR / "pcip-1-conceptual-design-preliminary-drawings.pdf"
-PDF_URL = (
-    "https://liamblank.com/wp-content/uploads/2026/07/"
-    "penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem"
-    "-final-report-draft-appendixa-drawings-copy.pdf"
-)
+PDF_URL = "https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf"
 PAGE = 8
 """1-indexed PDF page of sheet TK-003, "Existing Track Alignment, East Part Plan"."""
 SOURCE = f"PCIP Phase 1 Appendix A, sheet TK-003, July 2019, PDF page {PAGE}"

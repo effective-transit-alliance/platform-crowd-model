@@ -37,10 +37,7 @@ from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
 from platform_crowd_model.vces import sheet_vces
 
 PDF_CACHE = CACHE_DIR / "moynihan-ea-figures-3-3-and-3-4.pdf"
-PDF_URL = (
-    "https://web.archive.org/web/2017id_/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/"
-    "Data/NEPA/03a%20Figure%203-3%20and%203-4.pdf"
-)
+PDF_URL = "https://web.archive.org/web/2017id_/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/03a%20Figure%203-3%20and%203-4.pdf"
 PAGE = 2
 """1-indexed PDF page of Figure 3-4, "Moynihan Station - Lower Concourse"."""
 SOURCE = f"Moynihan Station EA, Figure 3-4, February 2010, PDF page {PAGE}"

@@ -40,10 +40,7 @@ POSITIONS_CSV = DATA_DIR / "vce_positions_master_plan.csv"
 EXISTING_CSV = DATA_DIR / "vces_existing_master_plan.csv"
 EAST_ENDS_CSV = DATA_DIR / "platform_east_ends_master_plan.csv"
 PDF_CACHE = CACHE_DIR / "PSMP-Alternatives-Report.pdf"
-PDF_URL = (
-    "https://liamblank.com/wp-content/uploads/2026/07/"
-    "R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf"
-)
+PDF_URL = "https://liamblank.com/wp-content/uploads/2026/07/R-Master-Plan-MTA-NJT-AMT-20_0814-PSMP-Alternatives-Report.pdf"
 
 PLAN_PAGES = {
     # Alternative: (1-indexed PDF page of its platform-level plan, `source` of its width table).
