@@ -1324,6 +1324,7 @@ RESULTS_COLUMNS = [
     "Max pax on platform",
     "Max density (pax/m²)",
     "Max up rate (pax/s)",
+    "NFPA 130 travel distance",
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
@@ -1438,6 +1439,11 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
     fig.savefig(stem.with_suffix(".svg"))
 
 
+def checkmark(ok: bool) -> str:
+    """✓ if `ok`, or else ✗, for marking checks in the results table."""
+    return "✓" if ok else "✗"
+
+
 def run_model(params: Params, charts: bool) -> str:
     """
     Run the model, return its row of the results table,
@@ -1462,9 +1468,11 @@ def run_model(params: Params, charts: bool) -> str:
         )
 
     evacuation_time = params.nfpa_130_evacuation_time(summary.max_occupants)
-    evacuation_ok = "✓" if evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME else "✗"
+    evacuation_ok = checkmark(evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME)
+    travel_distance = params.nfpa_130_longest_walk_without(None)
+    travel_distance_ok = checkmark(travel_distance <= NFPA_130_MAX_TRAVEL_DISTANCE)
     to_concourse = params.nfpa_130_time_to_concourse(summary.max_occupants)
-    to_concourse_ok = "✓" if to_concourse <= NFPA_130_POINT_OF_SAFETY_TIME else "✗"
+    to_concourse_ok = checkmark(to_concourse <= NFPA_130_POINT_OF_SAFETY_TIME)
 
     def fmt_time(t: timedelta | None) -> str:
         """`t` as `m:ss`."""
@@ -1485,7 +1493,8 @@ def run_model(params: Params, charts: bool) -> str:
         f" | {summary.max_pax_on_platform:.0f}"
         f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
         f" ({platform_crowd_los(summary.min_space_per_pax, params.assumptions)})"
-        f" | {summary.max_up_rate:.2f} |"
+        f" | {summary.max_up_rate:.2f}"
+        f" | {fmt_ft_in(travel_distance)} {travel_distance_ok} |"
     )
 
 
