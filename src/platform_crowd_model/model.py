@@ -35,12 +35,14 @@ How much time each step of the simulation covers.
 Every rate is per second, so this must stay 1 s.
 """
 
-SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
+METERS_PER_FOOT = 0.3048
 
-NFPA_130_EXIT_FLOW = 1.41 * 12
+SQUARE_METERS_PER_SQUARE_FOOT = METERS_PER_FOOT**2
+
+NFPA_130_EXIT_FLOW = 0.0555 * 1000 * METERS_PER_FOOT
 """
 Exit capacity of stairs and stopped escalators for evacuating a platform (pax/min/ft),
-1.41 pax/min per inch of width, per NFPA 130 (2026 edition) 5.3.5.3.
+0.0555 pax/min per mm of width (1.41 pax/min per inch), per NFPA 130 (2026 edition) 5.3.5.3.
 """
 
 NFPA_130_PLATFORM_EVACUATION_TIME = timedelta(minutes=4)
@@ -55,19 +57,21 @@ Time within which NFPA 130 (2026 edition) 5.3.3.2 requires evacuating
 from the most remote point on a platform to a point of safety.
 """
 
-NFPA_130_MAX_TRAVEL_DISTANCE = 325
+NFPA_130_MAX_TRAVEL_DISTANCE = 100 / METERS_PER_FOOT
 """
 Farthest (ft) NFPA 130 (2026 edition) 5.3.3.5 lets anyone on a platform be
-from where an exit leaves it, 100 m (325 ft).
+from where an exit leaves it, 100 m (328'1", though NFPA 130 gives 325 ft).
 """
 
-NFPA_130_PLATFORM_WALKING_SPEED = 124 / 60
-"""Speed (ft/s) people evacuate along a platform at, 124 fpm, per NFPA 130 5.3.4.4."""
+NFPA_130_PLATFORM_WALKING_SPEED = 37.8 / METERS_PER_FOOT / SECONDS_PER_MINUTE
+"""
+Speed (ft/s) people evacuate along a platform at, 37.8 m/min (124 fpm), per NFPA 130 5.3.4.4.
+"""
 
-NFPA_130_STAIR_VERTICAL_SPEED = 48 / 60
+NFPA_130_STAIR_VERTICAL_SPEED = 14.63 / METERS_PER_FOOT / SECONDS_PER_MINUTE
 """
 Vertical speed (ft/s) people evacuate up stairs and stopped escalators at,
-48 fpm, per NFPA 130 5.3.5.3.
+14.63 m/min (48 fpm), per NFPA 130 5.3.5.3.
 """
 
 PLATFORM_TO_CONCOURSE_RISE = 16 + 9.25 / 12
