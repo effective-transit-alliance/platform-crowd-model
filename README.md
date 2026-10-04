@@ -217,6 +217,8 @@ e.g. the [2023 edition's First Draft Report](https://docinfofiles.nfpa.org/files
 - Stairs and stopped escalators carry 1.41 pax/min per inch of width, i.e. 16.92 pax/min/ft (5.3.5.3).
 - The widest escalator is out of service, taken as the one "having the most adverse effect upon egress capacity",
   and escalators provide at most half of the egress capacity (5.3.5.4, 5.3.5.6).
+  Since every stair and escalator has the same capacity per width,
+  the widest is always the most adverse for egress capacity, even with that half limit.
   No platform's escalators come close to half: they provide at most 44%, on platform 6.
 
 NFPA 130 also requires evacuating "from the most remote point on the platform to a point of safety in 6 minutes or less" (5.3.3.2).
