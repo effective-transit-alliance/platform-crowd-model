@@ -413,13 +413,6 @@ which count as nobody.
 """
 
 
-ROUNDING_TOLERANCE = 1e-9
-"""
-Passengers (pax) left over from rounding, e.g. 1e-15 after the last of them come downstairs,
-which count as nobody.
-"""
-
-
 def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
     """
     :param train_boarders: one train's departing passengers upstairs (pax)
