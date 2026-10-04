@@ -883,31 +883,32 @@ class Params:
         """
         return timedelta(seconds=ceil(occupants / self.nfpa_130_exit_capacity))
 
-    def nfpa_130_time_to_concourse(self, occupants: float) -> timedelta:
+    def nfpa_130_time_to_concourse_without(
+        self, occupants: float, out_of_service: Vce | None
+    ) -> timedelta:
         """
         How long the farthest of `occupants` takes to reach the concourse,
-        taken as NFPA 130's point of safety (5.3.3.2), per its Annex C:
+        taken as NFPA 130's point of safety (5.3.3.2), per its Annex C,
+        with `out_of_service` out of service, if any:
         their walk along the platform to their nearest exit at `NFPA_130_PLATFORM_WALKING_SPEED`,
         plus their wait there, the rest of the platform's flow time after that walk,
         plus their climb up `PLATFORM_TO_CONCOURSE_RISE` at `NFPA_130_STAIR_VERTICAL_SPEED`.
-        Both the walk and the flow time are with the widest escalator out of service (5.3.5.4).
+        """
+        walk = self.nfpa_130_longest_walk_without(out_of_service) / NFPA_130_PLATFORM_WALKING_SPEED
+        flow = occupants / self.nfpa_130_exit_capacity_without(out_of_service)
+        climb = PLATFORM_TO_CONCOURSE_RISE / NFPA_130_STAIR_VERTICAL_SPEED
+        return timedelta(seconds=ceil(max(walk, flow) + climb))
+
+    def nfpa_130_time_to_concourse(self, occupants: float) -> timedelta:
+        """
+        `nfpa_130_time_to_concourse_without` the widest escalator (5.3.5.4).
         NFPA 130 doesn't say which to choose if the widest tie,
         so this is the shortest with each of `nfpa_130_out_of_service_choices`.
         NFPA 130's travel distance limit (5.3.3.5) doesn't take an escalator out of service,
         so its walk is `nfpa_130_longest_walk_without(None)` instead.
         """
-        climb = PLATFORM_TO_CONCOURSE_RISE / NFPA_130_STAIR_VERTICAL_SPEED
         return min(
-            timedelta(
-                seconds=ceil(
-                    max(
-                        self.nfpa_130_longest_walk_without(out_of_service)
-                        / NFPA_130_PLATFORM_WALKING_SPEED,
-                        occupants / self.nfpa_130_exit_capacity_without(out_of_service),
-                    )
-                    + climb
-                )
-            )
+            self.nfpa_130_time_to_concourse_without(occupants, out_of_service)
             for out_of_service in self.nfpa_130_out_of_service_choices or [None]
         )
 
