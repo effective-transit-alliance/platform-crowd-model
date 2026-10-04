@@ -8,6 +8,7 @@ import dataclasses
 import functools
 import itertools
 import typing
+from collections import defaultdict
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -16,7 +17,7 @@ from enum import StrEnum
 from functools import cache
 from math import ceil
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Self, cast
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
 from platform_crowd_model.paths import DATA_DIR
 
@@ -128,7 +129,10 @@ class Assumptions:
     """
 
     car_length: Annotated[float, Field(name="Car Length", units="ft")] = 85
-    """Length of each car, a NJT MultiLevel's."""
+    """
+    Length of each car, over which its doors are spread evenly.
+    A NJT MultiLevel.
+    """
 
     seats_per_car: Annotated[int, Field(name="Seats per Car", units="pax")] = 135
     """
@@ -162,6 +166,25 @@ class Assumptions:
     Doors (single-door equivalents) on each car on the platform side.
     A NJT MultiLevel's, the worst case.
     A LIRR car has more and better doors.
+    """
+
+    walking_speed: Annotated[float, Field(name="Walking Speed", units="ft/s")] = (
+        250 / SECONDS_PER_MINUTE
+    )
+    """
+    Speed arriving passengers walk from the doors to the VCEs.
+    The TCQSM's design walking speed, 250 ft/min
+    (p. 10-20: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=24),
+    though people walk slower in crowds, with less than 25 ft^2/pax (Exhibit 10-10, p. 10-21).
+    """
+
+    vce_choice: Annotated[
+        Literal["nearest", "quickest"], Field(name="VCE Choice", units="rule")
+    ] = "quickest"
+    """
+    Which VCE each arriving passenger walks to:
+    the `nearest`, or the `quickest` to get up,
+    i.e. with the least walking time plus waiting time for everyone queued or walking there.
     """
 
     door_flow_rate: Annotated[float, Field(name="Door Flow Rate", units="pax/s/door")] = 1.0
@@ -332,6 +355,12 @@ ROUNDING_TOLERANCE = 1e-9
 Passengers (pax) left over from rounding, e.g. 1e-15 after the last of them come downstairs,
 which count as nobody.
 """
+
+
+def subtract(total: float, pax: float) -> float:
+    """`total - pax`, or 0 if that's only left over from rounding, per `ROUNDING_TOLERANCE`."""
+    remaining = total - pax
+    return 0.0 if remaining < ROUNDING_TOLERANCE else remaining
 
 
 def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
@@ -712,6 +741,78 @@ def transformation_vces(platform: int) -> tuple[Vce, ...]:
     )
 
 
+def door_positions(params: Params) -> list[float]:
+    """
+    Where each of a train's doors is along the platform (ft),
+    spread evenly along a train stopped with its east end at the platform's.
+    """
+    assumptions = params.assumptions
+    train_west_end = params.platform_east_end - params.train_length
+    door_spacing = assumptions.car_length / assumptions.doors_per_car
+    return [train_west_end + (door + 0.5) * door_spacing for door in range(params.doors_per_train)]
+
+
+def distance_to(vce: Vce, position: float) -> float:
+    """Distance (ft) along the platform from `position` to the nearest end of `vce`."""
+    return max(0, vce.west_end - position, position - vce.east_end)
+
+
+@dataclass(frozen=True)
+class Door:
+    """Where some of the arriving passengers come from."""
+
+    share: float
+    """Fraction of the arriving passengers."""
+
+    walking_times: list[int]
+    """
+    Time they take to walk to each VCE, in `TIME_STEP`s,
+    so the simulation can look up who arrives each step without `timedelta` arithmetic.
+    """
+
+
+def doors_to_vces(params: Params, vces: list[Vce]) -> list[Door]:
+    """
+    Where arriving passengers come from, and how far they are from each of `vces`.
+    """
+    doors = door_positions(params)
+    return [
+        Door(
+            share=1 / len(doors),
+            walking_times=[
+                round(distance_to(vce, door) / params.assumptions.walking_speed) for vce in vces
+            ],
+        )
+        for door in doors
+    ]
+
+
+def vce_wait(queue: float, walking_to: float, capacity: float) -> float:
+    """
+    How long (s) someone reaching a VCE now would wait to go up,
+    behind everyone queued at or walking to it.
+
+    :param queue: arriving passengers queued at the VCE (pax)
+    :param walking_to: arriving passengers walking to the VCE (pax)
+    :param capacity: the VCE's upward capacity (pax/s)
+    """
+    return (queue + walking_to) / capacity
+
+
+def choose_vce(params: Params, door: Door, waits: list[float]) -> int:
+    """
+    The VCE the passengers from `door` walk to, per `Assumptions.vce_choice`.
+
+    :param waits: each VCE's `vce_wait` (s)
+    """
+    # The first of any tied, i.e. the westernmost.
+    walks = door.walking_times
+    if params.assumptions.vce_choice == "nearest":
+        return walks.index(min(walks))
+    times = [walk + wait for walk, wait in zip(walks, waits, strict=True)]
+    return times.index(min(times))
+
+
 @dataclass
 class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
@@ -836,6 +937,11 @@ class Params:
     def doors_per_train(self) -> Annotated[int, Field(name="Doors per Train", units="door")]:
         """Doors (single-door equivalents) on each train on the platform side."""
         return self.cars * self.assumptions.doors_per_car
+
+    @property
+    def train_length(self) -> Annotated[float, Field(name="Train Length", units="ft")]:
+        """Length of each train."""
+        return self.cars * self.assumptions.car_length
 
     @property
     def platform_area(self) -> Annotated[float, Field(name="Platform Area", units="ft^2")]:
@@ -1095,6 +1201,11 @@ def simulate(
     """Arriving passengers queued at each VCE."""
     vce_capacities = [vce_capacity(vce, assumptions) for vce in vces]
     """Each VCE's capacity in one direction (pax/s)."""
+    doors = doors_to_vces(params, vces)
+    walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in vces])
+    """Arriving passengers walking to each VCE, by the step they reach its queue."""
+    walking_totals = [0.0 for _ in vces]
+    """Arriving passengers walking to each VCE, whenever they reach it, i.e. `walking` summed."""
     bidirectional_limits = [
         stair_flow(assumptions.bidirectional_stair_flow_limit, vce.width) for vce in vces
     ]
@@ -1125,8 +1236,6 @@ def simulate(
     """Arriving passengers who've gone up, for `check_conservation`."""
 
     total_vce_width = params.total_vce_width
-    vce_shares = [vce.width / total_vce_width for vce in vces]
-    """Each VCE's share of the arriving passengers, in proportion to its width."""
     max_pax_in_stair_queues = (
         total_vce_width * assumptions.stair_queue_length / assumptions.stair_queue_space
     )
@@ -1175,11 +1284,26 @@ def simulate(
         total_pax_on_platform += sum(off_rates)
         arriving_pax_on_platform += sum(off_rates)
         if arriving_pax_on_platform > 0:
-            # Arriving passengers spread across the VCEs in proportion to their widths.
+            # Each door's alighting passengers walk to a VCE,
+            # though nobody does in a second nobody alights.
             alighting = sum(off_rates)
+            if alighting > 0:
+                waits = [
+                    vce_wait(queue, walking_to, capacity)
+                    for queue, walking_to, capacity in zip(
+                        vce_queues, walking_totals, vce_capacities, strict=True
+                    )
+                ]
+                for door in doors:
+                    i = choose_vce(params, door, waits)
+                    walking[step + door.walking_times[i]][i] += alighting * door.share
+                    walking_totals[i] += alighting * door.share
+                    waits[i] = vce_wait(vce_queues[i], walking_totals[i], vce_capacities[i])
+            for i, reaching in enumerate(walking.pop(step, [])):
+                vce_queues[i] += reaching
+                walking_totals[i] = subtract(walking_totals[i], reaching)
             vce_up_rates = []
-            for i, share in enumerate(vce_shares):
-                queue = vce_queues[i] + alighting * share
+            for i, queue in enumerate(vce_queues):
                 vce_up_rate = platform_clearance(queue, vce_capacities[i])
                 vce_queues[i] = queue - vce_up_rate
                 vce_up_rates.append(vce_up_rate)
