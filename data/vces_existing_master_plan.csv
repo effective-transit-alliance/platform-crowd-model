@@ -1,0 +1,44 @@
+platform,type,width_in,midpoint_ft,alternatives
+10,stair,92,266,3 4 1
+10,escalator,38,269,3 4 1
+10,stair,108,362,3 4 1
+10,escalator,34,368,3 4
+10,stair,94,772,3 4 1
+10,stair,108,870,3 4 1
+9,stair,60,279,1
+9,stair,66/72,362,3 1
+9,stair,72,402,3
+9,stair,68,888,3 1
+8,escalator,34,230,1
+8,stair,58,363,3 4 1
+8,escalator,34,404,1
+7,escalator,34,230,1
+7,stair,58,365,3 4 1
+7,escalator,34,410,1
+6,escalator,34,230,1 2
+6,stair,50,366,1 2
+6,escalator,34,410,1 2
+5,escalator,34,230,1 2
+5,escalator,34,410,1 2
+5,stair,44,683,1 2
+4,escalator,34,230,1 2
+4,stair,72,364,3 4 1 2
+4,escalator,34,404,1 2
+4,stair,44,683,1 2
+3,escalator,34,230,2
+3,stair,69,278,1 2
+3,stair,52,358,1 2
+3,escalator,34,392,1 2
+3,stair,44,684,2
+2,stair,64,278,1 2
+2,stair,57,358,1 2
+2,escalator,34,392,1
+2,stair,52,775,1 2
+2,escalator,46,774,1 2
+1,stair,60,277,3 4 1
+1,stair,58,365,1
+1,stair,58,403,3 4
+1,escalator,46,688,3 4 1
+1,stair,44/57,689,3 4 1
+1,escalator,46,774,3 4 1
+1,stair,52,776,3 4 1
