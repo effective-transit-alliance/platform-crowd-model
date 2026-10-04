@@ -39,10 +39,7 @@ import pymupdf
 from platform_crowd_model.paths import CACHE_DIR, DATA_DIR
 
 PDF_CACHE = CACHE_DIR / "fra-sos-phase-1.pdf"
-PDF_URL = (
-    "https://liamblank.com/wp-content/uploads/2026/07/"
-    "2026.07.13_Penn-Station-SOS_Phase-I-Report_FINAL-1.pdf"
-)
+PDF_URL = "https://liamblank.com/wp-content/uploads/2026/07/2026.07.13_Penn-Station-SOS_Phase-I-Report_FINAL-1.pdf"
 """
 Liam Blank's copy of the report, since the FRA's
 (https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf)

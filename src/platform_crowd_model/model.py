@@ -36,12 +36,14 @@ How much time each step of the simulation covers.
 Every rate is per second, so this must stay 1 s.
 """
 
-SQUARE_METERS_PER_SQUARE_FOOT = 0.09290304
+METERS_PER_FOOT = 0.3048
 
-NFPA_130_EXIT_FLOW = 1.41 * 12
+SQUARE_METERS_PER_SQUARE_FOOT = METERS_PER_FOOT**2
+
+NFPA_130_EXIT_FLOW = 0.0555 * 1000 * METERS_PER_FOOT
 """
 Exit capacity of stairs and stopped escalators for evacuating a platform (pax/min/ft),
-1.41 pax/min per inch of width, per NFPA 130 (2026 edition) 5.3.5.3.
+0.0555 pax/min per mm of width (1.41 pax/min per inch), per NFPA 130 (2026 edition) 5.3.5.3.
 """
 
 NFPA_130_PLATFORM_EVACUATION_TIME = timedelta(minutes=4)
@@ -56,13 +58,21 @@ Time within which NFPA 130 (2026 edition) 5.3.3.2 requires evacuating
 from the most remote point on a platform to a point of safety.
 """
 
-NFPA_130_PLATFORM_WALKING_SPEED = 124 / 60
-"""Speed (ft/s) people evacuate along a platform at, 124 fpm, per NFPA 130 5.3.4.4."""
+NFPA_130_MAX_TRAVEL_DISTANCE = 100 / METERS_PER_FOOT
+"""
+Farthest (ft) NFPA 130 (2026 edition) 5.3.3.5 lets anyone on a platform be
+from where an exit leaves it, 100 m (328'1", though NFPA 130 gives 325 ft).
+"""
 
-NFPA_130_STAIR_VERTICAL_SPEED = 48 / 60
+NFPA_130_PLATFORM_WALKING_SPEED = 37.8 / METERS_PER_FOOT / SECONDS_PER_MINUTE
+"""
+Speed (ft/s) people evacuate along a platform at, 37.8 m/min (124 fpm), per NFPA 130 5.3.4.4.
+"""
+
+NFPA_130_STAIR_VERTICAL_SPEED = 14.63 / METERS_PER_FOOT / SECONDS_PER_MINUTE
 """
 Vertical speed (ft/s) people evacuate up stairs and stopped escalators at,
-48 fpm, per NFPA 130 5.3.5.3.
+14.63 m/min (48 fpm), per NFPA 130 5.3.5.3.
 """
 
 PLATFORM_TO_CONCOURSE_RISE = 16 + 9.25 / 12
@@ -403,6 +413,13 @@ which count as nobody.
 """
 
 
+ROUNDING_TOLERANCE = 1e-9
+"""
+Passengers (pax) left over from rounding, e.g. 1e-15 after the last of them come downstairs,
+which count as nobody.
+"""
+
+
 def boarder_fraction(train_boarders: float, all_boarders: list[float]) -> float:
     """
     :param train_boarders: one train's departing passengers upstairs (pax)
@@ -441,7 +458,7 @@ def board_rate(
         return 0
 
 
-def space_per_pax(pax_on_platform: float, area: float) -> float:
+def calc_space_per_pax(pax_on_platform: float, area: float) -> float:
     """
     :param pax_on_platform: people on platform (pax)
     :param area: usable platform area (ft^2)
@@ -453,13 +470,13 @@ def space_per_pax(pax_on_platform: float, area: float) -> float:
         return area
 
 
-def platform_crowd_los(space: float, assumptions: Assumptions) -> str:
+def platform_crowd_los(space_per_pax: float, assumptions: Assumptions) -> str:
     """
-    :param space: space per passenger on the platform (ft^2/pax)
+    :param space_per_pax: space per passenger on the platform (ft^2/pax)
     :return: its LOS, per `Assumptions.platform_los_min_space`
     """
     for grade, min_space in assumptions.platform_los_min_space:
-        if space > min_space:
+        if space_per_pax > min_space:
             return grade
     return "F"
 
@@ -579,6 +596,8 @@ class Vce:
 
 
 VCE_DATA = DATA_DIR / "vces.csv"
+"""Every VCE on platforms 1 to 11, via `platform-crowd-model data vces`."""
+
 
 PLATFORM_LENGTHS = DATA_DIR / "platform_lengths_moynihan_ea.csv"
 """Each platform's length, from the Moynihan Station EA's Table 4.4-10."""
@@ -625,7 +644,7 @@ PLATFORM_A = 0
 
 OSM_PLATFORMS = DATA_DIR / "platforms_osm.csv"
 """
-Each platform's outline's area, from OpenStreetMap,
+Each platform's outline's area and average width, from OpenStreetMap,
 via `platform-crowd-model data platforms-osm`.
 """
 
@@ -938,7 +957,9 @@ def choose_vce(
 @dataclass
 class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
-    """Which platform it is, 1 to 11, whose dimensions are in `data/`."""
+    """
+    Which platform it is, 1 to 11, or `PLATFORM_A`, 0, whose dimensions are in `data/`.
+    """
 
     headway: Annotated[timedelta, Field(name="Headway", units="s")]
     """
@@ -947,7 +968,7 @@ class Params:
     """
 
     vces: tuple[Vce, ...]
-    """The VCEs (vertical circulation elements) going upstairs."""
+    """The VCEs (vertical circulation elements) going upstairs, from west to east."""
 
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
     """Trains arriving, alternating between the platform's tracks."""
@@ -974,6 +995,10 @@ class Params:
     What sets this scenario apart from the platform's others,
     e.g. `transformation` for Penn Transformation.
     """
+
+    def __post_init__(self) -> None:
+        """Sort `vces` from west to east."""
+        self.vces = tuple(sorted(self.vces, key=lambda vce: vce.west_end))
 
     @property
     def name(self) -> str:
@@ -1087,35 +1112,47 @@ class Params:
         return sum(vce.width for vce in self.vces)
 
     @property
+    def nfpa_130_out_of_service_choices(self) -> list[Vce]:
+        """
+        Each escalator NFPA 130 could take out of service,
+        the one "having the most adverse effect upon egress capacity" (5.3.5.4),
+        i.e. the widest, since every VCE has the same capacity per width,
+        or each of the widest if they tie, or none if there are no escalators.
+        """
+        escalators = [vce for vce in self.vces if vce.type == "escalator"]
+        widest = max((vce.width for vce in escalators), default=None)
+        return [vce for vce in escalators if vce.width == widest]
+
+    def nfpa_130_exit_capacity_without(self, out_of_service: Vce | None) -> float:
+        """
+        How fast the VCEs can evacuate the platform under NFPA 130 (in pax/s),
+        at `NFPA_130_EXIT_FLOW`, with `out_of_service` out of service,
+        and escalators providing at most half of the capacity, per NFPA 130 5.3.5.6.
+        """
+        exits = [vce for vce in self.vces if vce is not out_of_service]
+        stairs = sum(vce.width for vce in exits if vce.type != "escalator")
+        escalators = sum(vce.width for vce in exits if vce.type == "escalator")
+        return stair_flow(NFPA_130_EXIT_FLOW, stairs + min(escalators, stairs))
+
+    @property
     def nfpa_130_exit_capacity(
         self,
     ) -> Annotated[float, Field(name="NFPA 130 Exit Capacity", units="pax/s")]:
         """
-        How fast the VCEs can evacuate the platform under NFPA 130 (in pax/s),
-        at `NFPA_130_EXIT_FLOW`, with the widest escalator out of service,
-        i.e. the one with "the most adverse effect upon egress capacity",
-        and escalators providing at most half of the capacity, per NFPA 130 5.3.5.4 and 5.3.5.6.
+        `nfpa_130_exit_capacity_without` the widest escalator,
+        the same for each of `nfpa_130_out_of_service_choices`.
         """
-        stairs = sum(vce.width for vce in self.vces if vce.type != "escalator")
-        escalators = sorted(vce.width for vce in self.vces if vce.type == "escalator")[:-1]
-        return stair_flow(NFPA_130_EXIT_FLOW, stairs + min(sum(escalators), stairs))
+        return self.nfpa_130_exit_capacity_without(
+            next(iter(self.nfpa_130_out_of_service_choices), None)
+        )
 
-    @property
-    def nfpa_130_exits(self) -> list[Vce]:
-        """The VCEs it can be evacuated by under NFPA 130, i.e. all but the widest escalator."""
-        escalators = [vce for vce in self.vces if vce.type == "escalator"]
-        out_of_service = max(escalators, key=lambda vce: vce.width, default=None)
-        return [vce for vce in self.vces if vce is not out_of_service]
-
-    @property
-    def nfpa_130_longest_walk(
-        self,
-    ) -> Annotated[float, Field(name="NFPA 130 Longest Walk", units="ft")]:
+    def nfpa_130_longest_walk_without(self, out_of_service: Vce | None) -> float:
         """
-        Farthest anyone on the platform is from their nearest of `nfpa_130_exits` (ft),
-        from either end of the platform, or from halfway between two exits.
+        Farthest anyone on the platform is from their nearest VCE (ft),
+        with `out_of_service` out of service, if any,
+        from either end of the platform, or from halfway between two VCEs.
         """
-        exits = sorted(self.nfpa_130_exits, key=lambda vce: vce.west_end)
+        exits = [vce for vce in self.vces if vce is not out_of_service]
         # From the west end to the first exit, and from the last exit to the east end.
         longest = max(
             exits[0].west_end - (self.platform_east_end - self.platform_length),
@@ -1135,18 +1172,34 @@ class Params:
         """
         return timedelta(seconds=ceil(occupants / self.nfpa_130_exit_capacity))
 
-    def nfpa_130_time_to_concourse(self, occupants: float) -> timedelta:
+    def nfpa_130_time_to_concourse_without(
+        self, occupants: float, out_of_service: Vce | None
+    ) -> timedelta:
         """
         How long the farthest of `occupants` takes to reach the concourse,
-        taken as NFPA 130's point of safety (5.3.3.2), per its Annex C:
+        taken as NFPA 130's point of safety (5.3.3.2), per its Annex C,
+        with `out_of_service` out of service, if any:
         their walk along the platform to their nearest exit at `NFPA_130_PLATFORM_WALKING_SPEED`,
         plus their wait there, the rest of the platform's flow time after that walk,
         plus their climb up `PLATFORM_TO_CONCOURSE_RISE` at `NFPA_130_STAIR_VERTICAL_SPEED`.
         """
-        walk = self.nfpa_130_longest_walk / NFPA_130_PLATFORM_WALKING_SPEED
-        flow = occupants / self.nfpa_130_exit_capacity
+        walk = self.nfpa_130_longest_walk_without(out_of_service) / NFPA_130_PLATFORM_WALKING_SPEED
+        flow = occupants / self.nfpa_130_exit_capacity_without(out_of_service)
         climb = PLATFORM_TO_CONCOURSE_RISE / NFPA_130_STAIR_VERTICAL_SPEED
         return timedelta(seconds=ceil(max(walk, flow) + climb))
+
+    def nfpa_130_time_to_concourse(self, occupants: float) -> timedelta:
+        """
+        `nfpa_130_time_to_concourse_without` the widest escalator (5.3.5.4).
+        NFPA 130 doesn't say which to choose if the widest tie,
+        so this is the shortest with each of `nfpa_130_out_of_service_choices`.
+        NFPA 130's travel distance limit (5.3.3.5) doesn't take an escalator out of service,
+        so its walk is `nfpa_130_longest_walk_without(None)` instead.
+        """
+        return min(
+            self.nfpa_130_time_to_concourse_without(occupants, out_of_service)
+            for out_of_service in self.nfpa_130_out_of_service_choices or [None]
+        )
 
 
 @dataclass
@@ -1354,7 +1407,7 @@ def simulate(
         boarded_time=None,
         max_pax_on_platform=total_pax_on_platform,
         max_occupants=total_pax_on_platform,
-        min_space_per_pax=space_per_pax(total_pax_on_platform, usable_area),
+        min_space_per_pax=calc_space_per_pax(total_pax_on_platform, usable_area),
         vce_empty_times=[None for _ in params.vces],
     )
 
@@ -1500,7 +1553,7 @@ def simulate(
             boarders_upstairs[train] -= down_rates[train]
             new_pax[train] += on_rates[train]
 
-        space = space_per_pax(total_pax_on_platform, usable_area)
+        space_per_pax = calc_space_per_pax(total_pax_on_platform, usable_area)
         if total_pax_on_platform < 0:
             total_pax_on_platform = 0
         for train in trains:
@@ -1567,7 +1620,7 @@ def simulate(
             and summary.dwells[train] is None
         )
         summary.max_occupants = max(summary.max_occupants, total_pax_on_platform + aboard)
-        summary.min_space_per_pax = min(summary.min_space_per_pax, space)
+        summary.min_space_per_pax = min(summary.min_space_per_pax, space_per_pax)
 
         for i, (queue, vce_up_rate) in enumerate(zip(vce_queues, vce_up_rates, strict=True)):
             if queue < 1e-9 and vce_up_rate > 0:
@@ -1591,10 +1644,10 @@ def simulate(
                 departing_pax_on_platform=sum(boarders_on_platform)
                 + sum(walking_to_train(train) for train in trains),
                 total_pax_on_platform=total_pax_on_platform,
-                platform_crowding=space,
+                platform_crowding=space_per_pax,
                 up_rate=up_rate,
                 net_pax_flow_rate=net_pax_flow_rate,
-                platform_crowd_los=platform_crowd_los(space, assumptions),
+                platform_crowd_los=platform_crowd_los(space_per_pax, assumptions),
                 egress_los=worst_egress_los(params.vces, vce_up_rates, assumptions),
             )
 
@@ -1687,6 +1740,7 @@ RESULTS_COLUMNS = [
     "Max pax on platform",
     "Max density (pax/m²)",
     "Max up rate (pax/s)",
+    "NFPA 130 travel distance",
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
@@ -1906,6 +1960,11 @@ def save_time_series(params: Params, time_series: TimeSeries, summary: Summary, 
     fig.savefig(stem.with_suffix(".svg"))
 
 
+def checkmark(ok: bool) -> str:
+    """✓ if `ok`, or else ✗, for marking checks in the results table."""
+    return "✓" if ok else "✗"
+
+
 def run_model(params: Params, charts: bool) -> str:
     """
     Run the model, return its row of the results table,
@@ -1932,9 +1991,11 @@ def run_model(params: Params, charts: bool) -> str:
         )
 
     evacuation_time = params.nfpa_130_evacuation_time(summary.max_occupants)
-    evacuation_ok = "✓" if evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME else "✗"
+    evacuation_ok = checkmark(evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME)
+    travel_distance = params.nfpa_130_longest_walk_without(None)
+    travel_distance_ok = checkmark(travel_distance <= NFPA_130_MAX_TRAVEL_DISTANCE)
     to_concourse = params.nfpa_130_time_to_concourse(summary.max_occupants)
-    to_concourse_ok = "✓" if to_concourse <= NFPA_130_POINT_OF_SAFETY_TIME else "✗"
+    to_concourse_ok = checkmark(to_concourse <= NFPA_130_POINT_OF_SAFETY_TIME)
 
     def fmt_time(t: timedelta | None) -> str:
         """`t` as `m:ss`."""
@@ -1955,7 +2016,8 @@ def run_model(params: Params, charts: bool) -> str:
         f" | {summary.max_pax_on_platform:.0f}"
         f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
         f" ({platform_crowd_los(summary.min_space_per_pax, params.assumptions)})"
-        f" | {summary.max_up_rate:.2f} |"
+        f" | {summary.max_up_rate:.2f}"
+        f" | {fmt_ft_in(travel_distance)} {travel_distance_ok} |"
     )
 
 
