@@ -49,6 +49,34 @@ Time within which NFPA 130 (2026 edition) 5.3.3.1 requires a platform's occupant
 including those on trains, to be able to evacuate it.
 """
 
+NFPA_130_POINT_OF_SAFETY_TIME = timedelta(minutes=6)
+"""
+Time within which NFPA 130 (2026 edition) 5.3.3.2 requires evacuating
+from the most remote point on a platform to a point of safety.
+"""
+
+NFPA_130_MAX_TRAVEL_DISTANCE = 325
+"""
+Farthest (ft) NFPA 130 (2026 edition) 5.3.3.5 lets anyone on a platform be
+from where an exit leaves it, 100 m (325 ft).
+"""
+
+NFPA_130_PLATFORM_WALKING_SPEED = 124 / 60
+"""Speed (ft/s) people evacuate along a platform at, 124 fpm, per NFPA 130 5.3.4.4."""
+
+NFPA_130_STAIR_VERTICAL_SPEED = 48 / 60
+"""
+Vertical speed (ft/s) people evacuate up stairs and stopped escalators at,
+48 fpm, per NFPA 130 5.3.5.3.
+"""
+
+PLATFORM_TO_CONCOURSE_RISE = 16 + 9.25 / 12
+"""
+Height (ft) of the concourse above the platforms, 16'9 1/4",
+from the existing platforms to the existing concourse ("Level A")
+on the PCIP Phase 2 plan's north-south cross section (sheet A-213, November 2020, PDF page 54).
+"""
+
 CLOSE_HEADWAY = timedelta(minutes=2)
 """Time between two trains' arrivals in the closely spaced scenarios, from the ETA report."""
 
@@ -572,6 +600,29 @@ class Params:
         """
         return stair_flow(NFPA_130_EXIT_FLOW, self.total_vce_width)
 
+    def nfpa_130_evacuation_time(self, occupants: float) -> timedelta:
+        """
+        How long `occupants` take to flow out through its exits at `nfpa_130_exit_capacity`,
+        NFPA 130's platform evacuation time (5.3.3.1).
+        """
+        return timedelta(seconds=ceil(occupants / self.nfpa_130_exit_capacity))
+
+    def nfpa_130_time_to_concourse(self, occupants: float) -> timedelta:
+        """
+        How long the farthest of `occupants` takes to reach the concourse,
+        taken as NFPA 130's point of safety (5.3.3.2), per its Annex C:
+        their walk along the platform to their nearest exit at `NFPA_130_PLATFORM_WALKING_SPEED`,
+        plus their wait there, the rest of the platform's flow time after that walk,
+        plus their climb up `PLATFORM_TO_CONCOURSE_RISE` at `NFPA_130_STAIR_VERTICAL_SPEED`.
+        We don't know where the VCEs are yet,
+        so the walk is the farthest NFPA 130 allows, `NFPA_130_MAX_TRAVEL_DISTANCE`,
+        and so is pessimistic.
+        """
+        walk = NFPA_130_MAX_TRAVEL_DISTANCE / NFPA_130_PLATFORM_WALKING_SPEED
+        flow = occupants / self.nfpa_130_exit_capacity
+        climb = PLATFORM_TO_CONCOURSE_RISE / NFPA_130_STAIR_VERTICAL_SPEED
+        return timedelta(seconds=ceil(max(walk, flow) + climb))
+
 
 @dataclass
 class Instant:
@@ -972,6 +1023,7 @@ RESULTS_COLUMNS = [
     "Headway",
     "VCE width",
     "NFPA 130 evacuation",
+    "NFPA 130 to concourse",
     "Arrivals",
     "Dwell",
     "Taper time",
@@ -1118,8 +1170,10 @@ def run_model(params: Params, charts: bool) -> str:
             ),
         )
 
-    evacuation_time = timedelta(seconds=ceil(summary.max_occupants / params.nfpa_130_exit_capacity))
+    evacuation_time = params.nfpa_130_evacuation_time(summary.max_occupants)
     evacuation_ok = "✓" if evacuation_time <= NFPA_130_PLATFORM_EVACUATION_TIME else "✗"
+    to_concourse = params.nfpa_130_time_to_concourse(summary.max_occupants)
+    to_concourse_ok = "✓" if to_concourse <= NFPA_130_POINT_OF_SAFETY_TIME else "✗"
 
     def fmt_time(t: timedelta | None) -> str:
         """`t` as `m:ss`."""
@@ -1131,6 +1185,7 @@ def run_model(params: Params, charts: bool) -> str:
     return (
         f"| {params.name} | {fmt_time(headway)} | {fmt_ft_in(params.total_vce_width)}"
         f" | {fmt_time(evacuation_time)} {evacuation_ok}"
+        f" | {fmt_time(to_concourse)} {to_concourse_ok}"
         f" | {', '.join(fmt_time(arrival) for arrival in summary.arrival_times)}"
         f" | {', '.join(fmt_time(dwell) for dwell in summary.dwells)}"
         f" | {fmt_time(summary.taper_time)} | {fmt_time(summary.clear_time)}"
