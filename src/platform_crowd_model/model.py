@@ -686,7 +686,7 @@ class Params:
     """
 
     vces: tuple[Vce, ...]
-    """The VCEs (vertical circulation elements) going upstairs."""
+    """The VCEs (vertical circulation elements) going upstairs, from west to east."""
 
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
     """Trains arriving, alternating between the platform's tracks."""
@@ -706,6 +706,10 @@ class Params:
     What sets this scenario apart from the platform's others,
     e.g. `transformation` for Penn Transformation.
     """
+
+    def __post_init__(self) -> None:
+        """Sort `vces` from west to east."""
+        self.vces = tuple(sorted(self.vces, key=lambda vce: vce.west_end))
 
     @property
     def name(self) -> str:
@@ -859,9 +863,7 @@ class Params:
         with `out_of_service` out of service, if any,
         from either end of the platform, or from halfway between two VCEs.
         """
-        exits = sorted(
-            (vce for vce in self.vces if vce is not out_of_service), key=lambda vce: vce.west_end
-        )
+        exits = [vce for vce in self.vces if vce is not out_of_service]
         # From the west end to the first exit, and from the last exit to the east end.
         longest = max(
             exits[0].west_end - (self.platform_east_end - self.platform_length),
