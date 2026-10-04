@@ -8,6 +8,7 @@ import dataclasses
 import functools
 import itertools
 import typing
+from collections import defaultdict
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -15,9 +16,9 @@ from datetime import timedelta
 from functools import cache
 from math import ceil
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Self, cast
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
-from platform_crowd_model.paths import DATA_DIR
+from platform_crowd_model.paths import DATA_DIR, REPO
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -121,13 +122,11 @@ class Assumptions:
 
     max_train_overhang: Annotated[float, Field(name="Max Train Overhang", units="ft")] = 15
     """
-    How far a train can extend past its platform's end,
+    How far a train can extend past its platform's west end,
     e.g. 12-car LIRR trains on platform 11, 1,007' long, per the Moynihan Station EA.
+    Trains only overhang their platform if they're longer than it.
     Not from any source.
     """
-
-    car_length: Annotated[float, Field(name="Car Length", units="ft")] = 85
-    """Length of each car, a NJT MultiLevel's."""
 
     seats_per_car: Annotated[int, Field(name="Seats per Car", units="pax")] = 135
     """
@@ -156,11 +155,66 @@ class Assumptions:
     Not from any source.
     """
 
+    stopping_dwell_tolerance: Annotated[
+        timedelta, Field(name="Stopping Dwell Tolerance", units="s")
+    ] = timedelta(minutes=1)
+    """
+    How much longer than the shortest it can be
+    the longest dwell can be where `best_stopping_position` stops the trains,
+    so it can stop them where the platform can be evacuated soonest instead.
+    Not from any source.
+    """
+
     doors_per_car: Annotated[int, Field(name="Doors per Car", units="door")] = 4
     """
     Doors (single-door equivalents) on each car on the platform side.
     A NJT MultiLevel's, the worst case.
     A LIRR car has more and better doors.
+    """
+
+    car_length: Annotated[float, Field(name="Car Length", units="ft")] = 85
+    """
+    Length of each car, over which its doors are spread evenly.
+    A NJT MultiLevel.
+    """
+
+    walking_speed: Annotated[float, Field(name="Walking Speed", units="ft/s")] = (
+        250 / SECONDS_PER_MINUTE
+    )
+    """
+    Speed arriving passengers walk from the doors to the VCEs.
+    The TCQSM's design walking speed, 250 ft/min
+    (p. 10-20: https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=24),
+    though people walk slower in crowds, with less than 25 ft^2/pax (Exhibit 10-10, p. 10-21).
+    """
+
+    escalator_reversal_threshold: Annotated[
+        float, Field(name="Escalator Reversal Threshold", units="fraction")
+    ] = 0.1
+    """
+    Extra escalators, i.e. beyond one going up and one going down,
+    go up while the platform is alighting,
+    and reverse to go down once fewer than this fraction of `Params.arriving_pax_per_train`
+    are still on the platform or aboard trains that have arrived,
+    i.e. the platform is nearly fully alighted.
+    Not from any source.
+    """
+
+    vce_choice: Annotated[
+        Literal["nearest", "quickest"], Field(name="VCE Choice", units="rule")
+    ] = "quickest"
+    """
+    Which VCE each arriving passenger walks to:
+    the `nearest`, or the `quickest` to get up,
+    i.e. with the least walking time plus waiting time for everyone queued or walking there.
+    """
+
+    car_full_fraction: Annotated[float, Field(name="Car Full Fraction", units="fraction")] = 0.9
+    """
+    Departing passengers go to the nearest car
+    unless it has at least this fraction of `seats_per_car` boarded, waiting, or walking to it,
+    in which case they go to the nearest car that doesn't.
+    Not from any source.
     """
 
     door_flow_rate: Annotated[float, Field(name="Door Flow Rate", units="pax/s/door")] = 1.0
@@ -173,8 +227,18 @@ class Assumptions:
     stair_capacity: Annotated[float, Field(name="Stair Capacity", units="pax/min/ft")] = 17
     """
     Stair capacity, the LOS E/F boundary.
-    Applied to all VCEs, even escalators.
     Fruin, p. 14: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14
+    """
+
+    escalator_capacities: tuple[tuple[float, float], ...] = ((32, 72), (0, 34))
+    """
+    Each escalator's capacity (pax/min) by the narrowest tread width (in.) it applies to,
+    widest first.
+    The TCQSM's nominal capacities at 90 ft/min, the typical incline speed:
+    34 pax/min for 24 in. treads, and 72 pax/min for 40 in. treads,
+    which 32 in. treads come close to, since people stagger themselves on alternate steps.
+    TCQSM p. 10-51 and Exhibit 10-31, p. 10-52:
+    https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
     """
 
     stair_queue_space: Annotated[float, Field(name="Stair Queue Space", units="ft^2/pax")] = 5
@@ -272,40 +336,74 @@ def alight_rate(
         return 0
 
 
-def platform_clearance(
-    arriving_pax_on_platform: float, vce_width: float, assumptions: Assumptions
-) -> float:
+def vce_capacity(vce: Vce, assumptions: Assumptions) -> float:
     """
-    Arriving passengers queue at the stairs,
-    which discharge them at `Assumptions.stair_capacity` as long as anyone is queued.
+    `vce`'s capacity (pax/s) in one direction:
+    `Assumptions.stair_capacity` for a stair,
+    or `Assumptions.escalator_capacities` for an escalator.
+    """
+    if vce.type != "escalator":
+        return stair_flow(assumptions.stair_capacity, vce.width)
+    tread_width = vce.width * 12
+    return (
+        next(
+            capacity
+            for min_tread_width, capacity in assumptions.escalator_capacities
+            if tread_width >= min_tread_width
+        )
+        / SECONDS_PER_MINUTE
+    )
+
+
+def platform_clearance(arriving_pax_on_platform: float, capacity: float) -> float:
+    """
+    Arriving passengers queue at each VCE,
+    which discharges them at its capacity as long as anyone is queued.
 
     Fruin's stair equation relates flow to the space per passenger *on the stair*,
     which a queued stair holds near its critical density,
     so it doesn't apply to the space per passenger on the platform.
-    The few seconds of walking from the doors to the stairs are ignored.
 
-    :param arriving_pax_on_platform: number of arriving passengers on the platform (pax)
-    :param vce_width: total width of vertical circulation elements (ft)
-    :return: platform egress rate on stairs (pax/s)
+    :param arriving_pax_on_platform: number of arriving passengers queued at this VCE (pax)
+    :param capacity: this VCE's capacity, per `vce_capacity` (pax/s)
+    :return: this VCE's upward flow (pax/s)
     """
-    return min(arriving_pax_on_platform, stair_flow(assumptions.stair_capacity, vce_width))
+    return min(arriving_pax_on_platform, capacity)
 
 
 def platform_ingress(
-    departing_pax_upstairs: float, vce_width: float, up_rate: float, assumptions: Assumptions
-) -> float:
+    departing_pax_upstairs: float,
+    widths: list[float],
+    capacities: list[float],
+    up_rates: list[float],
+    directions: list[Direction],
+    assumptions: Assumptions,
+) -> list[float]:
     """
-    Departing passengers queue upstairs and come down with whatever stair capacity
-    the upward flow leaves, unless it exceeds `Assumptions.bidirectional_stair_flow_limit`.
+    Departing passengers queue upstairs and come down each VCE with whatever capacity
+    its upward flow leaves, unless that exceeds `Assumptions.bidirectional_stair_flow_limit`.
 
     :param departing_pax_upstairs: number of departing passengers upstairs (pax)
-    :param vce_width: this train's share of the total width of vertical circulation elements (ft)
-    :param up_rate: upward stair flow on this train's share of the stairs (pax/s)
-    :return: platform ingress rate on stairs (pax/s)
+    :param widths: this train's share of each VCE's width (ft)
+    :param capacities: this train's share of each VCE's capacity, per `vce_capacity` (pax/s)
+    :param up_rates: upward flow on this train's share of each VCE (pax/s)
+    :param directions: which way each VCE runs now
+    :return: platform ingress rate down each VCE (pax/s)
     """
-    if up_rate > stair_flow(assumptions.bidirectional_stair_flow_limit, vce_width):
-        return 0
-    return min(departing_pax_upstairs, stair_flow(assumptions.stair_capacity, vce_width) - up_rate)
+    available = [
+        0
+        if direction == "up"
+        or up_rate > stair_flow(assumptions.bidirectional_stair_flow_limit, width)
+        else capacity - up_rate
+        for width, capacity, up_rate, direction in zip(
+            widths, capacities, up_rates, directions, strict=True
+        )
+    ]
+    total = sum(available)
+    if total <= 0:
+        return [0 for _ in available]
+    # If fewer are upstairs than can come down, they spread across the VCEs by capacity.
+    return [rate * min(1, departing_pax_upstairs / total) for rate in available]
 
 
 ROUNDING_TOLERANCE = 1e-9
@@ -376,16 +474,26 @@ def platform_crowd_los(space_per_pax: float, assumptions: Assumptions) -> str:
     return "F"
 
 
-def egress_crowd_los(vce_width: float, up_rate: float, assumptions: Assumptions) -> str:
+def egress_crowd_los(capacity: float, up_rate: float, assumptions: Assumptions) -> str:
     """
-    :param vce_width: total width of vertical circulation elements (ft)
-    :param up_rate: upward stair flow (pax/s)
-    :return: its LOS, per `Assumptions.stair_los_max_flow` and `stair_capacity`
+    A VCE's LOS, per `Assumptions.stair_los_max_flow` and `stair_capacity`,
+    as fractions of its capacity, so an escalator's are the same fractions of its capacity.
+
+    :param capacity: the VCE's capacity, per `vce_capacity` (pax/s)
+    :param up_rate: upward flow on it (pax/s)
     """
     for grade, max_flow in (*assumptions.stair_los_max_flow, ("E", assumptions.stair_capacity)):
-        if up_rate <= stair_flow(max_flow, vce_width):
+        if up_rate <= capacity * max_flow / assumptions.stair_capacity:
             return grade
     return "F"
+
+
+def worst_egress_los(vces: tuple[Vce, ...], up_rates: list[float], assumptions: Assumptions) -> str:
+    """The worst of each VCE's `egress_crowd_los`."""
+    return max(
+        egress_crowd_los(vce_capacity(vce, assumptions), up_rate, assumptions)
+        for vce, up_rate in zip(vces, up_rates, strict=True)
+    )
 
 
 @dataclass
@@ -527,7 +635,7 @@ PLATFORM_A_VCES = DATA_DIR / "vces_platform_a_pcip_phase_1.csv"
 PLATFORM_A = 0
 """Platform A's number in the model, since the existing platforms are numbered 1 to 11."""
 
-PLATFORMS_OSM = DATA_DIR / "platforms_osm.csv"
+OSM_PLATFORMS = DATA_DIR / "platforms_osm.csv"
 """
 Each platform's outline's area and average width, from OpenStreetMap,
 via `platform-crowd-model data platforms-osm`.
@@ -540,39 +648,6 @@ def platform_a() -> dict[str, str]:
     with PLATFORM_A_DATA.open() as f:
         (row,) = csv.DictReader(f)
     return row
-
-
-@cache
-def platform_vces(platform: int) -> tuple[Vce, ...]:
-    """
-    Every VCE on `platform`, from `VCE_DATA`,
-    with the Master Plan's width where it has one, or else the estimated width,
-    or on Platform A, from `PLATFORM_A_VCES`.
-    """
-    if platform == PLATFORM_A:
-        with PLATFORM_A_VCES.open() as f:
-            return tuple(
-                Vce(
-                    name=f"PA-{row['label']}" + ("-E" if row["type"] == "escalator" else ""),
-                    width=float(row["width_in"]) / 12,
-                    type=row["type"],
-                    west_end=float(row["west_end_ft"]),
-                    east_end=float(row["east_end_ft"]),
-                )
-                for row in csv.DictReader(f)
-            )
-    with VCE_DATA.open() as f:
-        return tuple(
-            Vce(
-                name=row["vce_name"],
-                width=float(row["master_plan_width_in"] or row["estimated_width_in"]) / 12,
-                type=row["type"],
-                west_end=float(row["west_end_ft"]),
-                east_end=float(row["east_end_ft"]),
-            )
-            for row in csv.DictReader(f)
-            if int(row["platform"]) == platform
-        )
 
 
 @cache
@@ -622,8 +697,8 @@ def platform_east_ends() -> dict[int, float]:
 
 @cache
 def platform_areas() -> dict[int, int]:
-    """Each platform's area (sq ft), from `PLATFORMS_OSM`, and Platform A's."""
-    with PLATFORMS_OSM.open() as f:
+    """Each platform's area (sq ft), from `OSM_PLATFORMS`, and Platform A's."""
+    with OSM_PLATFORMS.open() as f:
         return {
             PLATFORM_A: int(platform_a()["area_sq_ft"]),
             **{
@@ -643,8 +718,8 @@ def platform_west_ends() -> dict[int, float]:
 
 @cache
 def platform_widths() -> dict[int, float]:
-    """Each platform's average width (ft), from `PLATFORMS_OSM`."""
-    with PLATFORMS_OSM.open() as f:
+    """Each platform's average width (ft), from `OSM_PLATFORMS`."""
+    with OSM_PLATFORMS.open() as f:
         return {
             int(row["platform"]): float(row["width_ft"])
             for row in csv.DictReader(f)
@@ -676,6 +751,202 @@ def transformation_vces(platform: int) -> tuple[Vce, ...]:
     )
 
 
+@cache
+def platform_vces(platform: int) -> tuple[Vce, ...]:
+    """
+    Every VCE on `platform`, from `data/vces.csv`,
+    with the Master Plan's width where it has one, or else the estimated width,
+    or on Platform A, from `PLATFORM_A_VCES`.
+    """
+    if platform == PLATFORM_A:
+        with PLATFORM_A_VCES.open() as f:
+            return tuple(
+                Vce(
+                    name=f"PA-{row['label']}" + ("-E" if row["type"] == "escalator" else ""),
+                    width=float(row["width_in"]) / 12,
+                    type=row["type"],
+                    west_end=float(row["west_end_ft"]),
+                    east_end=float(row["east_end_ft"]),
+                )
+                for row in csv.DictReader(f)
+            )
+    with VCE_DATA.open() as f:
+        return tuple(
+            Vce(
+                name=row["vce_name"],
+                width=float(row["master_plan_width_in"] or row["estimated_width_in"]) / 12,
+                type=row["type"],
+                west_end=float(row["west_end_ft"]),
+                east_end=float(row["east_end_ft"]),
+            )
+            for row in csv.DictReader(f)
+            if int(row["platform"]) == platform
+        )
+
+
+def door_positions(params: Params) -> list[float]:
+    """
+    Where each of a train's doors is along the platform (ft),
+    spread evenly along a train stopped at `Params.train_east_end`.
+    """
+    assumptions = params.assumptions
+    train_east_end = (
+        params.platform_east_end if params.train_east_end is None else params.train_east_end
+    )
+    train_west_end = train_east_end - params.train_length
+    door_spacing = assumptions.car_length / assumptions.doors_per_car
+    return [train_west_end + (door + 0.5) * door_spacing for door in range(params.doors_per_train)]
+
+
+def distance_to(vce: Vce, position: float) -> float:
+    """Distance (ft) along the platform from `position` to the nearest end of `vce`."""
+    return max(0, vce.west_end - position, position - vce.east_end)
+
+
+@dataclass(frozen=True)
+class Door:
+    """Where some of the arriving passengers come from."""
+
+    share: float
+    """Fraction of the arriving passengers."""
+
+    walking_times: list[int]
+    """
+    Time they take to walk to each VCE, in `TIME_STEP`s,
+    so the simulation can look up who arrives each step without `timedelta` arithmetic.
+    """
+
+
+def doors_to_vces(params: Params) -> list[Door]:
+    """
+    Where arriving passengers come from, and how far they are from each VCE.
+    """
+    doors = door_positions(params)
+    return [
+        Door(
+            share=1 / len(doors),
+            walking_times=[
+                round(distance_to(vce, door) / params.assumptions.walking_speed)
+                for vce in params.vces
+            ],
+        )
+        for door in doors
+    ]
+
+
+type Direction = Literal["both", "up", "down"]
+"""Which way a VCE runs: stairs go `both` ways, and escalators go `up` or `down`."""
+
+type Role = Literal["stair", "up", "down", "reversible"]
+"""What a VCE does: a stair, an escalator always going `up` or `down`, or one that reverses."""
+
+
+def vce_roles(vces: tuple[Vce, ...]) -> list[Role]:
+    """
+    What each VCE does.
+    A platform's only escalator goes up.
+    With more, the easternmost, toward 7th Avenue, goes up,
+    the westernmost, toward 8th Avenue, goes down,
+    and the rest are `reversible`, going up while the platform is alighting.
+    This matches the AM peak, when most passengers are heading toward 7th Avenue.
+    """
+    escalators = sorted(
+        (i for i, vce in enumerate(vces) if vce.type == "escalator"),
+        key=lambda i: vces[i].west_end,
+    )
+    roles: list[Role] = ["stair" for _ in vces]
+    for i in escalators:
+        roles[i] = "reversible"
+    if escalators:
+        roles[escalators[-1]] = "up"
+    if len(escalators) > 1:
+        roles[escalators[0]] = "down"
+    return roles
+
+
+@dataclass(frozen=True)
+class Car:
+    """One of a train's cars, where departing passengers wait to board."""
+
+    doors: int
+    """Doors (single-door equivalents) on the platform side."""
+
+    walking_times: list[int]
+    """Time to walk from each VCE to its nearest door, in `TIME_STEP`s, like `Door`'s."""
+
+
+def train_cars(params: Params) -> list[Car]:
+    """
+    Each train's cars.
+    """
+    assumptions = params.assumptions
+    doors = door_positions(params)
+    doors_per_car = assumptions.doors_per_car
+    cars: list[Car] = []
+    for car in range(params.cars):
+        car_doors = doors[car * doors_per_car : (car + 1) * doors_per_car]
+        cars.append(
+            Car(
+                doors=len(car_doors),
+                walking_times=[
+                    round(
+                        min(distance_to(vce, door) for door in car_doors)
+                        / assumptions.walking_speed
+                    )
+                    for vce in params.vces
+                ],
+            )
+        )
+    return cars
+
+
+def cars_by_distance(cars: list[Car], vce: int) -> list[int]:
+    """`cars`' indices, from the nearest to `vce` to the farthest, by walking time."""
+    return sorted(range(len(cars)), key=lambda c: cars[c].walking_times[vce])
+
+
+def choose_car(params: Params, nearest: list[int], car_loads: list[float]) -> int:
+    """
+    The car departing passengers coming down a VCE walk to:
+    the nearest one that isn't close to full, per `Assumptions.car_full_fraction`,
+    or else the nearest one.
+
+    :param nearest: the cars, from the nearest to the VCE to the farthest, per `cars_by_distance`
+    :param car_loads: passengers boarded on, waiting for, or walking to each car (pax)
+    """
+    if len(nearest) == 1:
+        return nearest[0]
+    full = params.assumptions.car_full_fraction * params.assumptions.seats_per_car
+    return next((c for c in nearest if car_loads[c] < full), nearest[0])
+
+
+def choose_vce(
+    params: Params,
+    door: Door,
+    vce_queues: list[float],
+    walking_to: list[float],
+    directions: list[Direction],
+    capacities: list[float],
+) -> int:
+    """
+    The VCE the passengers from `door` walk to, per `Assumptions.vce_choice`,
+    of those going up.
+
+    :param vce_queues: arriving passengers queued at each VCE (pax)
+    :param walking_to: arriving passengers walking to each VCE (pax)
+    :param directions: which way each VCE runs now
+    :param capacities: each VCE's upward capacity (pax/s)
+    """
+    going_up = [i for i, direction in enumerate(directions) if direction != "down"]
+
+    def time_to_go_up(i: int) -> float:
+        return door.walking_times[i] + (vce_queues[i] + walking_to[i]) / capacities[i]
+
+    if params.assumptions.vce_choice == "nearest":
+        return min(going_up, key=lambda i: door.walking_times[i])
+    return min(going_up, key=time_to_go_up)
+
+
 @dataclass
 class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
@@ -694,6 +965,13 @@ class Params:
 
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
     """Trains arriving, alternating between the platform's tracks."""
+
+    train_east_end: Annotated[float | None, Field(name="Train East End", units="ft")] = None
+    """
+    Where the trains' east ends stop (ft east of the Master Plan's plans' west edge),
+    or if `None`, `platform_east_end`.
+    `best_stopping_position` finds the best one.
+    """
 
     assumptions: Assumptions = dataclasses.field(default_factory=Assumptions)
     """What the model assumes, the same for every scenario unless overridden."""
@@ -745,19 +1023,6 @@ class Params:
         return platform_west_ends()[self.platform] - float(west_end) if west_end else 0
 
     @property
-    def platform_east_end(self) -> float:
-        """
-        Where the platform ends to the east (ft east of the Master Plan's plans' west edge),
-        from `PLATFORM_EAST_ENDS`.
-        """
-        return platform_east_ends()[self.platform]
-
-    @property
-    def platform_length(self) -> Annotated[float, Field(name="Platform Length", units="ft")]:
-        """Platform length (in feet), from the Moynihan Station EA, plus `platform_extension`."""
-        return platform_lengths()[self.platform] + self.platform_extension
-
-    @property
     def platform_max_cars(self) -> Annotated[int, Field(name="Platform Max Cars", units="car")]:
         """
         Cars in the longest train that fits on its tracks, from `PLATFORM_MAX_CARS`,
@@ -790,16 +1055,17 @@ class Params:
         )
 
     @property
-    def arriving_pax_per_train(
-        self,
-    ) -> Annotated[int, Field(name="Arriving Passengers per Train", units="pax")]:
-        """Passengers arriving on each train, all of whom alight."""
-        return self.cars * self.assumptions.seats_per_car
+    def platform_east_end(self) -> float:
+        """
+        Where the platform ends to the east (ft east of the Master Plan's plans' west edge),
+        from `PLATFORM_EAST_ENDS`.
+        """
+        return platform_east_ends()[self.platform]
 
     @property
-    def doors_per_train(self) -> Annotated[int, Field(name="Doors per Train", units="door")]:
-        """Doors (single-door equivalents) on each train on the platform side."""
-        return self.cars * self.assumptions.doors_per_car
+    def platform_length(self) -> Annotated[float, Field(name="Platform Length", units="ft")]:
+        """Platform length (in feet), from the Moynihan Station EA, plus `platform_extension`."""
+        return platform_lengths()[self.platform] + self.platform_extension
 
     @property
     def platform_area(self) -> Annotated[float, Field(name="Platform Area", units="ft^2")]:
@@ -817,14 +1083,26 @@ class Params:
         return area * (1 + decluttered) + self.platform_extension * platform_widths()[self.platform]
 
     @property
+    def arriving_pax_per_train(
+        self,
+    ) -> Annotated[int, Field(name="Arriving Passengers per Train", units="pax")]:
+        """Passengers arriving on each train, all of whom alight."""
+        return self.cars * self.assumptions.seats_per_car
+
+    @property
+    def doors_per_train(self) -> Annotated[int, Field(name="Doors per Train", units="door")]:
+        """Doors (single-door equivalents) on each train on the platform side."""
+        return self.cars * self.assumptions.doors_per_car
+
+    @property
+    def train_length(self) -> Annotated[float, Field(name="Train Length", units="ft")]:
+        """Length of each train."""
+        return self.cars * self.assumptions.car_length
+
+    @property
     def total_vce_width(self) -> Annotated[float, Field(name="Total VCE Width", units="ft")]:
-        """
-        Total width (in feet) of the VCEs, all treated as stairs,
-        but the widest escalator, which is left out,
-        like the ETA report's one VCE per platform, e.g. an escalator running the other way.
-        """
-        escalators = [vce.width for vce in self.vces if vce.type == "escalator"]
-        return sum(vce.width for vce in self.vces) - max(escalators, default=0)
+        """Total width (in feet) of all of the VCEs."""
+        return sum(vce.width for vce in self.vces)
 
     @property
     def nfpa_130_out_of_service_choices(self) -> list[Vce]:
@@ -1009,6 +1287,9 @@ class Summary:
     min_space_per_pax: float
     """Least platform space per passenger (sq ft)."""
 
+    vce_empty_times: list[timedelta | None]
+    """When each VCE's queue last empties, i.e. its last passenger goes up."""
+
 
 TRAIN_COLUMNS = [
     "Passengers (pax)",
@@ -1029,6 +1310,9 @@ class TimeSeries:
     trains: list[list[list[float]]] = dataclasses.field(default_factory=list[list[list[float]]])
     """Each second, each train's `TRAIN_COLUMNS`."""
 
+    vces: list[list[list[float]]] = dataclasses.field(default_factory=list[list[list[float]]])
+    """Each second, each VCE's queue (pax) and upward flow (pax/s)."""
+
 
 def simulate(
     params: Params, record_time_series: bool = True, print_time_series: bool = True
@@ -1045,7 +1329,36 @@ def simulate(
 
     # Initialize counters
     arriving_pax_on_platform: float = 0
+    vce_queues = [0.0 for _ in params.vces]
+    """Arriving passengers queued at each VCE."""
+    doors = doors_to_vces(params)
+    vce_capacities = [vce_capacity(vce, assumptions) for vce in params.vces]
+    """Each VCE's capacity in one direction (pax/s)."""
+    roles = vce_roles(params.vces)
+    directions: list[Direction] = [
+        "both" if role == "stair" else "down" if role == "down" else "up" for role in roles
+    ]
+    """Which way each VCE runs now."""
+    walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in params.vces])
+    """Arriving passengers walking to each VCE, by the step they reach its queue."""
+    walking_totals = [0.0 for _ in params.vces]
+    """Arriving passengers walking to each VCE, whenever they reach it, i.e. `walking` summed."""
+    cars = train_cars(params)
+    nearest_cars = [cars_by_distance(cars, i) for i in range(len(params.vces))]
+    """Each VCE's cars, from the nearest to the farthest."""
+    car_board_rates = [car.doors * assumptions.door_flow_rate for car in cars]
+    """Each car's maximum boarding rate (pax/s)."""
     trains = range(params.trains)
+    boarders_walking: defaultdict[int, list[list[float]]] = defaultdict(
+        lambda: [[0.0 for _ in cars] for _ in trains]
+    )
+    """Each train's departing passengers walking to each car, by the step they reach it."""
+    boarders_walking_totals = [0.0 for _ in trains]
+    """Each train's departing passengers walking to any of its cars, `boarders_walking` summed."""
+    car_waiting = [[0.0 for _ in cars] for _ in trains]
+    """Each train's departing passengers waiting at each car."""
+    car_loads = [list(waiting) for waiting in car_waiting]
+    """Each train's passengers boarded on, waiting for, or walking to each car."""
     arrival_times: list[timedelta | None] = [
         train * params.headway if train < params.tracks else None for train in trains
     ]
@@ -1071,11 +1384,12 @@ def simulate(
     gone_up: float = 0
     """Arriving passengers who've gone up, for `check_conservation`."""
 
-    total_vce_width = params.total_vce_width
     max_pax_in_stair_queues = (
-        total_vce_width * assumptions.stair_queue_length / assumptions.stair_queue_space
+        # Nobody queues to go up the escalator that only goes down.
+        sum(vce.width for vce, role in zip(params.vces, roles, strict=True) if role != "down")
+        * assumptions.stair_queue_length
+        / assumptions.stair_queue_space
     )
-    capacity = stair_flow(assumptions.stair_capacity, total_vce_width)
     summary = Summary(
         max_up_rate=0,
         time_at_capacity=timedelta(0),
@@ -1087,10 +1401,20 @@ def simulate(
         max_pax_on_platform=total_pax_on_platform,
         max_occupants=total_pax_on_platform,
         min_space_per_pax=calc_space_per_pax(total_pax_on_platform, usable_area),
+        vce_empty_times=[None for _ in params.vces],
     )
 
     if print_time_series:
         print("Elapsed_Time", *(f"Train_{train + 1}_Pax" for train in trains))
+
+    def walking_to_train(train: int) -> float:
+        """Departing passengers walking to `train`'s cars."""
+        return boarders_walking_totals[train]
+
+    def subtract(total: float, pax: float) -> float:
+        """`total - pax`, or 0 if that's only left over from rounding."""
+        remaining = total - pax
+        return 0.0 if remaining < 1e-9 else remaining
 
     time_after = start_time
     for step in itertools.count():
@@ -1116,39 +1440,105 @@ def simulate(
             off_rates.append(off_rate)
         total_pax_on_platform += sum(off_rates)
         arriving_pax_on_platform += sum(off_rates)
-        up_rate = platform_clearance(arriving_pax_on_platform, total_vce_width, assumptions)
+        walking_to = list(walking_totals)
+        still_alighting = arriving_pax_on_platform
+        for train in trains:
+            arrival_time = arrival_times[train]
+            if arrival_time is not None and time_after >= arrival_time:
+                still_alighting += remaining_arrivals[train]
+        nearly_alighted = (
+            still_alighting
+            < assumptions.escalator_reversal_threshold * params.arriving_pax_per_train
+        )
+        for i, role in enumerate(roles):
+            if role == "reversible" and (not nearly_alighted or vce_queues[i] + walking_to[i] > 0):
+                # Once reversed, nobody walks to it, so it stays down until more alight.
+                directions[i] = "up"
+            elif role == "reversible":
+                directions[i] = "down"
+        # Nobody walks to a VCE in a second nobody alights.
+        for door in doors if sum(off_rates) > 0 else ():
+            alighting = sum(off_rates) * door.share
+            i = choose_vce(params, door, vce_queues, walking_to, directions, vce_capacities)
+            walking[step + door.walking_times[i]][i] += alighting
+            walking_totals[i] += alighting
+            walking_to[i] += alighting
+        for i, reaching in enumerate(walking.pop(step, [])):
+            vce_queues[i] += reaching
+            walking_totals[i] = subtract(walking_totals[i], reaching)
+        vce_up_rates = [
+            platform_clearance(queue, capacity)
+            for capacity, queue in zip(vce_capacities, vce_queues, strict=True)
+        ]
+        for i, vce_up_rate in enumerate(vce_up_rates):
+            vce_queues[i] = max(0, vce_queues[i] - vce_up_rate)
+        up_rate = sum(vce_up_rates)
         gone_up += up_rate
         arriving_pax_on_platform -= up_rate
         if arriving_pax_on_platform < 0:
             arriving_pax_on_platform = 0
         total_pax_on_platform -= up_rate
-        # Each train's boarders get a share of the stairs,
-        # and so a share of the upward flow on them.
+        # Each train's boarders get a share of each VCE,
+        # and so a share of the upward flow on it.
         boarder_fractions = [
             boarder_fraction(boarders_upstairs[train], boarders_upstairs) for train in trains
         ]
-        down_rates = [
+        vce_down_rates = [
+            # Nobody comes down for a train with nobody upstairs.
             platform_ingress(
                 boarders_upstairs[train],
-                total_vce_width * boarder_fractions[train],
-                up_rate * boarder_fractions[train],
+                [vce.width * boarder_fractions[train] for vce in params.vces],
+                [capacity * boarder_fractions[train] for capacity in vce_capacities],
+                [vce_up_rate * boarder_fractions[train] for vce_up_rate in vce_up_rates],
+                directions,
                 assumptions,
             )
+            if boarders_upstairs[train] > ROUNDING_TOLERANCE
+            else [0.0 for _ in params.vces]
             for train in trains
         ]
+        down_rates = [sum(rates) for rates in vce_down_rates]
+        # Departing passengers walk from their VCE to a car.
         for train in trains:
-            boarders_on_platform[train] += down_rates[train]
+            for i, rate in enumerate(vce_down_rates[train]):
+                if rate <= 0:
+                    continue
+                car = choose_car(params, nearest_cars[i], car_loads[train])
+                boarders_walking[step + cars[car].walking_times[i]][train][car] += rate
+                boarders_walking_totals[train] += rate
+                car_loads[train][car] += rate
+        for train, reaching in enumerate(
+            boarders_walking.pop(step, [[0.0 for _ in cars] for _ in trains])
+        ):
+            for car, pax in enumerate(reaching):
+                car_waiting[train][car] += pax
+                boarders_walking_totals[train] = subtract(boarders_walking_totals[train], pax)
+        for train in trains:
+            boarders_on_platform[train] = sum(car_waiting[train])
             total_pax_on_platform += down_rates[train]
-        on_rates = [
-            board_rate(
-                door_rate,
-                off_rates[train],
-                time_after,
-                arrival_times[train],
-                boarders_on_platform[train],
-            )
+        # Each car boards through its own doors,
+        # once its train has arrived and everyone has alighted from it.
+        car_on_rates = [
+            [
+                board_rate(
+                    max_rate,
+                    off_rates[train],
+                    time_after,
+                    arrival_time,
+                    waiting,
+                )
+                for max_rate, waiting in zip(car_board_rates, car_waiting[train], strict=True)
+            ]
+            if (arrival_time := arrival_times[train]) is not None
+            and arrival_time < time_after
+            and off_rates[train] == 0
+            else [0 for _ in cars]
             for train in trains
         ]
+        for train, on_rates in enumerate(car_on_rates):
+            for car, on_rate in enumerate(on_rates):
+                car_waiting[train][car] -= on_rate
+        on_rates = [sum(rates) for rates in car_on_rates]
 
         for train in trains:
             boarders_on_platform[train] -= on_rates[train]
@@ -1172,6 +1562,12 @@ def simulate(
                 up_rate,
             )
         summary.max_up_rate = max(summary.max_up_rate, up_rate)
+        # Capacity of the VCEs going up now, not counting escalators going down.
+        capacity = sum(
+            capacity
+            for capacity, direction in zip(vce_capacities, directions, strict=True)
+            if direction != "down"
+        )
         if up_rate >= capacity - 1e-9:
             summary.time_at_capacity += TIME_STEP
         if arriving_pax_on_platform > max_pax_in_stair_queues:
@@ -1188,7 +1584,8 @@ def simulate(
         if (
             summary.boarded_time is None
             and time_after >= max(release_times)
-            and sum(boarders_upstairs) + sum(boarders_on_platform) < 1
+            and sum(boarders_upstairs) + sum(boarders_on_platform) + sum(boarders_walking_totals)
+            < 1
         ):
             summary.boarded_time = time_after
         for train in trains:
@@ -1198,7 +1595,8 @@ def simulate(
                 and arrival_time is not None
                 and time_after > arrival_time
                 and remaining_arrivals[train] < 1
-                and boarders_upstairs[train] + boarders_on_platform[train] < 1
+                and boarders_upstairs[train] + boarders_on_platform[train] + walking_to_train(train)
+                < 1
             ):
                 summary.dwells[train] = time_after - arrival_time
                 # The next train on its track arrives once it's scheduled and this one departs.
@@ -1217,6 +1615,10 @@ def simulate(
         summary.max_occupants = max(summary.max_occupants, total_pax_on_platform + aboard)
         summary.min_space_per_pax = min(summary.min_space_per_pax, space_per_pax)
 
+        for i, (queue, vce_up_rate) in enumerate(zip(vce_queues, vce_up_rates, strict=True)):
+            if queue < 1e-9 and vce_up_rate > 0:
+                summary.vce_empty_times[i] = time_after
+
         if record_time_series:
             net_pax_flow_rate: float = 0
             for rate in down_rates:
@@ -1232,13 +1634,14 @@ def simulate(
                 off_rate=sum(off_rates),
                 on_rate=sum(on_rates),
                 down_rate=sum(down_rates),
-                departing_pax_on_platform=sum(boarders_on_platform),
+                departing_pax_on_platform=sum(boarders_on_platform)
+                + sum(walking_to_train(train) for train in trains),
                 total_pax_on_platform=total_pax_on_platform,
                 platform_crowding=space_per_pax,
                 up_rate=up_rate,
                 net_pax_flow_rate=net_pax_flow_rate,
                 platform_crowd_los=platform_crowd_los(space_per_pax, assumptions),
-                egress_los=egress_crowd_los(total_vce_width, up_rate, assumptions),
+                egress_los=worst_egress_los(params.vces, vce_up_rates, assumptions),
             )
 
             time_series.instants.append(instant)
@@ -1248,9 +1651,15 @@ def simulate(
                         remaining_arrivals[train] + new_pax[train],
                         off_rates[train],
                         on_rates[train],
-                        boarders_on_platform[train],
+                        boarders_on_platform[train] + walking_to_train(train),
                     ]
                     for train in trains
+                ]
+            )
+            time_series.vces.append(
+                [
+                    [queue, vce_up_rate]
+                    for queue, vce_up_rate in zip(vce_queues, vce_up_rates, strict=True)
                 ]
             )
 
@@ -1271,7 +1680,8 @@ def simulate(
         departing=[
             ("boarded", sum(new_pax)),
             ("are still upstairs", sum(boarders_upstairs)),
-            ("are still on the platform", sum(boarders_on_platform)),
+            ("are still walking to their cars", sum(boarders_walking_totals)),
+            ("are still waiting at their cars", sum(map(sum, car_waiting))),
         ],
     )
     return time_series, summary
@@ -1290,15 +1700,14 @@ def check_conservation(
     adds up to everyone who arrived,
     and likewise for the departing passengers.
     It only adds up where passengers are once per run, so it's cheap enough to check every run,
-    including the `README.md` snapshot test's.
+    including every `best_stopping_position` candidate and the `README.md` snapshot test's.
 
     :param arriving: how many of the arriving passengers are in each place, by its description
     :param departing: how many of the departing passengers are in each place, by its description
     """
-    assumptions = params.assumptions
     for who, places, expected in (
         ("arriving", arriving, params.trains * params.arriving_pax_per_train),
-        ("departing", departing, params.trains * assumptions.departing_pax_per_train),
+        ("departing", departing, params.trains * params.assumptions.departing_pax_per_train),
     ):
         total = sum(pax for _place, pax in places)
         if abs(total - expected) > CONSERVATION_TOLERANCE:
@@ -1328,7 +1737,7 @@ RESULTS_COLUMNS = [
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
-README = Path(__file__).parents[2] / "README.md"
+README = REPO / "README.md"
 RESULTS_START = "<!-- results-table:start -->"
 RESULTS_END = "<!-- results-table:end -->"
 """The README's results table is between these markers, so `--update-readme` can replace it."""
@@ -1340,6 +1749,69 @@ def update_readme_results(table: str) -> None:
     start = readme.index(RESULTS_START) + len(RESULTS_START)
     end = readme.index(RESULTS_END)
     README.write_text(f"{readme[:start]}\n{table}\n{readme[end:]}")
+
+
+STOPPING_POSITION_STEP = 5
+"""Distance (ft) between the stopping positions `best_stopping_position` tries."""
+
+COARSE_STOPPING_POSITION_STEP = 85
+"""
+Distance (ft) between the stopping positions `best_stopping_position` tries first,
+a car's length, before trying every `STOPPING_POSITION_STEP` around the best of them.
+"""
+
+
+def best_stopping_position(params: Params) -> Params:
+    """
+    `params` with the trains stopped where the platform could be evacuated soonest
+    under NFPA 130, i.e. with the fewest occupants at once,
+    of the positions where the longest of their dwells is within `stopping_dwell_tolerance`
+    of the shortest it can be,
+    and if tied, where the longest and then the total dwell are shortest,
+    of every position `STOPPING_POSITION_STEP` apart with the train on the platform.
+    """
+    platform_west_end = params.platform_east_end - params.platform_length
+    # A train longer than the platform overhangs its west end.
+    overhang = max(0, params.train_length - params.platform_length)
+    candidates: list[Params] = []
+    train_east_end = params.platform_east_end
+    while train_east_end - params.train_length >= platform_west_end - overhang:
+        candidates.append(dataclasses.replace(params, train_east_end=train_east_end))
+        train_east_end -= STOPPING_POSITION_STEP
+
+    def score(candidate: Params) -> tuple[timedelta, timedelta, float]:
+        """Its longest and total dwells, and its most occupants at once."""
+        # Only the summary matters.
+        _time_series, summary = simulate(
+            candidate, record_time_series=False, print_time_series=False
+        )
+        dwells = summary.dwells
+        if any(dwell is None for dwell in dwells):
+            return timedelta.max, timedelta.max, summary.max_occupants
+        finished = [dwell for dwell in dwells if dwell is not None]
+        return max(finished), sum(finished, timedelta(0)), summary.max_occupants
+
+    scores: dict[float, tuple[timedelta, timedelta, float]] = {}
+
+    def cached_score(candidate: Params) -> tuple[timedelta, timedelta, float]:
+        assert candidate.train_east_end is not None
+        if candidate.train_east_end not in scores:
+            scores[candidate.train_east_end] = score(candidate)
+        return scores[candidate.train_east_end]
+
+    def best(of: list[Params]) -> Params:
+        longest = min(cached_score(c)[0] for c in of)
+        tolerance = params.assumptions.stopping_dwell_tolerance
+        within = [c for c in of if cached_score(c)[0] - tolerance <= longest]
+        return min(within, key=lambda c: (cached_score(c)[2], *cached_score(c)[:2]))
+
+    # Try every car length first, then every `STOPPING_POSITION_STEP` within a car length of it.
+    coarse_step = COARSE_STOPPING_POSITION_STEP // STOPPING_POSITION_STEP
+    coarse = best(candidates[::coarse_step])
+    i = candidates.index(coarse)
+    nearby = candidates[max(0, i - coarse_step) : i + coarse_step + 1]
+    # Every position tried counts toward the shortest longest dwell.
+    return best([c for c in candidates if c.train_east_end in scores] + nearby)
 
 
 OUTPUT_DIR = Path("output")
@@ -1357,9 +1829,9 @@ def write_csv(path: Path, header: list[str], rows: list[list[Any]]) -> None:
         writer.writerows(rows)
 
 
-def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> None:
+def save_time_series(params: Params, time_series: TimeSeries, summary: Summary, stem: Path) -> None:
     """
-    Save `params`' parameters and time series to CSVs,
+    Save `params`' parameters, VCEs, and time series to CSVs,
     and its charts to an SVG, all named starting with `stem`.
     """
     param_values = [*annotated_field_values(params), *annotated_field_values(params.assumptions)]
@@ -1386,6 +1858,48 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
         [
             [round(instant.time.total_seconds()), *itertools.chain.from_iterable(train_values)]
             for instant, train_values in zip(time_series.instants, time_series.trains, strict=True)
+        ],
+    )
+
+    write_csv(
+        stem.with_name(f"{stem.name}_vces.csv"),
+        [
+            "Time (s)",
+            *(
+                f"{vce.name} {column}"
+                for vce in params.vces
+                for column in ("Queue (pax)", "Up Rate (pax/s)")
+            ),
+        ],
+        [
+            [round(instant.time.total_seconds()), *itertools.chain.from_iterable(vce_values)]
+            for instant, vce_values in zip(time_series.instants, time_series.vces, strict=True)
+        ],
+    )
+    write_csv(
+        stem.with_name(f"{stem.name}_vce_list.csv"),
+        [
+            "VCE",
+            "Type",
+            "Role",
+            "Width (ft)",
+            "West End (ft)",
+            "East End (ft)",
+            "Queue Empty Time (s)",
+        ],
+        [
+            [
+                vce.name,
+                vce.type,
+                role,
+                vce.width,
+                vce.west_end,
+                vce.east_end,
+                None if empty_time is None else round(empty_time.total_seconds()),
+            ]
+            for vce, role, empty_time in zip(
+                params.vces, vce_roles(params.vces), summary.vce_empty_times, strict=True
+            )
         ],
     )
 
@@ -1449,6 +1963,7 @@ def run_model(params: Params, charts: bool) -> str:
     Run the model, return its row of the results table,
     and with `charts`, print its time series and save its CSVs and charts in `OUTPUT_DIR`.
     """
+    params = best_stopping_position(params)
     time_series, summary = simulate(
         params=params, record_time_series=charts, print_time_series=charts
     )
@@ -1458,6 +1973,7 @@ def run_model(params: Params, charts: bool) -> str:
         save_time_series(
             params,
             time_series,
+            summary,
             OUTPUT_DIR
             / (
                 f"{params.filename_prefix}"
@@ -1532,7 +2048,12 @@ def scenarios() -> list[Params]:
 
 
 def main(update_readme: bool = False, charts: bool = False) -> None:
-    """Run every scenario and print a table of their results."""
+    """
+    Run every scenario and print a table of their results.
+
+    :param update_readme: also replace the results table in the README with this run's
+    :param charts: also print each scenario's time series and save its CSVs and charts
+    """
     if charts:
         OUTPUT_DIR.mkdir(exist_ok=True)
     with ProcessPoolExecutor() as executor:

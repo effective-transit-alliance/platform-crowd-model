@@ -131,34 +131,59 @@ each using the passenger counts left by the one before.
 2. **Going upstairs.**
    Arriving passengers leave the platform
    via the vertical circulation elements (VCEs), i.e. the stairs and escalators.
-   - Each platform's VCEs are from [`data/vces.csv`](./data/vces.csv)
-     (see [VCE Width Data](#vce-width-data)).
-     They're all treated as stairs, except the widest escalator, which is left out,
-     like the ETA report's one VCE per platform, e.g. an escalator running the other way.
-   - They queue at the stairs, which discharge them at LOS E capacity,
-     17 pax/min per foot of VCE width
-     ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)),
+   - Each VCE has its own queue, which it discharges at its capacity
      as long as anyone is queued
      ([TCQSM, p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
-   - So there's no gradual taper: the stairs stay at capacity until the platform is clear.
+   - A stair's capacity is LOS E capacity, 17 pax/min per foot of its width
+     ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)).
+   - An escalator's is the TCQSM's nominal capacity at 90 ft/min:
+     34 pax/min with treads narrower than 2'8", and 72 pax/min with wider treads,
+     since 2'8" treads carry close to 3'4" treads' capacity
+     ([TCQSM, Exhibit 10-31, p. 10-52](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=56)).
+   - Each VCE's width and position are from
+     [`data/vces.csv`](./data/vces.csv)
+     (see [Estimated Widths](#estimated-widths)).
+     - The train's doors are spread evenly along it,
+       and it stops wherever on the platform the most passengers on it at once is fewest,
+       so it can be evacuated soonest under NFPA 130,
+       of the positions where the longest of the trains' dwells is within 1:00 of the shortest it can be,
+       trying every position a car length (85') apart,
+       then every position 5' apart within a car length of the best of those.
+     - Each second, each door's alighting passengers walk to the quickest VCE:
+       the one with the least walking time plus waiting time
+       for everyone already queued or walking there.
+     - They walk to the VCE's nearest end at 250 ft/min,
+       the TCQSM's design walking speed
+       ([p. 10-20](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=24)).
+     - Stairs go both ways, but escalators go one way.
+       A platform's only escalator goes up.
+       With more, the easternmost, toward 7th Avenue, goes up,
+       and the westernmost, toward 8th Avenue, goes down,
+       matching the AM peak, when most passengers are heading toward 7th Avenue.
+       Any others go up while the platform is alighting,
+       then reverse to go down once fewer than 10% of a train's arriving passengers
+       are left on the platform or aboard trains that have arrived,
+       and nobody is queued at or walking to them.
    - The report's "taper time" is when the remaining arriving passengers fit in the stair queues,
      20' of queue in front of the VCEs at 5 sq ft/pax
      (the TCQSM's stair queuing space).
-     It's now always about 15 s before the clear time,
-     but it's kept in the results table to compare with the report.
-   - The few seconds of walking from the doors to the stairs are ignored.
+     It's kept in the results table to compare with the report.
 3. **Coming downstairs.**
    Departing passengers queue upstairs and come down to the platform.
-   - The trains' passengers split the VCE width
+   - The trains' passengers split each VCE's width
      in proportion to how many of each are still upstairs,
-     and each train's share of the stairs carries the same share of the upward flow.
-   - Nobody comes down while the upward flow is worse than LOS C, 10 pax/min/ft.
+     and each train's share of a VCE carries the same share of its upward flow.
+   - Nobody comes down a VCE while its upward flow is worse than LOS C, 10 pax/min/ft.
+   - Each walks at 250 ft/min to the nearest of their train's cars,
+     unless it's close to full, i.e. 90% of its 135 seats are boarded, waiting, or walking to it,
+     in which case they go to the nearest car that isn't.
    - Otherwise, both directions share LOS E capacity, 17 pax/min/ft,
      so passengers come down with whatever their share of the upward flow leaves of that.
 4. **Boarding.**
    Departing passengers on the platform board a train
    once every arriving passenger has alighted from it,
    at 1 pax/s per single-door equivalent.
+   Each car boards only its own waiting passengers, through its own 4 doors.
 
 ### Crowding
 
@@ -168,7 +193,7 @@ each using the passenger counts left by the one before.
   (A > 13, B > 10, C > 7, D > 3, E > 2 sq ft/pax, or else F;
   [TCQSM, Exhibit 10-32, p. 10-55](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=59)),
   since most passengers on the platform are waiting, either to board or in the stair queues.
-- **On the stairs**, the upward flow is graded with Fruin's stair LOS
+- **On the stairs**, the upward flow on the most crowded VCE is graded with Fruin's stair LOS
   (A ≤ 5, B ≤ 7, C ≤ 10, D ≤ 13, E ≤ 17 pax/min/ft, or else F;
   [Fruin, pp. 12–14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=12)).
 
@@ -268,12 +293,6 @@ or **unclear** (it could go either way).
 
 - **Neutral:** The platform is a single island platform serving two tracks,
   except platform 9, which only serves track 17.
-- **Neutral:** Its area is that of its outline in OpenStreetMap, which OpenRailwayMap draws,
-  in [`data/platforms_osm.csv`](./data/platforms_osm.csv),
-  written by `uv run platform-crowd-model data platforms-osm`
-  ([`platforms_osm.py`](./src/platform_crowd_model/platforms_osm.py)),
-  since platforms taper toward their ends.
-  The outlines have no source, so they're only as accurate as whoever drew them.
 - **Optimistic:** 75% of its area is usable, the rest taken by columns, stairs, and other obstructions
   (see [Usable Platform Area](#usable-platform-area)).
 - **Optimistic:** Passengers are spread evenly over the whole usable area,
@@ -283,24 +302,38 @@ or **unclear** (it could go either way).
 
 ### Stairs and Escalators
 
-- **Pessimistic:** All VCEs are treated as stairs, even escalators, which have higher capacities.
-- **Pessimistic:** Each platform's widest escalator is excluded, e.g. as if it's running the other way.
-- **Unclear:** Most VCEs' widths are estimated from a scaled plan,
-  and platforms 9 to 11's positions are partly from a schematic map
-  (see [VCE Width Data](#vce-width-data)).
+- **Unclear:** Escalators' capacities are the TCQSM's nominal ones at 90 ft/min,
+  but their speeds aren't known,
+  and their tread widths are measured from a drawing, so they may be off by a few inches,
+  which matters at the 2'8" boundary between 34 and 72 pax/min.
+- **Unclear:** Which escalators run which way isn't known,
+  so they follow the rules above.
+  Which escalator goes down is based on AM peak demand toward 7th Avenue,
+  and when the extra ones reverse isn't from any source.
+- **Unclear:** Most VCEs' widths are estimated from a drawing,
+  or on platforms 9 to 11, their positions from a schematic map,
+  and some of their VCEs may be missing (pessimistic)
+  (see [Estimated Widths](#estimated-widths)).
 - **Unclear:** Penn Transformation's and Platform A's new VCEs' widths aren't published,
   so they're assumed (see [Penn Transformation](#penn-transformation) and [Platform A](#platform-a)).
-- **Optimistic:** All VCEs act as one pooled queue:
-  passengers spread across them in proportion to their widths,
-  with no preference for any exit, e.g. toward 7th Avenue.
+- **Optimistic:** Arriving passengers know which VCE is quickest,
+  with no preference for any exit, e.g. toward 7th Avenue
+  (see [Passengers Only Prefer the Quickest VCE](#passengers-only-prefer-the-quickest-vce)).
+- **Optimistic:** Trains stop at the best position on the platform for evacuating it,
+  within 1:00 of their best dwells, with their doors spread evenly along their length.
+- **Unclear:** That 1:00 isn't from any source.
 - **Unclear:** Stair capacity is linear in width,
   though the TCQSM notes capacity is really stepped by the number of pedestrian lanes
   ([p. 10-49](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=53)).
 - **Optimistic:** Stair capacity doesn't depend on the stair's rise,
   though long climbs slow people down ([p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)),
   or on luggage, strollers, or wheelchairs.
-- **Optimistic, by a few seconds:** Walking from the doors to the stairs takes no time;
-  passengers can go upstairs the same second they alight.
+- **Optimistic:** Arriving passengers walk to the VCEs at 250 ft/min,
+  though the TCQSM notes people walk slower in crowds with less than 25 sq ft/pax
+  ([Exhibit 10-10, p. 10-21](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=25)).
+- **Unclear:** Departing passengers coming downstairs
+  walk to the nearest car until it's close to full, at 90% of its seats,
+  which isn't from any source.
 - **Optimistic:** The concourse upstairs never backs up, so the stairs always discharge.
 
 ### Trains
@@ -351,43 +384,78 @@ Its stress test is close to this model's platform 3 scenario with trains 2 minut
 trains alighting and boarding on both tracks of the same platform, 2.5 minutes apart,
 with up to 1,600 passengers per commuter train ([p. 4-40](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=51)).
 
-For NJ Transit trains that only alight ("drop and go"),
+For NJT trains that only alight ("drop and go"),
 its baseline, i.e. today's VCEs,
 needed up to 7.9 minutes of passenger service time,
 the time for passengers to alight, cross the platform, and reach the VCEs
 ([Table 2, p. 4-43](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=54)).
-This model clears platform 3's arriving passengers in 4:29,
-so it's likely substantially optimistic,
+This model clears platform 3's arriving passengers in 5:10,
+so it's likely still optimistic,
 though the two aren't exactly comparable:
 7.9 minutes is the worst case across all platforms and simulation runs.
 
-The FRA attributes long clearance times to things this model leaves out
-([p. 3-33](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=44)):
+The FRA attributes long clearance times to
 queues at the base of VCEs, uneven use of VCEs, and platform clutter
-reducing the usable width.
+reducing the usable width
+([p. 3-33](https://railroads.dot.gov/sites/fra.dot.gov/files/2026-07/2026.07.13_Penn%20Station%20SOS_Phase%20I%20Report_FINAL.pdf#page=44)).
+This model only captures the first two.
 
-### Stairs Are One Pooled Queue
+### Passengers Only Prefer the Quickest VCE
 
-Like the TCQSM and NFPA 130 for platform clearance
-([TCQSM, p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)),
-the model treats all of the VCEs as one queue discharging at capacity until it's empty.
-This is optimistic for a whole platform:
+Each VCE has its own queue, with walking distances to it,
+so stairs near the ends of the platform or far from the busiest doors can run dry
+while others still have a queue.
+But arriving passengers choose perfectly:
+each second, each door's passengers know every VCE's queue, even hundreds of feet away,
+and walk to the one they can go up soonest,
+so every VCE going up is used, and their waits even out across the platform (optimistic).
+Before each VCE had its own queue, e.g. on platform 3 with 2-minute headways,
+one pooled queue cleared 44 s sooner.
+Always walking to the nearest VCE is the opposite extreme (pessimistic),
+and real passengers are somewhere in between:
 
-- **Stairs empty unevenly.**
-  Stairs near the ends of the platform, or far from the busiest doors,
-  run out of passengers while others still have a queue,
-  so the total flow drops below capacity before the platform clears.
-  This is likely the model's largest optimistic bias.
-- **Passengers prefer some exits**, e.g. toward 7th Avenue, as the ETA report notes,
-  concentrating queues at fewer stairs.
-- **Walking from the doors to the stairs takes no time.**
-  This only shifts the results by a few seconds, but also ignores
-  passengers crossing through crowds of waiting passengers.
+- **They only see nearby queues.**
+  From a door, passengers can see the nearest few VCEs,
+  not one 500' down a crowded platform.
+- **They don't all make the same choice.**
+  Given similar options, people split between them unevenly,
+  rather than all taking the best one each second.
+- **They head for a destination.**
+  Most are heading toward 7th Avenue, as the ETA report notes,
+  and the West End Concourse leads toward 8th Avenue and Moynihan Train Hall,
+  so many take a longer wait on a VCE toward where they're going,
+  concentrating queues at fewer VCEs.
+- **Regulars position themselves.**
+  Commuters ride in the car nearest their usual exit,
+  so arriving passengers aren't spread evenly across the doors.
+- **They switch queues.**
+  Some leave a queue that isn't moving for another,
+  while the model's passengers stay with the VCE they first chose.
+- **They only see who's queued.**
+  The model counts passengers still walking to a VCE as queued ahead of them,
+  which passengers can't see.
 
-Modeling each VCE's own queue with walking distances would fix these.
-Each VCE's position and width are now in [`data/vces.csv`](./data/vces.csv)
-(see [VCE Width Data](#vce-width-data)),
-but the model only uses their widths, and their positions for NFPA 130, so far.
+These could be modeled later, from simplest to most involved:
+
+- **A visibility radius:** passengers only consider VCEs within some distance, or the nearest few,
+  and take the quickest of those.
+- **Logit choice:** passengers split across VCEs
+  with probability proportional to e^(−θ × each VCE's time to go up),
+  the standard approach to route choice in pedestrian and transit models.
+  θ = 0 splits them evenly, and a large θ is the current model.
+  Since the model already tracks fractional passengers,
+  each second's alighting passengers can be split by those probabilities.
+- **Destination preference:** adding each VCE's walk upstairs toward each destination,
+  with a share of the passengers heading to each, e.g. 7th Avenue or the West End Concourse,
+  which needs a source for that split.
+- **Uneven doors:** more of each train's passengers at the doors nearest the busiest exits.
+- **Queue switching:** each second, passengers queued at one VCE move to another
+  if it's become much quicker.
+
+Penn could also bring passengers closer to the current model's perfect choices,
+e.g. with screens showing each VCE's queue in real time,
+staff directing passengers,
+or blocking off paths to some VCEs to spread passengers out.
 
 ### Platform Crowding Is Graded Against the Whole Platform
 
@@ -572,14 +640,15 @@ No such drawing of platforms 9 to 11 was found.
 finds every run of treads on the platforms, merges a stair's flights,
 and measures each VCE's width and position into
 [`data/vces.csv`](./data/vces.csv),
-finding them with [`shapes.py`](./src/platform_crowd_model/shapes.py), including curved stairs:
+finding them the same way as [the shapes](#platform-shapes), including curved stairs,
+so the two match:
 
 - A VCE's position is its footprint's, including its landings and balustrades.
 
 - Positions are in the Master Plan's frame, feet east of its plans' west edge.
   The two drawings register to within about 1'2":
   the platforms' east ends on them are all the same distance apart.
-  Each platform's east end in that frame
+  Each platform's east end in that frame, for the model's trains to stop against,
   is in [`data/platform_east_ends.csv`](./data/platform_east_ends.csv):
   the sheet's on platforms 1 to 8, and the Master Plan's on platforms 9 to 11.
 - VCEs matching a Master Plan VCE of the same type within 15'
@@ -625,12 +694,14 @@ These are only estimates:
   e.g. 2 stairs each for the West End and Exit Concourses.
 - The sheet predates NJT's replacement of an escalator on tracks 7/8 (platform 4)
   with stairs in about 2021.
+- The model gives an escalator the TCQSM's capacity for its tread width,
+  so a few inches' error can move it across 2'8", between 34 and 72 pax/min.
 
 Platforms 9 to 11 aren't on that plan,
 so their VCEs are from NJT's PCIP Phase 1 existing plan
 ([Appendix A, sheet A-001](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=24),
 July 2019), with `source` `pcip_phase_1`, where it draws their treads,
-measured the same way,
+measured as for the [platform shapes](#platform-shapes),
 and otherwise from NJT's January 2022 station directory,
 whose map is schematic and not to scale.
 The directory's VCEs are matched to the plan's, nearest first, within 60',
@@ -738,20 +809,6 @@ The report doesn't say which are escalators or how wide any are, so:
 - Each extended platform's new west end is where its extension's box on Figure 11 ends,
   185' to 317' west of its end in PCIP Phase 1's plan.
 
-Each platform's west end today is from NJT's PCIP Phase 1 existing track plan
-([Appendix A, sheet TK-003](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=8),
-July 2019), since the PCIP Phase 2 and Master Plan drawings cut the platforms off at their west ends.
-It's a scan at 1" = 80',
-so `uv run platform-crowd-model data platform-west-ends-pcip-phase-1`
-([`platform_west_ends_pcip_phase_1.py`](./src/platform_crowd_model/platform_west_ends_pcip_phase_1.py))
-finds its orange platform edges by color
-and fits them to the platforms' east ends in the Master Plan's frame,
-which comes out at 80.3 ft per inch of the sheet, with every east end within about 1'.
-Each platform's west end is in
-[`data/platform_west_ends_pcip_phase_1.csv`](./data/platform_west_ends_pcip_phase_1.csv).
-The lengths between them agree with the EA's to within about 40',
-except platform 9's, which is 134' longer, like its outline in OpenStreetMap.
-
 ### Platform A
 
 NJT's PCIP Phase 1 study proposed, as its Alternative 12, a new Platform A
@@ -776,6 +833,37 @@ The report doesn't give the VCEs' widths,
 so stairs are taken to be the 5'-0" egress stairs it sizes its other alternatives' with,
 and escalators to have 3'4" steps.
 In the model, it's platform 0.
+
+### Field Survey
+
+Since no public source has every VCE's width,
+[`data/vces_field_survey.csv`](./data/vces_field_survey.csv) is a sheet for measuring them in person,
+made by `uv run platform-crowd-model data vces-field-survey`
+([`vces_field_survey.py`](./src/platform_crowd_model/vces_field_survey.py)).
+It lists each platform's VCEs expected from the PCIP Phase 2 plan (platforms 1 to 8),
+the 2022 directory, and the Master Plan,
+each sorted west to east, since they can't all be aligned reliably,
+starting with platform 3, the ETA report's focus,
+then platform 11, which has no width data.
+Surveyors fill in the columns after `midpoint_ft`, feet east of the Master Plan's plans' west edge:
+
+- `found`: yes, no, or the `vce_name` of another row it duplicates.
+  Add rows for VCEs neither source lists.
+- `clear_width_in`: the width between the handrails at the platform end,
+  which the capacity standards use.
+- `escalator_step_width_in` and `escalator_direction_am_peak` and `_pm_peak`.
+- `nearest_column_number` and `distance_from_east_end_ft`:
+  platform columns' painted numbers give precise positions.
+- `leads_to`: the concourse, which also shows whether the directory shows a VCE twice.
+- `obstructions`: columns, benches, bins, or narrow landings near the bottom,
+  which the FRA found also slow clearing.
+- `photos` and `notes`.
+
+Regenerating the sheet keeps what surveyors have entered.
+Each row that's still generated keeps its entries,
+matched by its platform, source, type, and position rather than its `vce_name`,
+which can change as VCEs are added.
+Every other row with entries, like one a surveyor added, is kept at the end.
 
 ### Sources and Their Dates
 
@@ -841,6 +929,151 @@ Notes:
   Platforms 10 and 11's match the EA's capacities divided by 17 pax/min/ft,
   but platform 3's matches the EA's platform 1, not platform 3.
 
+### Platform Dimensions
+
+Each platform's length is from the Moynihan Station EA's Table 4.4-10
+([p. 4.4-22](https://web.archive.org/web/20241011135133/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/04_4%20StationPedCirculation.pdf#page=22)),
+in [`data/platform_lengths_moynihan_ea.csv`](./data/platform_lengths_moynihan_ea.csv),
+the only source found with written platform lengths.
+Its area is from its outline in OpenStreetMap, which OpenRailwayMap draws,
+in [`data/platforms_osm.csv`](./data/platforms_osm.csv),
+written by `uv run platform-crowd-model data platforms-osm`
+([`platforms_osm.py`](./src/platform_crowd_model/platforms_osm.py)),
+since platforms taper toward their ends.
+The outlines have no source, but agree with the PCIP Phase 2 existing plan's widths
+to within about 2', and with the EA's lengths to within about 60',
+except platform 9's outline, which is 178' longer than the EA's length.
+The PCIP Phase 2 and Master Plan drawings cut the platforms off at their west ends,
+so they can't give lengths or areas.
+
+NJT's PCIP Phase 1 existing track plan
+([Appendix A, sheet TK-003](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=8),
+July 2019) doesn't, though.
+It's a scan at 1" = 80',
+so `uv run platform-crowd-model data platform-west-ends-pcip-phase-1`
+([`platform_west_ends_pcip_phase_1.py`](./src/platform_crowd_model/platform_west_ends_pcip_phase_1.py))
+finds its orange platform edges by color
+and fits them to the platforms' east ends in the Master Plan's frame,
+which comes out at 80.3 ft per inch of the sheet, with every east end within about 1'.
+Each platform's west end is in
+[`data/platform_west_ends_pcip_phase_1.csv`](./data/platform_west_ends_pcip_phase_1.csv).
+The lengths between them agree with the EA's to within about 40',
+except platform 9's, which is 134' longer, like its outline in OpenStreetMap.
+
+Platform 11 is 1,007' long, a few feet short of a 12-car train at 85' per car,
+but the EA has it take 12-car LIRR trains,
+so trains can overhang their platform's west end by up to 15'.
+
+### Platform Shapes
+
+The model doesn't use them yet, but the shapes of the platforms and of what's on them
+are extracted from four vector plans of the station,
+by [`shapes.py`](./src/platform_crowd_model/shapes.py) and a module for each plan:
+
+- NJT's PCIP Phase 1 existing plan
+  ([Appendix A, sheet A-001](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=24),
+  July 2019),
+  by `uv run platform-crowd-model data shapes-pcip-phase-1`
+  ([`shapes_pcip_phase_1.py`](./src/platform_crowd_model/shapes_pcip_phase_1.py)).
+  It has every platform, 1 to 11 and the diagonal platform, though it cuts 5 to 8 off to the west.
+  It's marked not to scale, but it's drawn to one:
+  fitting its platforms' east ends and centerlines to the frame
+  gives scales along and across the platforms within 0.1% of each other.
+- NJT's PCIP Phase 2 existing plan
+  ([sheet A-001](https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf#page=45),
+  November 2020),
+  by `uv run platform-crowd-model data shapes-pcip-phase-2`
+  ([`shapes_pcip_phase_2.py`](./src/platform_crowd_model/shapes_pcip_phase_2.py)).
+  It only has platforms 1 to 8.
+- NJT's PCIP Phase 1 plan of Alternative 12
+  ([Appendix A, sheet A-021](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=31),
+  July 2019), with [Platform A](#platform-a),
+  by `uv run platform-crowd-model data shapes-platform-a-pcip-phase-1`
+  ([`shapes_platform_a_pcip_phase_1.py`](./src/platform_crowd_model/shapes_platform_a_pcip_phase_1.py)).
+  It's the existing plan with Alternative 12 added, so it's read the same way.
+  Platform A's VCEs are named by their labels, e.g. `AP7`,
+  and each of AP7 to AP12's stair and escalator side by side is one footprint,
+  since they're drawn as one run of treads.
+- The Moynihan Station EA's lower concourse plan
+  ([Figure 3-4](https://web.archive.org/web/2017id_/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/03a%20Figure%203-3%20and%203-4.pdf#page=2),
+  February 2010),
+  by `uv run platform-crowd-model data shapes-moynihan-ea`
+  ([`shapes_moynihan_ea.py`](./src/platform_crowd_model/shapes_moynihan_ea.py)),
+  with the platforms' west ends, Moynihan Train Hall's escalators,
+  and the stairs down from the West End Concourse and the baggage and egress corridor.
+  It's a design, from before the Train Hall was built,
+  so its VCEs are as [`vces_moynihan_ea.py`](./src/platform_crowd_model/vces_moynihan_ea.py)
+  measures them, leaving out the escalator taken as not built.
+  Its platforms' west ends agree with the PCIP Phase 1 track plan's to within about 2'
+  on platforms 3 to 9,
+  though platforms 4 and 8's last 40', past the baggage and egress corridor,
+  are drawn as slivers too thin to extract.
+  It doesn't show platforms 1 and 2, or 10 and 11 west of the West End Concourse.
+  Pieces of platform west of the West End Concourse are named by the PCIP Phase 1 plan's platform
+  they're mostly on, if any.
+
+The PCIP plans are from before Moynihan Train Hall opened, so they don't have its escalators.
+From each plan, they're:
+
+- each platform's outline, with platforms 1 and 2 sharing one, as the plans draw them
+- each VCE's footprint: each flight's treads and the balustrades beside them,
+  joined by their landings, so a T-shaped stair's is a T,
+  named as the nearest VCE of the same type in [`data/vces.csv`](./data/vces.csv), if one's within 15'
+- curved stairs, e.g. the Central Concourse's down to platforms 5 and 7,
+  as the band their treads sweep, found as runs of evenly spaced treads
+  that aren't horizontal or vertical
+- the columns, the small squares on the platforms
+- the elevators, the boxes with an X across them
+- the walls, e.g. of rooms and of the enclosures around VCEs, as lines,
+  since most have gaps, e.g. for doors, or as areas where they close
+- the concourses above the platforms, at the concourse level
+
+What's under the platforms' labels is left out of the shapes, since the labels clip it.
+The two plans' VCEs on platforms 1 to 8 agree to within a median of 2'10" along the platforms
+and 10" across them.
+The PCIP Phase 1 plan also shows the escalator about 220' along each of platforms 3 to 8
+that the PCIP Phase 2 plan's labels cover.
+
+They're combined into [`data/shapes.geojson`](./data/shapes.geojson)
+and [`data/shapes.latlon.geojson`](./data/shapes.latlon.geojson)
+by `uv run platform-crowd-model data shapes-combined`
+([`shapes_combined.py`](./src/platform_crowd_model/shapes_combined.py)),
+taking each part of the station from its best source, like `data/vces.csv`:
+
+- Each VCE in `data/vces.csv` is from the plan its row is from,
+  or else, e.g. for those from NJT's directory, the PCIP Phase 1 plan.
+  8 of platforms 9 to 11's, which the PCIP Phase 1 plan doesn't draw treads for, have no footprint,
+  and nor does platform 3's escalator under the PCIP Phase 2 plan's label.
+- Everything else on the platforms is from the PCIP Phase 2 plan where it has the platform,
+  or else the PCIP Phase 1 plan, or else, further west, the Moynihan Station EA's,
+  and each platform's outline is pieced together from them the same way.
+- The concourses are the PCIP Phase 1 plan's, and the Moynihan Station EA's beyond it.
+
+The shapes are 2D, at the platform level unless they say otherwise,
+since what matters on the platform is the space each VCE takes up there;
+going up, a VCE's capacity is already its width.
+
+They're indented GeoJSON, with each geometry's coordinates on one line, in two files for each plan:
+
+- `data/shapes_<plan>.geojson`, e.g.
+  [`data/shapes_pcip_phase_1.geojson`](./data/shapes_pcip_phase_1.geojson),
+  in feet in the Master Plan's frame, extended to 2D:
+  x east of its plans' west edge, as in `data/vces.csv`,
+  and y north of platform 5's centerline on the PCIP Phase 2 plan,
+  where east and north are along Manhattan's street grid.
+  GeoJSON requires longitude and latitude, so this is strictly not valid GeoJSON,
+  but it's what the code reads.
+- `data/shapes_<plan>.latlon.geojson`, e.g.
+  [`data/shapes_pcip_phase_1.latlon.geojson`](./data/shapes_pcip_phase_1.latlon.geojson),
+  the same shapes in longitude and latitude, so GitHub can show them on a map.
+  Each point is still longitude first, as GeoJSON requires.
+  Every plan's are converted the same way, since they're in the same frame,
+  registered by the PCIP Phase 2 plan's platforms to their outlines in OpenStreetMap:
+  rotated 29.2° to their average direction, the street grid's,
+  and offset to match their east ends on average,
+  which agree to within about 4' across the platforms, but only about 37' along them,
+  like OpenStreetMap's lengths.
+
 ## Results
 
 Times are in m:ss.
@@ -874,80 +1107,86 @@ and 12.04 pax/s for 0:32, tapering at 6:04, without it.
 
 ### Current Results
 
-This table is generated by `uv run platform-crowd-model run --update-readme`:
+This table is generated by `uv run platform-crowd-model run --update-readme`.
+Some of platforms 9 to 11's VCEs are only estimated from NJT's station directory
+(see [Estimated Widths](#estimated-widths)).
+Penn Transformation's new VCEs are only at the FRA's "generalized locations",
+with widths assumed from Moynihan's
+(see [Penn Transformation](#penn-transformation)).
+
 
 <!-- results-table:start -->
 | Platform | Headway | VCE width | NFPA 130 evacuation | NFPA 130 to concourse | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max pax on platform | Max density (pax/m²) | Max up rate (pax/s) | NFPA 130 travel distance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| A | 0:00 | 56'8" | 6:53 ✗ | 7:14 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:29 | 6:44 | 1:26 | 6:43 | 6044 | 3.82 (E) | 16.06 | 80'6" ✓ |
-| 1 | 0:00 | 31'6" | 6:36 ✗ | 6:57 ✗ | 0:00, 0:00, 5:31, 5:31 | 5:31, 5:31, 0:46, 0:46 | 9:49 | 10:04 | 6:17 | 9:04 | 3206 | 3.04 (D) | 8.93 | 193' ✓ |
-| 1T | 0:00 | 43'6" | 5:42 ✗ | 6:03 ✗ | 0:00, 0:00, 3:48, 3:48 | 3:48, 3:48, 0:44, 0:44 | 7:12 | 7:27 | 4:32 | 7:18 | 3772 | 2.75 (D) | 12.32 | 118' ✓ |
-| 2 | 0:00 | 32'7" | 6:27 ✗ | 6:48 ✗ | 0:00, 0:00, 5:16, 5:16 | 5:16, 5:16, 0:46, 0:46 | 9:25 | 9:40 | 6:02 | 8:46 | 3233 | 3.26 (D) | 9.23 | 192' ✓ |
-| 2T | 0:00 | 44'7" | 5:37 ✗ | 5:58 ✓ | 0:00, 0:00, 3:40, 3:40 | 3:40, 3:40, 0:44, 0:44 | 6:59 | 7:14 | 4:24 | 7:06 | 3799 | 2.85 (D) | 12.63 | 143' ✓ |
-| 3 | 0:00 | 45'9" | 5:31 ✗ | 5:52 ✓ | 0:00, 0:00, 3:31, 3:31 | 3:31, 3:31, 0:44, 0:44 | 6:45 | 7:00 | 4:15 | 6:56 | 3828 | 3.02 (D) | 12.96 | 101'6" ✓ |
-| 3T | 0:00 | 61'1" | 5:16 ✗ | 5:37 ✓ | 0:00, 0:00, 0:44, 0:44 | 0:44, 0:44, 0:44, 0:44 | 4:57 | 5:12 | 1:28 | 5:12 | 4850 | 2.76 (D) | 17.31 | 258' ✓ |
-| 4 | 0:00 | 42'8" | 6:31 ✗ | 6:52 ✗ | 0:00, 0:00, 4:40, 4:40 | 4:40, 4:40, 0:43, 0:43 | 8:53 | 9:08 | 5:23 | 8:56 | 4292 | 2.74 (D) | 12.09 | 184' ✓ |
-| 4T | 0:00 | 54'8" | 7:10 ✗ | 7:31 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:44 | 6:59 | 1:26 | 6:58 | 6087 | 3.77 (E) | 15.49 | 184' ✓ |
-| 5 | 0:00 | 53'11" | 7:16 ✗ | 7:37 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:50 | 7:05 | 1:26 | 7:04 | 6104 | 3.17 (D) | 15.28 | 230' ✓ |
-| 5T | 0:00 | 69'3" | 5:30 ✗ | 5:51 ✓ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 5:16 | 5:31 | 1:26 | 5:30 | 5769 | 2.88 (D) | 19.62 | 230' ✓ |
-| 6 | 0:00 | 40'6" | 6:46 ✗ | 7:07 ✗ | 0:00, 0:00, 5:01, 5:01 | 5:01, 5:01, 0:43, 0:43 | 9:29 | 9:44 | 5:44 | 9:24 | 4238 | 2.38 (D) | 11.47 | 200' ✓ |
-| 6T | 0:00 | 52'6" | 7:29 ✗ | 7:50 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 7:01 | 7:16 | 1:26 | 7:15 | 6135 | 3.33 (D) | 14.88 | 200' ✓ |
-| 7 | 0:00 | 46'11" | 8:28 ✗ | 8:49 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 7:53 | 8:08 | 1:26 | 8:07 | 6256 | 3.28 (D) | 13.29 | 248' ✓ |
-| 7T | 0:00 | 56'3" | 6:56 ✗ | 7:17 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:32 | 6:47 | 1:26 | 6:46 | 6053 | 3.04 (D) | 15.94 | 248' ✓ |
-| 8 | 0:00 | 45'10" | 6:13 ✗ | 6:34 ✗ | 0:00, 0:00, 4:12, 4:12 | 4:12, 4:12, 0:43, 0:43 | 8:07 | 8:22 | 4:55 | 8:18 | 4370 | 3.05 (D) | 12.99 | 202' ✓ |
-| 8T | 0:00 | 55'2" | 7:05 ✗ | 7:26 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:40 | 6:55 | 1:26 | 6:54 | 6076 | 4.06 (E) | 15.63 | 125' ✓ |
-| 9 | 0:00 | 47' | 5:06 ✗ | 5:27 ✓ | 0:00, 0:44, 1:28, 2:12 | 0:44, 0:44, 0:44, 0:44 | 6:31 | 6:46 | 2:56 | 6:45 | 3589 | 2.69 (D) | 13.32 | 107'6" ✓ |
-| 9T | 0:00 | 59' | 3:37 ✓ | 3:57 ✓ | 0:00, 0:44, 1:28, 2:12 | 0:44, 0:44, 0:44, 0:44 | 5:08 | 5:23 | 2:56 | 5:23 | 3025 | 2.23 (D) | 16.72 | 106' ✓ |
-| 10 | 0:00 | 86'6" | 4:16 ✗ | 4:37 ✓ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 4:10 | 4:25 | 1:26 | 4:24 | 5393 | 2.21 (D) | 24.51 | 122' ✓ |
-| 10T | 0:00 | 92'6" | 3:56 ✓ | 4:17 ✓ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 3:53 | 4:08 | 1:26 | 4:07 | 5262 | 1.89 (D) | 26.21 | 122' ✓ |
-| 11 | 0:00 | 41'8" | 6:38 ✗ | 6:59 ✗ | 0:00, 0:00, 4:49, 4:49 | 4:49, 4:49, 0:43, 0:43 | 9:09 | 9:24 | 5:32 | 9:08 | 4267 | 3.83 (E) | 11.81 | 127'6" ✓ |
-| 11T | 0:00 | 53'8" | 7:18 ✗ | 7:39 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:52 | 7:07 | 1:26 | 7:06 | 6109 | 5.38 (F) | 15.21 | 90' ✓ |
-| A | 2:00 | 56'8" | 2:31 ✓ | 2:52 ✓ | 0:00, 2:00, 4:00, 6:16 | 0:43, 4:16, 3:58, 1:42 | 7:42 | 7:57 | 7:58 | 6:40 | 1490 | 0.94 (B) | 16.06 | 80'6" ✓ |
-| 1 | 2:00 | 31'6" | 3:03 ✓ | 3:24 ✓ | 0:00, 2:00, 4:00, 9:02 | 0:46, 7:02, 5:02, 0:46 | 11:04 | 11:19 | 9:48 | 9:04 | 1320 | 1.25 (C) | 8.93 | 193' ✓ |
-| 1T | 2:00 | 43'6" | 2:24 ✓ | 2:45 ✓ | 0:00, 2:00, 4:00, 7:05 | 0:44, 5:05, 3:05, 0:44 | 8:40 | 8:55 | 7:49 | 7:16 | 1343 | 0.98 (B) | 12.32 | 118' ✓ |
-| 2 | 2:00 | 32'7" | 2:57 ✓ | 3:18 ✓ | 0:00, 2:00, 4:00, 8:44 | 0:46, 6:44, 4:44, 0:46 | 10:41 | 10:56 | 9:30 | 8:45 | 1310 | 1.32 (C) | 9.23 | 192' ✓ |
-| 2T | 2:00 | 44'7" | 2:21 ✓ | 2:42 ✓ | 0:00, 2:00, 4:00, 6:55 | 0:44, 4:55, 2:55, 0:44 | 8:27 | 8:42 | 7:39 | 7:04 | 1333 | 1.00 (B) | 12.63 | 143' ✓ |
-| 3 | 2:00 | 45'9" | 2:18 ✓ | 2:39 ✓ | 0:00, 2:00, 4:00, 6:44 | 0:44, 4:44, 2:44, 0:44 | 8:14 | 8:29 | 7:28 | 6:56 | 1322 | 1.04 (B) | 12.96 | 101'6" ✓ |
-| 3T | 2:00 | 61'1" | 1:43 ✓ | 2:26 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:44, 0:44, 0:44, 0:44 | 7:03 | 7:18 | 6:44 | 5:12 | 1179 | 0.67 (A) | 17.31 | 258' ✓ |
-| 4 | 2:00 | 42'8" | 2:49 ✓ | 3:10 ✓ | 0:00, 2:00, 4:00, 8:21 | 0:43, 6:21, 4:21, 0:43 | 10:20 | 10:35 | 9:04 | 8:56 | 1621 | 1.04 (B) | 12.09 | 184' ✓ |
-| 4T | 2:00 | 54'8" | 2:37 ✓ | 2:58 ✓ | 0:00, 2:00, 4:00, 6:31 | 0:43, 4:31, 4:17, 1:46 | 8:01 | 8:16 | 8:17 | 6:56 | 1509 | 0.93 (B) | 15.49 | 184' ✓ |
-| 5 | 2:00 | 53'11" | 2:16 ✓ | 2:37 ✓ | 0:00, 2:00, 4:00, 6:36 | 0:43, 4:36, 2:36, 0:43 | 8:07 | 8:22 | 7:19 | 7:04 | 1516 | 0.79 (A) | 15.28 | 230' ✓ |
-| 5T | 2:00 | 69'3" | 1:45 ✓ | 2:13 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 7:08 | 7:23 | 6:43 | 5:28 | 1373 | 0.68 (A) | 19.62 | 230' ✓ |
-| 6 | 2:00 | 40'6" | 3:06 ✓ | 3:27 ✓ | 0:00, 2:00, 4:00, 8:47 | 0:43, 6:47, 4:47, 0:43 | 10:54 | 11:09 | 11:09 | 9:24 | 1716 | 0.96 (B) | 11.47 | 200' ✓ |
-| 6T | 2:00 | 52'6" | 2:18 ✓ | 2:39 ✓ | 0:00, 2:00, 4:00, 6:47 | 0:43, 4:47, 2:47, 0:43 | 8:21 | 8:36 | 7:30 | 7:12 | 1529 | 0.83 (B) | 14.88 | 200' ✓ |
-| 7 | 2:00 | 46'11" | 2:34 ✓ | 2:55 ✓ | 0:00, 2:00, 4:00, 7:36 | 0:43, 5:36, 3:36, 0:43 | 9:23 | 9:38 | 8:19 | 8:06 | 1581 | 0.83 (B) | 13.29 | 248' ✓ |
-| 7T | 2:00 | 56'3" | 2:33 ✓ | 2:54 ✓ | 0:00, 2:00, 4:00, 6:20 | 0:43, 4:20, 4:03, 1:43 | 7:47 | 8:02 | 8:03 | 6:44 | 1494 | 0.75 (A) | 15.94 | 248' ✓ |
-| 8 | 2:00 | 45'10" | 2:38 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 7:46 | 0:43, 5:46, 3:46, 0:43 | 9:36 | 9:51 | 8:29 | 8:18 | 1591 | 1.11 (C) | 12.99 | 202' ✓ |
-| 8T | 2:00 | 55'2" | 2:18 ✓ | 2:39 ✓ | 0:00, 2:00, 4:00, 6:28 | 0:43, 4:28, 2:28, 0:43 | 7:57 | 8:12 | 7:11 | 6:52 | 1504 | 1.01 (B) | 15.63 | 125' ✓ |
-| 9 | 2:00 | 47' | 2:46 ✓ | 3:07 ✓ | 0:00, 2:00, 4:52, 6:00 | 0:44, 2:52, 0:44, 0:44 | 8:00 | 8:15 | 6:44 | 6:44 | 1742 | 1.30 (C) | 13.32 | 107'6" ✓ |
-| 9T | 2:00 | 59' | 1:47 ✓ | 2:08 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:44, 0:44, 0:44, 0:44 | 7:06 | 7:21 | 6:44 | 5:20 | 1198 | 0.88 (B) | 16.72 | 106' ✓ |
-| 10 | 2:00 | 86'6" | 1:24 ✓ | 1:45 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 6:51 | 7:07 | 6:43 | 4:24 | 1211 | 0.50 (A) | 24.51 | 122' ✓ |
-| 10T | 2:00 | 92'6" | 1:19 ✓ | 1:40 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 6:47 | 7:02 | 6:43 | 4:04 | 1155 | 0.41 (A) | 26.21 | 122' ✓ |
-| 11 | 2:00 | 41'8" | 2:54 ✓ | 3:15 ✓ | 0:00, 2:00, 4:00, 8:33 | 0:43, 6:33, 4:33, 0:43 | 10:36 | 10:51 | 9:16 | 9:08 | 1630 | 1.47 (C) | 11.81 | 127'6" ✓ |
-| 11T | 2:00 | 53'8" | 2:16 ✓ | 2:37 ✓ | 0:00, 2:00, 4:00, 6:38 | 0:43, 4:38, 2:38, 0:43 | 8:10 | 8:25 | 7:21 | 7:04 | 1518 | 1.34 (C) | 15.21 | 90' ✓ |
-| A | 5:00 | 56'8" | 2:07 ✓ | 2:28 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:26 | 16:41 | 15:43 | 6:40 | 1474 | 0.93 (B) | 16.06 | 80'6" ✓ |
-| 1 | 5:00 | 31'6" | 3:02 ✓ | 3:23 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:46, 0:46, 0:46, 0:46 | 17:02 | 17:17 | 15:46 | 9:04 | 1312 | 1.24 (C) | 8.93 | 193' ✓ |
-| 1T | 5:00 | 43'6" | 2:23 ✓ | 2:44 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:35 | 16:50 | 15:44 | 7:16 | 1331 | 0.97 (B) | 12.32 | 118' ✓ |
-| 2 | 5:00 | 32'7" | 2:56 ✓ | 3:17 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:46, 0:46, 0:46, 0:46 | 16:57 | 17:12 | 15:46 | 8:44 | 1301 | 1.31 (C) | 9.23 | 192' ✓ |
-| 2T | 5:00 | 44'7" | 2:20 ✓ | 2:41 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:32 | 16:47 | 15:44 | 7:04 | 1321 | 0.99 (B) | 12.63 | 143' ✓ |
-| 3 | 5:00 | 45'9" | 2:16 ✓ | 2:37 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:30 | 16:45 | 15:44 | 6:56 | 1309 | 1.03 (B) | 12.96 | 101'6" ✓ |
-| 3T | 5:00 | 61'1" | 1:42 ✓ | 2:26 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:03 | 16:18 | 15:44 | 5:12 | 1162 | 0.66 (A) | 17.31 | 258' ✓ |
-| 4 | 5:00 | 42'8" | 2:48 ✓ | 3:09 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:59 | 17:14 | 15:43 | 8:56 | 1609 | 1.03 (B) | 12.09 | 184' ✓ |
-| 4T | 5:00 | 54'8" | 2:12 ✓ | 2:33 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:30 | 16:45 | 15:43 | 6:56 | 1493 | 0.93 (B) | 15.49 | 184' ✓ |
-| 5 | 5:00 | 53'11" | 2:13 ✓ | 2:34 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:31 | 16:46 | 15:43 | 7:04 | 1501 | 0.78 (A) | 15.28 | 230' ✓ |
-| 5T | 5:00 | 69'3" | 1:44 ✓ | 2:13 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:08 | 16:23 | 15:43 | 5:28 | 1353 | 0.67 (A) | 19.62 | 230' ✓ |
-| 6 | 5:00 | 40'6" | 2:57 ✓ | 3:18 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 17:07 | 17:22 | 15:43 | 9:24 | 1630 | 0.91 (B) | 11.47 | 200' ✓ |
-| 6T | 5:00 | 52'6" | 2:17 ✓ | 2:38 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:34 | 16:49 | 15:43 | 7:12 | 1514 | 0.82 (A) | 14.88 | 200' ✓ |
-| 7 | 5:00 | 46'11" | 2:33 ✓ | 2:54 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:47 | 17:02 | 15:43 | 8:04 | 1568 | 0.82 (A) | 13.29 | 248' ✓ |
-| 7T | 5:00 | 56'3" | 2:08 ✓ | 2:29 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:27 | 16:42 | 15:43 | 6:44 | 1478 | 0.74 (A) | 15.94 | 248' ✓ |
-| 8 | 5:00 | 45'10" | 2:37 ✓ | 2:58 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:50 | 17:05 | 15:43 | 8:16 | 1578 | 1.10 (C) | 12.99 | 202' ✓ |
-| 8T | 5:00 | 55'2" | 2:10 ✓ | 2:31 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:29 | 16:44 | 15:43 | 6:52 | 1489 | 0.99 (B) | 15.63 | 125' ✓ |
-| 9 | 5:00 | 47' | 2:13 ✓ | 2:34 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:27 | 16:42 | 15:44 | 6:44 | 1297 | 0.97 (B) | 13.32 | 107'6" ✓ |
-| 9T | 5:00 | 59' | 1:46 ✓ | 2:07 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:06 | 16:21 | 15:44 | 5:20 | 1182 | 0.87 (B) | 16.72 | 106' ✓ |
-| 10 | 5:00 | 86'6" | 1:23 ✓ | 1:44 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 15:51 | 16:07 | 15:43 | 4:24 | 1187 | 0.49 (A) | 24.51 | 122' ✓ |
-| 10T | 5:00 | 92'6" | 1:18 ✓ | 1:39 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 15:47 | 16:02 | 15:43 | 4:04 | 1129 | 0.40 (A) | 26.21 | 122' ✓ |
-| 11 | 5:00 | 41'8" | 2:52 ✓ | 3:13 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 17:03 | 17:18 | 15:43 | 9:08 | 1619 | 1.45 (C) | 11.81 | 127'6" ✓ |
-| 11T | 5:00 | 53'8" | 2:14 ✓ | 2:35 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:32 | 16:47 | 15:43 | 7:04 | 1503 | 1.32 (C) | 15.21 | 90' ✓ |
+| A | 0:00 | 60' | 6:42 ✗ | 7:03 ✗ | 0:00, 0:00, 0:50, 0:50 | 0:50, 0:50, 0:50, 0:50 | 6:08 | 6:44 | 1:40 | 5:36 | 5824 | 3.68 (E) | 17.33 | 80'6" ✓ |
+| 1 | 0:00 | 35'4" | 6:41 ✗ | 7:02 ✗ | 0:00, 0:00, 4:31, 4:31 | 4:31, 4:31, 1:04, 1:04 | 8:49 | 9:34 | 5:35 | 7:49 | 3287 | 3.12 (D) | 9.32 | 193' ✓ |
+| 1T | 0:00 | 47'4" | 7:29 ✗ | 7:50 ✗ | 0:00, 0:00, 0:56, 0:56 | 0:56, 0:56, 0:56, 0:56 | 6:52 | 7:24 | 1:52 | 6:41 | 5066 | 3.70 (E) | 12.72 | 118' ✓ |
+| 2 | 0:00 | 35'7" | 6:42 ✗ | 7:03 ✗ | 0:00, 0:00, 3:54, 3:54 | 3:54, 3:54, 1:05, 1:05 | 8:15 | 9:08 | 4:59 | 6:10 | 3379 | 3.41 (D) | 10.42 | 192' ✓ |
+| 2T | 0:00 | 47'7" | 7:12 ✗ | 7:33 ✗ | 0:00, 0:00, 1:00, 1:00 | 1:00, 1:00, 1:00, 1:00 | 7:02 | 8:03 | 2:00 | 4:43 | 4949 | 3.72 (E) | 13.82 | 143' ✓ |
+| 3 | 0:00 | 49'1" | 6:50 ✗ | 7:11 ✗ | 0:00, 0:00, 1:05, 1:05 | 1:05, 1:05, 1:05, 1:05 | 6:15 | 7:00 | 2:10 | 5:54 | 4810 | 3.79 (E) | 14.08 | 101'6" ✓ |
+| 3T | 0:00 | 64'5" | 4:53 ✗ | 5:14 ✓ | 0:00, 0:00, 1:03, 1:03 | 1:03, 1:03, 1:03, 1:03 | 4:54 | 5:37 | 2:06 | 3:28 | 4408 | 2.51 (D) | 18.68 | 258' ✓ |
+| 4 | 0:00 | 46' | 9:02 ✗ | 9:23 ✗ | 0:00, 0:00, 0:57, 0:57 | 0:57, 0:57, 0:57, 0:57 | 8:21 | 9:24 | 1:54 | 7:13 | 6055 | 3.87 (E) | 13.49 | 184' ✓ |
+| 4T | 0:00 | 58' | 6:47 ✗ | 7:08 ✗ | 0:00, 0:00, 1:00, 1:00 | 1:00, 1:00, 1:00, 1:00 | 6:36 | 7:48 | 2:01 | 5:36 | 5692 | 3.53 (D) | 16.89 | 184' ✓ |
+| 5 | 0:00 | 57'3" | 6:53 ✗ | 7:14 ✗ | 0:00, 0:00, 1:05, 1:05 | 1:05, 1:05, 1:05, 1:05 | 7:12 | 8:56 | 2:10 | 3:09 | 5688 | 2.96 (D) | 17.57 | 230' ✓ |
+| 5T | 0:00 | 72'7" | 5:06 ✗ | 5:27 ✓ | 0:00, 0:00, 1:04, 1:04 | 1:04, 1:04, 1:04, 1:04 | 5:47 | 7:14 | 2:08 | 1:42 | 5241 | 2.61 (D) | 22.17 | 230' ✓ |
+| 6 | 0:00 | 43'10" | 9:23 ✗ | 9:44 ✗ | 0:00, 0:00, 1:20, 1:20 | 1:20, 1:20, 1:05, 1:05 | 9:08 | 10:46 | 2:25 | 4:11 | 5999 | 3.36 (D) | 13.60 | 200' ✓ |
+| 6T | 0:00 | 55'10" | 7:13 ✗ | 7:34 ✗ | 0:00, 0:00, 0:54, 0:54 | 0:54, 0:54, 0:54, 0:54 | 6:14 | 6:57 | 1:48 | 5:07 | 5829 | 3.17 (D) | 17.00 | 200' ✓ |
+| 7 | 0:00 | 50'3" | 8:03 ✗ | 8:24 ✗ | 0:00, 0:00, 1:02, 1:02 | 1:02, 1:02, 1:02, 1:02 | 7:12 | 7:49 | 2:04 | 6:38 | 5889 | 3.09 (D) | 14.69 | 248' ✓ |
+| 7T | 0:00 | 59'7" | 6:38 ✗ | 6:59 ✗ | 0:00, 0:00, 0:59, 0:59 | 0:59, 0:59, 0:59, 0:59 | 6:53 | 8:04 | 1:59 | 3:00 | 5698 | 2.87 (D) | 17.59 | 248' ✓ |
+| 8 | 0:00 | 49'3" | 8:15 ✗ | 8:36 ✗ | 0:00, 0:00, 1:02, 1:02 | 1:02, 1:02, 1:02, 1:02 | 7:15 | 7:43 | 2:04 | 7:17 | 5896 | 4.11 (E) | 14.45 | 202' ✓ |
+| 8T | 0:00 | 58'7" | 6:44 ✗ | 7:05 ✗ | 0:00, 0:00, 0:58, 0:58 | 0:58, 0:58, 0:58, 0:58 | 6:21 | 7:10 | 1:56 | 5:37 | 5684 | 3.80 (E) | 17.35 | 125' ✓ |
+| 9 | 0:00 | 50'4" | 4:21 ✗ | 4:42 ✓ | 0:00, 0:58, 1:56, 2:54 | 0:58, 0:58, 0:58, 0:58 | 6:30 | 7:24 | 3:52 | 5:57 | 2982 | 2.23 (D) | 13.71 | 107'6" ✓ |
+| 9T | 0:00 | 62'4" | 2:59 ✓ | 3:20 ✓ | 0:00, 0:59, 1:58, 2:57 | 0:59, 0:59, 0:59, 0:59 | 5:22 | 6:30 | 3:56 | 3:50 | 2443 | 1.80 (D) | 17.11 | 106' ✓ |
+| 10 | 0:00 | 89'11" | 4:04 ✗ | 4:25 ✓ | 0:00, 0:00, 0:55, 0:55 | 0:55, 0:55, 0:55, 0:55 | 4:22 | 5:42 | 1:50 | 3:32 | 5101 | 2.09 (D) | 24.81 | 122' ✓ |
+| 10T | 0:00 | 95'11" | 3:47 ✓ | 4:08 ✓ | 0:00, 0:00, 0:53, 0:53 | 0:53, 0:53, 0:53, 0:53 | 4:03 | 5:26 | 1:46 | 3:24 | 5009 | 1.80 (D) | 26.51 | 122' ✓ |
+| 11 | 0:00 | 44'11" | 6:38 ✗ | 6:59 ✗ | 0:00, 0:00, 4:17, 4:17 | 4:17, 4:17, 0:49, 0:49 | 8:27 | 9:28 | 5:06 | 7:09 | 4242 | 3.81 (E) | 13.01 | 127'6" ✓ |
+| 11T | 0:00 | 56'11" | 7:02 ✗ | 7:23 ✗ | 0:00, 0:00, 0:55, 0:55 | 0:55, 0:55, 0:55, 0:55 | 6:36 | 7:47 | 1:50 | 5:52 | 5821 | 5.13 (E) | 16.41 | 90' ✓ |
+| A | 2:00 | 60' | 2:08 ✓ | 2:29 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:50, 1:05, 1:05, 1:05 | 7:22 | 7:52 | 7:05 | 4:40 | 1493 | 0.94 (B) | 17.33 | 80'6" ✓ |
+| 1 | 2:00 | 35'4" | 3:14 ✓ | 3:35 ✓ | 0:00, 2:00, 4:00, 8:04 | 1:04, 6:04, 3:51, 1:05 | 10:01 | 10:34 | 9:09 | 8:02 | 1359 | 1.29 (C) | 9.32 | 193' ✓ |
+| 1T | 2:00 | 47'4" | 3:02 ✓ | 3:23 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:56, 1:59, 2:43, 1:05 | 8:00 | 8:53 | 7:05 | 4:04 | 1507 | 1.10 (C) | 12.72 | 118' ✓ |
+| 2 | 2:00 | 35'7" | 3:04 ✓ | 3:25 ✓ | 0:00, 2:00, 4:00, 7:30 | 0:59, 5:30, 3:26, 1:05 | 9:15 | 9:56 | 8:35 | 6:33 | 1320 | 1.33 (C) | 10.42 | 192' ✓ |
+| 2T | 2:00 | 47'7" | 2:21 ✓ | 2:42 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:53, 1:53, 1:58, 1:05 | 7:27 | 7:50 | 7:05 | 4:32 | 1366 | 1.03 (B) | 13.82 | 143' ✓ |
+| 3 | 2:00 | 49'1" | 2:17 ✓ | 2:38 ✓ | 0:00, 2:00, 4:00, 6:00 | 1:01, 1:05, 1:05, 1:05 | 7:24 | 7:59 | 7:05 | 4:56 | 1341 | 1.06 (B) | 14.08 | 101'6" ✓ |
+| 3T | 2:00 | 64'5" | 1:43 ✓ | 2:26 ✓ | 0:00, 2:00, 4:00, 6:00 | 1:04, 1:05, 1:05, 1:05 | 7:11 | 7:56 | 7:05 | 0:00 | 1328 | 0.76 (A) | 17.64 | 258' ✓ |
+| 4 | 2:00 | 46' | 3:14 ✓ | 3:35 ✓ | 0:00, 2:00, 4:00, 6:56 | 0:57, 4:56, 2:54, 1:05 | 8:51 | 9:40 | 8:01 | 6:01 | 1625 | 1.04 (B) | 13.49 | 184' ✓ |
+| 4T | 2:00 | 58' | 2:16 ✓ | 2:37 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:53, 1:05, 1:05, 1:05 | 7:34 | 8:37 | 7:05 | 4:34 | 1570 | 0.97 (B) | 16.89 | 184' ✓ |
+| 5 | 2:00 | 57'3" | 2:14 ✓ | 2:35 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:55, 1:05, 1:05, 1:05 | 7:30 | 8:04 | 7:05 | 0:35 | 1566 | 0.81 (A) | 17.57 | 230' ✓ |
+| 5T | 2:00 | 72'7" | 1:45 ✓ | 2:13 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:58, 1:05, 1:05, 1:05 | 7:08 | 7:40 | 7:05 | 0:00 | 1456 | 0.73 (A) | 21.20 | 230' ✓ |
+| 6 | 2:00 | 43'10" | 3:07 ✓ | 3:28 ✓ | 0:00, 2:00, 4:00, 8:05 | 0:55, 6:05, 3:47, 1:05 | 9:56 | 10:33 | 9:10 | 5:18 | 1678 | 0.94 (B) | 13.60 | 200' ✓ |
+| 6T | 2:00 | 55'10" | 2:18 ✓ | 2:39 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:54, 1:05, 1:05, 1:05 | 7:26 | 8:00 | 7:05 | 2:16 | 1575 | 0.86 (B) | 17.00 | 200' ✓ |
+| 7 | 2:00 | 50'3" | 3:18 ✓ | 3:39 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:53, 1:12, 1:16, 1:24 | 9:15 | 10:54 | 7:24 | 0:14 | 2229 | 1.17 (C) | 14.69 | 248' ✓ |
+| 7T | 2:00 | 59'7" | 2:09 ✓ | 2:30 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:50, 1:05, 1:05, 1:05 | 7:22 | 8:00 | 7:05 | 3:16 | 1540 | 0.77 (A) | 17.59 | 248' ✓ |
+| 8 | 2:00 | 49'3" | 2:44 ✓ | 3:05 ✓ | 0:00, 2:00, 4:00, 6:34 | 0:54, 4:34, 2:34, 1:00 | 8:14 | 8:42 | 7:34 | 6:34 | 1590 | 1.11 (C) | 14.45 | 202' ✓ |
+| 8T | 2:00 | 58'7" | 2:11 ✓ | 2:32 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:51, 1:05, 1:05, 1:05 | 7:21 | 7:56 | 7:05 | 5:04 | 1496 | 1.00 (B) | 17.35 | 125' ✓ |
+| 9 | 2:00 | 50'4" | 2:15 ✓ | 2:36 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:57, 1:05, 1:49, 1:05 | 7:32 | 8:23 | 7:05 | 4:01 | 1429 | 1.07 (B) | 13.71 | 107'6" ✓ |
+| 9T | 2:00 | 62'4" | 1:48 ✓ | 2:09 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:59, 1:05, 1:05, 1:05 | 7:14 | 8:17 | 7:05 | 2:12 | 1381 | 1.02 (B) | 17.11 | 106' ✓ |
+| 10 | 2:00 | 89'11" | 1:25 ✓ | 1:46 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:55, 1:06, 1:06, 1:06 | 6:59 | 8:01 | 7:06 | 1:00 | 1372 | 0.56 (A) | 24.81 | 122' ✓ |
+| 10T | 2:00 | 95'11" | 1:19 ✓ | 1:40 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:53, 1:00, 1:01, 1:01 | 6:57 | 8:00 | 7:01 | 0:04 | 1386 | 0.50 (A) | 26.51 | 122' ✓ |
+| 11 | 2:00 | 44'11" | 2:53 ✓ | 3:14 ✓ | 0:00, 2:00, 4:00, 7:58 | 0:48, 5:58, 3:58, 0:51 | 9:57 | 10:59 | 8:49 | 6:15 | 1614 | 1.45 (C) | 13.01 | 127'6" ✓ |
+| 11T | 2:00 | 56'11" | 2:43 ✓ | 3:04 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:55, 1:05, 3:42, 1:48 | 7:45 | 8:41 | 7:48 | 4:18 | 1561 | 1.38 (C) | 16.41 | 90' ✓ |
+| A | 5:00 | 60' | 2:07 ✓ | 2:28 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:50, 0:50, 0:50, 0:50 | 16:22 | 16:52 | 15:50 | 4:40 | 1440 | 0.91 (B) | 17.33 | 80'6" ✓ |
+| 1 | 5:00 | 35'4" | 3:02 ✓ | 3:23 ✓ | 0:00, 5:00, 10:00, 15:00 | 1:04, 1:04, 1:04, 1:04 | 16:57 | 17:28 | 16:04 | 7:16 | 1308 | 1.24 (C) | 9.32 | 193' ✓ |
+| 1T | 5:00 | 47'4" | 2:23 ✓ | 2:44 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:56, 0:56, 0:56, 0:56 | 16:40 | 17:30 | 15:56 | 3:12 | 1379 | 1.01 (B) | 12.72 | 118' ✓ |
+| 2 | 5:00 | 35'7" | 2:56 ✓ | 3:17 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:59, 0:59, 0:59, 0:59 | 17:04 | 17:57 | 15:59 | 3:56 | 1269 | 1.28 (C) | 10.42 | 192' ✓ |
+| 2T | 5:00 | 47'7" | 2:20 ✓ | 2:41 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:53, 0:53, 0:53, 0:53 | 16:30 | 16:52 | 15:53 | 3:08 | 1325 | 1.00 (B) | 13.82 | 143' ✓ |
+| 3 | 5:00 | 49'1" | 2:16 ✓ | 2:37 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:54, 0:54, 0:54, 0:54 | 16:23 | 16:51 | 15:54 | 5:24 | 1285 | 1.01 (B) | 14.08 | 101'6" ✓ |
+| 3T | 5:00 | 64'5" | 1:42 ✓ | 2:26 ✓ | 0:00, 5:00, 10:00, 15:00 | 1:04, 1:04, 1:04, 1:04 | 16:23 | 17:15 | 16:04 | 0:00 | 1301 | 0.74 (A) | 15.53 | 258' ✓ |
+| 4 | 5:00 | 46' | 2:48 ✓ | 3:09 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:57, 0:58, 0:58, 0:58 | 17:01 | 18:02 | 15:58 | 5:28 | 1570 | 1.00 (B) | 13.49 | 184' ✓ |
+| 4T | 5:00 | 58' | 2:12 ✓ | 2:33 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:52, 0:52, 0:52, 0:52 | 16:29 | 17:32 | 15:52 | 4:24 | 1460 | 0.90 (B) | 16.89 | 184' ✓ |
+| 5 | 5:00 | 57'3" | 2:13 ✓ | 2:34 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:55, 0:55, 0:55, 0:55 | 16:55 | 17:59 | 15:55 | 0:00 | 1492 | 0.78 (A) | 16.37 | 230' ✓ |
+| 5T | 5:00 | 72'7" | 1:44 ✓ | 2:13 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:58, 0:58, 0:58, 0:58 | 16:08 | 16:47 | 15:58 | 0:00 | 1336 | 0.67 (A) | 21.20 | 230' ✓ |
+| 6 | 5:00 | 43'10" | 2:57 ✓ | 3:18 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:55, 0:55, 0:55, 0:55 | 16:57 | 17:42 | 15:55 | 3:20 | 1618 | 0.91 (B) | 13.60 | 200' ✓ |
+| 6T | 5:00 | 55'10" | 2:17 ✓ | 2:38 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:59, 1:01, 1:01, 1:01 | 17:16 | 19:02 | 16:01 | 0:00 | 1570 | 0.85 (B) | 14.60 | 200' ✓ |
+| 7 | 5:00 | 50'3" | 2:33 ✓ | 2:54 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:53, 0:53, 0:53, 0:53 | 16:43 | 17:31 | 15:53 | 2:36 | 1565 | 0.82 (A) | 14.69 | 248' ✓ |
+| 7T | 5:00 | 59'7" | 2:08 ✓ | 2:29 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:57, 0:57, 0:57, 0:57 | 16:20 | 16:52 | 15:57 | 4:40 | 1445 | 0.73 (A) | 17.59 | 248' ✓ |
+| 8 | 5:00 | 49'3" | 2:37 ✓ | 2:58 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:54, 0:54, 0:54, 0:54 | 16:40 | 17:08 | 15:54 | 6:32 | 1539 | 1.07 (B) | 14.45 | 202' ✓ |
+| 8T | 5:00 | 58'7" | 2:10 ✓ | 2:31 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:51, 0:51, 0:51, 0:51 | 16:21 | 16:56 | 15:51 | 5:04 | 1441 | 0.96 (B) | 17.35 | 125' ✓ |
+| 9 | 5:00 | 50'4" | 2:13 ✓ | 2:34 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:54, 0:54, 0:54, 0:54 | 16:31 | 17:24 | 15:54 | 4:16 | 1321 | 0.99 (B) | 13.71 | 107'6" ✓ |
+| 9T | 5:00 | 62'4" | 1:46 ✓ | 2:07 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:59, 0:59, 0:59, 0:59 | 16:16 | 17:19 | 15:59 | 1:20 | 1260 | 0.93 (B) | 17.11 | 106' ✓ |
+| 10 | 5:00 | 89'11" | 1:23 ✓ | 1:44 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:55, 0:55, 0:55, 0:55 | 15:59 | 17:01 | 15:55 | 1:00 | 1261 | 0.52 (A) | 24.81 | 122' ✓ |
+| 10T | 5:00 | 95'11" | 1:18 ✓ | 1:39 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:53, 0:53, 0:53, 0:53 | 15:57 | 17:00 | 15:53 | 0:04 | 1239 | 0.44 (A) | 26.51 | 122' ✓ |
+| 11 | 5:00 | 44'11" | 2:52 ✓ | 3:13 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:48, 0:48, 0:48, 0:48 | 16:59 | 18:01 | 15:48 | 5:24 | 1598 | 1.44 (C) | 13.01 | 127'6" ✓ |
+| 11T | 5:00 | 56'11" | 2:14 ✓ | 2:35 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:55, 0:55, 0:55, 0:55 | 16:35 | 17:25 | 15:55 | 4:12 | 1479 | 1.30 (C) | 16.41 | 90' ✓ |
 <!-- results-table:end -->
 
 ### History
@@ -1015,69 +1254,167 @@ and each fix's effect is summarized here.
   so its dwell is 6:23 instead of 3:35 on platform 3, but the first train's is 0:43 instead of 5:35.
   On platform 6, all 4 trains are scheduled at once,
   so all 1,600 departing passengers come down at -2:00, and it peaks at 6229 passengers (LOS F).
-- **Took each platform's area from its outline in OpenStreetMap,**
-  instead of its width times its length, which were hardcoded with no stated source.
-  Only densities change: with trains 2 minutes apart,
-  platform 6 peaks at 0.88 pax/m² (LOS B) instead of 1.37 (C),
-  platform 11 at 1.45 instead of 1.17, and platform 3 at 1.28 instead of 1.44.
-- **Made each train as long as its platform and its tracks allow, up to 12 cars,**
+- **Used each VCE's width from [`data/vces.csv`](./data/vces.csv)**
+  on platforms 3 and 6, instead of the ETA report's totals,
+  still with arriving passengers spread across the VCEs in proportion to their widths.
+  Platform 3's VCEs total 43' instead of 42'6",
+  so with 2-minute headways it clears at 266 s instead of 269 s.
+  Platform 6's total only 30'10" instead of 48'2",
+  so it clears at 371 s instead of 238 s, and bottoms out at 3.8 sq ft/pax instead of 4.0.
+  Penn Reconstruction and platforms 10 and 11 have no per-VCE data, so they're unchanged.
+- **Made each train as long as its platform's tracks allow, up to 12 cars,**
   with 135 passengers and 4 doors per car.
-  Only platform 3 changes, to 10 cars' 1,350 passengers and 40 doors:
-  with trains 2 minutes apart, it clears at 9:08 instead of 10:38,
-  and peaks at 1353 passengers instead of 1623.
-- **Checked NFPA 130's 6-minute limit to reach a point of safety,** taken as the concourse:
-  the farthest occupant's walk along the platform, 325' for now, wait at the VCEs, and climb.
-  With trains 2 or 5 minutes apart, every platform reaches the concourse within 6 minutes,
-  and with two trains arriving at once, only platforms 3 with Penn Reconstruction and 10 do.
-- **Took each platform's VCEs from the station's plans and NJT's station directory,**
-  in [`data/vces.csv`](./data/vces.csv), instead of the ETA report's total widths,
-  and modeled every platform, 1 to 11.
-  Escalators are still treated as stairs, and each platform's widest is left out.
-  With trains 2 minutes apart, platform 3's VCEs are 45'9" wide instead of 42'6",
-  so it clears at 8:29 instead of 9:08,
-  platform 6's are 40'6" instead of 48'2", so it clears at 11:09 instead of 9:23,
-  platform 10's are 86'6" instead of 70'7" (7:07 instead of 7:21),
-  and platform 11's are 41'8" instead of 43'7" (10:51 instead of 10:22).
-  Platform 1, with the least, 31'6", clears last, at 11:19.
-  With two trains arriving at once, platform 3 now reaches the concourse within NFPA 130's 6 minutes, too.
-- **Ran platform 9's trains all on its one track, 17,** instead of alternating between two.
-  Each train arrives once the one before it has departed,
-  so with trains scheduled at once, they arrive at 0:00, 0:44, 1:28, and 2:12,
-  and the platform peaks at 3589 passengers instead of 5161,
-  now reaching the concourse within NFPA 130's 6 minutes, in 5:26.
-  With trains 2 minutes apart, the third arrives at 4:52 instead of 4:00,
-  and the platform peaks at 1742 passengers instead of 1311.
-- **Modeled every platform as Penn Transformation would leave it, too,** e.g. `3T`,
-  with the FRA's new VCEs, platforms 1 to 3's extensions, and decluttering,
-  instead of only platform 3 with Penn Reconstruction, with the ETA report's total width for it.
-  With trains 2 minutes apart, every platform clears sooner,
-  e.g. platform 1 at 8:55 instead of 11:19, with 43'6" of VCEs instead of 31'6",
-  and platform 3 at 7:18 instead of 8:29, with 61'1" instead of 45'9".
-  With two trains arriving at once, platforms 9T and 10T pass NFPA 130's 4 minutes,
-  and 2T, 3T, 5T, 9T, and 10T reach the concourse within 6 minutes.
-  But 4T, 6T, 8T, and 11T take longer than they do today:
-  their departing passengers board sooner, so the last two trains arrive at 0:43,
-  and all four trains' passengers are on the platform at once.
+  Platform 3's tracks only fit 10 cars, so its trains carry 1,350 passengers on 40 doors,
+  and with 2-minute headways it clears at 231 s instead of 266 s
+  (227 s instead of 256 s with Penn Reconstruction).
+  Platforms 6, 10, and 11 still get 12-car trains, so they're unchanged.
+- **Sent each door's arriving passengers to the nearest VCE,**
+  on platforms 3 and 6, instead of spreading them across the VCEs in proportion to their widths.
+  Each train's doors are spread evenly along its cars, stopped flush with the platform's east end.
+  Narrow VCEs near many doors get long queues while others run dry:
+  on platform 3, the 3'1" escalator P3-S3 gets 8 doors' passengers,
+  so neither platform clears within the 600 s simulated.
+- **Added the time arriving passengers take to walk from the doors to the VCEs,**
+  at the TCQSM's design walking speed, 250 ft/min,
+  on platforms 3 and 6.
+  The farthest walk takes 29 s, but most doors are near a VCE,
+  so the platform peaks at up to 12 more passengers, and the time at capacity is up to 6 s shorter.
+- **Sent arriving passengers to the quickest VCE instead of the nearest,**
+  i.e. the one with the least walking time plus waiting time for everyone queued or walking there.
+  Platform 3 with 2-minute headways now clears at 310 s,
+  44 s later than with its VCEs as one pooled queue, where it never cleared with the nearest VCE,
+  and platform 6 clears at 469 s, 98 s later than as one pooled queue.
+- **Added the time departing passengers take to walk from the VCEs to their train's doors,**
+  on platforms 3 and 6, spreading evenly across the doors at 250 ft/min.
+  They walk about 50 to 100 s on average, depending on the VCE, and up to 197 s,
+  so platform 3 with 2-minute headways finishes boarding at 472 s instead of 298 s,
+  and platform 6 at 593 s instead of 406 s.
+- **Ran escalators one way on platforms 3 and 6** instead of treating them as stairs going both ways:
+  a platform's only escalator goes up, and with more,
+  one goes up, one goes down, and the rest go up until the platform is nearly fully alighted.
+  Platform 3's 2 escalators leave 2'10" less going up,
+  so with 2-minute headways it clears at 325 s instead of 310 s,
+  but the down escalator lets departing passengers board by 457 s instead of 472 s.
+  Platform 6 clears at 510 s instead of 469 s, and finishes boarding by 556 s instead of 593 s.
+  The time at capacity now counts only the VCEs going up.
+- **Sent departing passengers to the nearest car that isn't close to full,**
+  on platforms 3 and 6, instead of spreading them evenly across the doors,
+  with each car boarding its own waiting passengers through its own doors.
+  Platform 3 with 2-minute headways finishes boarding at 284 s instead of 457 s,
+  but with 5-minute headways at 363 s instead of 351 s, since the busiest cars' doors hold them up.
+  Platform 6 finishes boarding at 372 s instead of 556 s.
+- **Ran the escalator toward 7th Avenue up and the one toward 8th Avenue down,**
+  instead of the other way around, matching AM peak demand toward 7th Avenue.
+  Platform 3 with 2-minute headways clears at 318 s instead of 325 s,
+  and finishes boarding at 293 s instead of 284 s.
+  Platform 6 clears at 497 s instead of 510 s,
+  and finishes boarding at 383 s instead of 372 s.
+- **Stopped trains where the arriving passengers clear the platform soonest,**
+  on platforms 3 and 6, instead of flush with the platform's east end.
+  Platform 3 with 2-minute headways clears at 267 s instead of 270 s,
+  with its trains' east ends 45' west of the platform's
+  (5' with 5-minute headways),
+  and platform 6 at 416 s instead of 453 s, 45' west too.
+- **Stopped trains where the longer of their dwells is shortest,**
+  instead of where the arriving passengers clear the platform soonest.
+  Platform 3 with 2-minute headways has dwells of 251 s and 131 s instead of 256 s and 136 s,
+  with its trains flush with the platform's east end,
+  but clears at 270 s instead of 267 s.
+  Platform 6's trains also stop flush with its east end,
+  with dwells of 411 s instead of 420 s, but clearing at 453 s instead of 416 s.
+- **Added the escalators down from Moynihan Train Hall and the West End Concourse's stairs to platforms 9 to 11,**
+  from the Moynihan Station EA's lower concourse plan,
+  which the other drawings leave out:
+  2 escalators each on platforms 4 to 8 and 1 on platform 3, at their west ends,
+  and 1 or 2 stairs each on platforms 9 to 11.
+  Every platform but 1 and 2 clears sooner:
+  with trains 2 minutes apart, platform 5 at 9:45 instead of 12:06,
+  platform 8 at 11:36 instead of 13:57, and platform 9 at 8:22 instead of 10:01,
+  and platforms 4 and 5 now evacuate within NFPA 130's 4 minutes.
+- **Modeled every platform with Penn Transformation, instead of platform 3 with Penn Reconstruction,**
+  whose new VCEs were only one stair standing in for the ETA report's extra 2'3" of VCEs.
+  Penn Transformation's 23 new VCEs, platform extensions, and decluttering
+  are from the FRA's Service Optimization Study.
+  With trains 2 minutes apart, every platform but 10 clears sooner with it,
+  e.g. platform 5 at 7:46 instead of 9:45 and platform 11 at 11:22 instead of 14:42,
+  and every platform evacuates within NFPA 130's 4 minutes.
 - **Modeled PCIP Phase 1's Platform A,** a new platform south of platform 1,
-  with 8 stairs and 6 escalators, 56'8" wide in all without its widest escalator.
-  With trains 2 minutes apart, it clears at 7:57,
-  and with two trains arriving at once, it fails both NFPA 130 checks, taking 6:53 and 7:14.
-  The other platforms are unchanged.
-- **Limited escalators to half of NFPA 130's exit capacity,** as NFPA 130 requires (5.3.5.6).
-  No effect on results, since no platform's escalators provide more than 44% of it.
-- **Had NFPA 130's farthest occupant walk to their nearest VCE,**
-  from either end of the platform or from halfway between two VCEs,
-  instead of the farthest NFPA 130 allows, 325',
-  with the widest escalator out of service.
-  The longest walk is 258', on platform 3 with Penn Transformation,
-  and most are about 100' to 250'.
-  With trains 2 or 5 minutes apart, platforms reach the concourse up to 1:20 sooner,
-  e.g. platform 10 in 1:45 instead of 2:59.
-  With two trains arriving at once, the flow time is longer than any walk,
-  so those are unchanged.
+  with its 8 stairs and 6 escalators.
+  With trains 2 minutes apart, it clears at 7:52, sooner than any platform as it is today,
+  and evacuates within NFPA 130's 4 minutes.
+- **Added the escalator about 230' along each of platforms 3 to 8,**
+  whose treads the PCIP Phase 2 plan draws under its platform labels,
+  with the Master Plan's type and width.
+  With trains 2 minutes apart, platforms 3 to 6 and 8 clear sooner,
+  e.g. platform 3 at 7:51 instead of 8:25 and platform 8 at 9:44 instead of 11:36,
+  and platforms 6 and 8 now evacuate within NFPA 130's 4 minutes.
+  Platform 7's trains stop elsewhere, where their longest dwell is shortest,
+  but more passengers crowd the platform,
+  so it clears at 11:37 instead of 11:32 and takes 5:19 instead of 4:06 to evacuate.
+- **Added the stairs down from the baggage and egress corridor to platforms 5 to 7,**
+  about 400' west of the West End Concourse, from the Moynihan Station EA's plan,
+  though they're unconfirmed.
+  With trains 2 minutes apart, platform 6 clears at 10:01 instead of 10:27,
+  but platforms 5 and 7's trains stop further west, where their longest dwells are shortest,
+  crowding more passengers onto the platform,
+  so platform 5 clears at 11:38 instead of 9:10 and no longer evacuates within 4 minutes,
+  and platform 7 at 11:57 instead of 11:37.
+- **Stopped trains where the platform could be evacuated soonest,**
+  i.e. with the fewest passengers on it at once,
+  of the positions where the longest dwell is within 1:00 of the shortest it can be,
+  instead of where the longest dwell is shortest.
+  With trains 2 minutes apart, every platform but 7 and 11 now evacuates within NFPA 130's 4 minutes,
+  e.g. platform 5 in 3:07 instead of 4:10, clearing at 8:36 instead of 11:38,
+  though its longest dwell is 4:30 instead of 3:36.
+  Platform 7 would need its longest dwell to be 6:01 instead of 1:56.
+- **Measured platforms 9 to 11's VCEs on the PCIP Phase 1 existing plan,**
+  where it draws their treads, instead of only estimating them from NJT's directory,
+  adding 3 VCEs the directory doesn't show.
+  Platform 11's VCEs total 44'2" instead of 31'7", close to the ETA report's 43'7",
+  so with trains 2 minutes apart, it clears at 11:16 instead of 14:42
+  and evacuates within NFPA 130's 4 minutes, in 2:57 instead of 5:27.
+- **Checked NFPA 130's 6-minute limit to reach a point of safety,** taken as the concourse:
+  the farthest occupant's walk along the platform, wait at the VCE, and climb.
+  With trains 2 minutes apart, every platform reaches the concourse within 6 minutes,
+  including platform 7, in 4:36,
+  and with two trains arriving at once, only platforms 3T, 9, 9T, 10, and 10T do.
+- **Positioned the escalators under the PCIP Phase 2 plan's labels on the PCIP Phase 1 plan,**
+  which draws them, instead of by their clipped treads,
+  so platform 3's, `P3-S4`, has a shape, too.
+  They move by about 1', which changes only a few results by a few seconds.
+- **Stopped rounding errors in departing passengers upstairs from never finishing a simulation:**
+  a train's could end at about 1e-15 instead of 0, giving it nearly infinite shares of the VCEs.
+  No results change.
+- **Found the VCEs on the PCIP plans the same way as the shapes,**
+  so `data/vces.csv` and the shapes match:
+  positions now include landings and balustrades, moving most ends by 1' to 3',
+  stairs drawn in two halves are as wide as both,
+  and curved stairs are found, adding the Central Concourse's 8' stair to platform 5.
+  With trains 2 minutes apart, platform 5 clears at 8:04 instead of 8:37,
+  and platform 7 evacuates in 4:09 instead of 4:13, still over NFPA 130's 4 minutes.
+
+- **Took the West End Concourse's VCEs from the PCIP Phase 1 plan where it draws them,**
+  instead of the Moynihan Station EA's 2010 design:
+  the stairs to platforms 9 to 11, and platform 9's second, an escalator,
+  and added the 2 VCEs only it draws, a stair on platform 7 and an escalator on platform 8, both unconfirmed.
+  With trains 2 minutes apart, platform 7's stair makes it evacuate in 3:18 instead of 4:09,
+  within NFPA 130's 4 minutes, but only if that stair exists,
+  and platform 11 evacuates in 2:53 instead of 3:30.
+
+- **Found platform 9's skewed stair about 410' along on the PCIP Phase 1 plan,**
+  whose half treads were too short for a curved stair's,
+  so it has the plan's position instead of the directory's rough one.
+  Only platform 9's results change, by a few seconds.
+
 - **Used NFPA 130's metric values, its requirements, instead of their approximate US equivalents** (1.5.2),
   e.g. 37.8 m/min instead of 124 fpm.
-  A few NFPA 130 times to the concourse are 1 s longer.
+  A few NFPA 130 times are 1 s longer.
 - **Added NFPA 130's travel distance to the results table,**
   marked ✗ if it's over its 100 m (328'1") limit (5.3.3.5).
   Every platform is within it.
+- **Sorted each platform's VCEs from west to east,** as NFPA 130's longest walk needs,
+  so arriving passengers choosing between equally quick VCEs now take the westernmost.
+  With trains 2 minutes apart, platform 5T clears at 7:40 instead of 7:45,
+  never reaching capacity instead of for 0:24,
+  and platform 3T peaks at 1328 passengers instead of 1326.
+  No other results change.
