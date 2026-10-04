@@ -187,6 +187,14 @@ class Assumptions:
     i.e. with the least walking time plus waiting time for everyone queued or walking there.
     """
 
+    car_full_fraction: Annotated[float, Field(name="Car Full Fraction", units="fraction")] = 0.9
+    """
+    Departing passengers go to the nearest car
+    unless it has at least this fraction of `seats_per_car` boarded, waiting, or walking to it,
+    in which case they go to the nearest car that doesn't.
+    Not from any source.
+    """
+
     door_flow_rate: Annotated[float, Field(name="Door Flow Rate", units="pax/s/door")] = 1.0
     """
     Alighting and boarding rate per single-door equivalent.
@@ -813,6 +821,62 @@ def choose_vce(params: Params, door: Door, waits: list[float]) -> int:
     return times.index(min(times))
 
 
+@dataclass(frozen=True)
+class Car:
+    """One of a train's cars, where departing passengers wait to board."""
+
+    doors: int
+    """Doors (single-door equivalents) on the platform side."""
+
+    walking_times: list[int]
+    """Time to walk from each VCE to its nearest door, in `TIME_STEP`s, like `Door`'s."""
+
+
+def train_cars(params: Params, vces: list[Vce]) -> list[Car]:
+    """
+    Each train's cars, and how far each is from each of `vces`.
+    """
+    assumptions = params.assumptions
+    doors = door_positions(params)
+    doors_per_car = assumptions.doors_per_car
+    cars: list[Car] = []
+    for car in range(params.cars):
+        car_doors = doors[car * doors_per_car : (car + 1) * doors_per_car]
+        cars.append(
+            Car(
+                doors=len(car_doors),
+                walking_times=[
+                    round(
+                        min(distance_to(vce, door) for door in car_doors)
+                        / assumptions.walking_speed
+                    )
+                    for vce in vces
+                ],
+            )
+        )
+    return cars
+
+
+def cars_by_distance(cars: list[Car], vce: int) -> list[int]:
+    """`cars`' indices, from the nearest to `vce` to the farthest, by walking time."""
+    return sorted(range(len(cars)), key=lambda c: cars[c].walking_times[vce])
+
+
+def choose_car(params: Params, nearest: list[int], car_loads: list[float]) -> int:
+    """
+    The car departing passengers coming down a VCE walk to:
+    the nearest one that isn't close to full, per `Assumptions.car_full_fraction`,
+    or else the nearest one.
+
+    :param nearest: the cars, from the nearest to the VCE to the farthest, per `cars_by_distance`
+    :param car_loads: passengers boarded on, waiting for, or walking to each car (pax)
+    """
+    if len(nearest) == 1:
+        return nearest[0]
+    full = params.assumptions.car_full_fraction * params.assumptions.seats_per_car
+    return next((c for c in nearest if car_loads[c] < full), nearest[0])
+
+
 @dataclass
 class Params:
     platform: Annotated[int, Field(name="Platform", units="#")]
@@ -1209,7 +1273,24 @@ def simulate(
     bidirectional_limits = [
         stair_flow(assumptions.bidirectional_stair_flow_limit, vce.width) for vce in vces
     ]
+    cars = train_cars(params, vces)
+    nearest_cars = [cars_by_distance(cars, i) for i in range(len(vces))]
+    """Each VCE's cars, from the nearest to the farthest."""
+    car_board_rates = [car.doors * assumptions.door_flow_rate for car in cars]
+    """Each car's maximum boarding rate (pax/s)."""
+    no_boarding = [0.0 for _ in cars]
+    """Each car's boarding rate while its train isn't boarding."""
     trains = range(params.trains)
+    boarders_walking: defaultdict[int, list[list[float]]] = defaultdict(
+        lambda: [[0.0 for _ in cars] for _ in trains]
+    )
+    """Each train's departing passengers walking to each car, by the step they reach it."""
+    boarders_walking_totals = [0.0 for _ in trains]
+    """Each train's departing passengers walking to any of its cars, `boarders_walking` summed."""
+    car_waiting = [[0.0 for _ in cars] for _ in trains]
+    """Each train's departing passengers waiting at each car."""
+    car_loads = [[0.0 for _ in cars] for _ in trains]
+    """Each train's passengers boarded on, waiting for, or walking to each car."""
     arrival_times: list[timedelta | None] = [
         train * params.headway if train < params.tracks else None for train in trains
     ]
@@ -1321,11 +1402,14 @@ def simulate(
         # and so a share of the upward flow on it and of the capacity it leaves.
         # Their shares of a VCE's capacity, upward flow, and bidirectional limit scale together,
         # so whether it has any capacity left doesn't depend on the train.
-        down_capacity = (
-            capacity
-            if vce_up_rates is no_flow
-            else sum(down_capacities(vce_capacities, vce_up_rates, bidirectional_limits))
-        )
+        if vce_up_rates is no_flow:
+            vce_down_capacities = vce_capacities
+            down_capacity = capacity
+        else:
+            vce_down_capacities = down_capacities(
+                vce_capacities, vce_up_rates, bidirectional_limits
+            )
+            down_capacity = sum(vce_down_capacities)
         down_rates = [
             platform_ingress(
                 boarders_upstairs[train],
@@ -1333,19 +1417,48 @@ def simulate(
             )
             for train in trains
         ]
+        # Departing passengers come down each VCE in proportion to the capacity it has left,
+        # and walk from it to a car.
         for train in trains:
-            boarders_on_platform[train] += down_rates[train]
+            if down_rates[train] <= 0:
+                continue
+            for i, vce_down_capacity in enumerate(vce_down_capacities):
+                if vce_down_capacity <= 0:
+                    continue
+                rate = down_rates[train] * vce_down_capacity / down_capacity
+                car = choose_car(params, nearest_cars[i], car_loads[train])
+                boarders_walking[step + cars[car].walking_times[i]][train][car] += rate
+                boarders_walking_totals[train] += rate
+                car_loads[train][car] += rate
+        for train, reaching in enumerate(boarders_walking.pop(step, ())):
+            for car, pax in enumerate(reaching):
+                if pax == 0:
+                    continue
+                car_waiting[train][car] += pax
+                boarders_walking_totals[train] = subtract(boarders_walking_totals[train], pax)
+        for train in trains:
+            boarders_on_platform[train] = sum(car_waiting[train])
             total_pax_on_platform += down_rates[train]
-        on_rates = [
-            board_rate(
-                door_rate,
-                off_rates[train],
-                time_after,
-                arrival_times[train],
-                boarders_on_platform[train],
-            )
+        # Each car boards through its own doors,
+        # once its train has arrived and everyone has alighted from it.
+        car_on_rates = [
+            [
+                # Cars with nobody waiting board nobody.
+                board_rate(max_rate, off_rates[train], time_after, arrival_time, waiting)
+                if waiting > 0
+                else 0.0
+                for max_rate, waiting in zip(car_board_rates, car_waiting[train], strict=True)
+            ]
+            if (arrival_time := arrival_times[train]) is not None
+            and arrival_time < time_after
+            and off_rates[train] == 0
+            else no_boarding
             for train in trains
         ]
+        for train, rates in enumerate(car_on_rates):
+            for car, on_rate in enumerate(rates):
+                car_waiting[train][car] -= on_rate
+        on_rates = [sum(rates) for rates in car_on_rates]
 
         for train in trains:
             boarders_on_platform[train] -= on_rates[train]
@@ -1385,7 +1498,8 @@ def simulate(
         if (
             summary.boarded_time is None
             and time_after >= max(release_times)
-            and sum(boarders_upstairs) + sum(boarders_on_platform) < 1
+            and sum(boarders_upstairs) + sum(boarders_on_platform) + sum(boarders_walking_totals)
+            < 1
         ):
             summary.boarded_time = time_after
         for train in trains:
@@ -1395,7 +1509,10 @@ def simulate(
                 and arrival_time is not None
                 and time_after > arrival_time
                 and remaining_arrivals[train] < 1
-                and boarders_upstairs[train] + boarders_on_platform[train] < 1
+                and boarders_upstairs[train]
+                + boarders_walking_totals[train]
+                + boarders_on_platform[train]
+                < 1
             ):
                 summary.dwells[train] = time_after - arrival_time
                 # The next train on its track arrives once it's scheduled and this one departs.
@@ -1429,7 +1546,7 @@ def simulate(
                 off_rate=sum(off_rates),
                 on_rate=sum(on_rates),
                 down_rate=sum(down_rates),
-                departing_pax_on_platform=sum(boarders_on_platform),
+                departing_pax_on_platform=sum(boarders_on_platform) + sum(boarders_walking_totals),
                 total_pax_on_platform=total_pax_on_platform,
                 platform_crowding=space_per_pax,
                 up_rate=up_rate,
@@ -1445,7 +1562,7 @@ def simulate(
                         remaining_arrivals[train] + new_pax[train],
                         off_rates[train],
                         on_rates[train],
-                        boarders_on_platform[train],
+                        boarders_on_platform[train] + boarders_walking_totals[train],
                     ]
                     for train in trains
                 ]
@@ -1468,7 +1585,8 @@ def simulate(
         departing=[
             ("boarded", sum(new_pax)),
             ("are still upstairs", sum(boarders_upstairs)),
-            ("are still on the platform", sum(boarders_on_platform)),
+            ("are still walking to their cars", sum(boarders_walking_totals)),
+            ("are still waiting at their cars", sum(map(sum, car_waiting))),
         ],
     )
     return time_series, summary
