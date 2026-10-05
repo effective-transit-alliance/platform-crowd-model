@@ -1775,10 +1775,11 @@ Distance (ft) between the stopping positions `best_stopping_position` tries firs
 a car's length, before trying every `STOPPING_POSITION_STEP` around the best of them.
 """
 
-STOPPING_OCCUPANTS_TOLERANCE = 1e-6
+STOPPING_OCCUPANTS_TOLERANCE = 1
 """
 How far apart (pax) `best_stopping_position` counts most occupants at once as tied,
-so floating-point rounding doesn't choose the position.
+so dwells choose between positions differing by less than a passenger,
+which barely changes NFPA 130's times, rather than floating-point rounding.
 """
 
 
@@ -1825,7 +1826,6 @@ def best_stopping_position(params: Params) -> Params:
         tolerance = params.assumptions.stopping_dwell_tolerance
         within = [c for c in of if cached_score(c)[0] - tolerance <= longest]
         fewest = min(cached_score(c)[2] for c in within)
-        # Occupants differing only by floating-point rounding are tied.
         tied = [c for c in within if cached_score(c)[2] - STOPPING_OCCUPANTS_TOLERANCE <= fewest]
         return min(tied, key=lambda c: cached_score(c)[:2])
 
