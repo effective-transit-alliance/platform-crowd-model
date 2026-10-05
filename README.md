@@ -17,7 +17,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 Building the model's Rust core also needs a Rust toolchain,
-which can be installed with [`rustup`](https://rustup.rs).
+which can be installed with [`rustup`](https://rustup.rs),
+and on Linux, the [`mold`](https://github.com/rui314/mold) linker,
+e.g. from your distribution's packages (`sudo apt install mold`).
 
 With both installed, you can then just run the model:
 

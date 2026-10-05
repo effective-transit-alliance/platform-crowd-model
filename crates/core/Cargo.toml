@@ -28,8 +28,8 @@ rayon = "1.12.0"
 opt-level = 3
 # Unlike `release`, `dev` builds incrementally, with 256 codegen units,
 # which rebuilds after an edit in about 0.69 s instead of `release`'s 0.8 s.
-# (Faster linkers don't help: `mold` and `wild` link our small crate no faster,
-# and `wild` doesn't support the Cortex-A53 erratum fix on ARM.)
+# (A faster linker barely helps yet, since our crate is small,
+# but `.cargo/config.toml` links with `mold` on Linux for when it grows.)
 #
 # No debug info: it doesn't change the model's speed, but costs every rebuild
 # about 0.1 s with `line-tables-only` and 0.35 s with `full`.
