@@ -22,7 +22,6 @@ build-backend = "maturin"
 manifest-path = "crates/core/Cargo.toml"
 python-source = "src"
 module-name = "platform_crowd_model._core"
-features = ["pyo3/extension-module"]
 
 [tool.uv]
 # Build the Rust extension in the project's environment, with its locked `maturin`,

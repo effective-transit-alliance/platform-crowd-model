@@ -1,5 +1,9 @@
-# Build `pyo3` against the project's virtual environment's Python,
-# whether `cargo` runs from `maturin`, `clippy`, or `rust-analyzer`,
-# so they don't keep rebuilding it for each other's interpreter.
+# Build `pyo3` with the same environment `maturin` gives it,
+# whether `cargo` runs from `maturin`, `cargo build`, `clippy`, or `rust-analyzer`,
+# so they share one build instead of rebuilding `pyo3` for each other.
+# `maturin` sets these three itself (`maturin` 1.15, `pyo3` 0.29);
+# update the signature if the project's Python version changes.
 [env]
 PYO3_PYTHON = { value = ".venv/bin/python", relative = true }
+PYO3_BUILD_EXTENSION_MODULE = "1"
+PYO3_ENVIRONMENT_SIGNATURE = "cpython-3.14-64bit"
