@@ -2,6 +2,8 @@
 name = "platform-crowd-model-core"
 version = "0.1.0"
 edition = "2024"
+# The Rust we develop with; we upgrade with stable rather than supporting older versions.
+rust-version = "1.98"
 publish = false
 
 [lib]
