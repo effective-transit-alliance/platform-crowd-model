@@ -1307,6 +1307,9 @@ class Summary:
     vce_gone_up: list[float]
     """Arriving passengers who've gone up each VCE, for `unused_vces`."""
 
+    vce_empty_times: list[timedelta | None]
+    """When each VCE's queue last empties, i.e. its last passenger goes up."""
+
 
 TRAIN_COLUMNS = [
     "Passengers (pax)",
@@ -1326,6 +1329,9 @@ class TimeSeries:
 
     trains: list[list[list[float]]] = dataclasses.field(default_factory=list[list[list[float]]])
     """Each second, each train's `TRAIN_COLUMNS`."""
+
+    vces: list[list[list[float]]] = dataclasses.field(default_factory=list[list[list[float]]])
+    """Each second, each VCE's queue (pax) and upward flow (pax/s)."""
 
 
 def simulate(
@@ -1425,6 +1431,7 @@ def simulate(
         max_occupants=total_pax_on_platform,
         min_space_per_pax=calc_space_per_pax(total_pax_on_platform, usable_area),
         vce_gone_up=[0.0 for _ in vces],
+        vce_empty_times=[None for _ in vces],
     )
 
     if print_time_series:
@@ -1495,6 +1502,8 @@ def simulate(
                 vce_queues[i] = queue - vce_up_rate
                 vce_up_rates.append(vce_up_rate)
                 summary.vce_gone_up[i] += vce_up_rate
+                if vce_up_rate > 0 and vce_queues[i] <= ROUNDING_TOLERANCE:
+                    summary.vce_empty_times[i] = time_after
         else:
             # While nobody is queued, skip each VCE.
             vce_up_rates = no_flow
@@ -1675,6 +1684,12 @@ def simulate(
                     for train in trains
                 ]
             )
+            time_series.vces.append(
+                [
+                    [queue, vce_up_rate]
+                    for queue, vce_up_rate in zip(vce_queues, vce_up_rates, strict=True)
+                ]
+            )
 
         # Stop once the last train has departed and the platform has cleared.
         if (
@@ -1853,9 +1868,9 @@ def write_csv(path: Path, header: list[str], rows: list[list[Any]]) -> None:
         writer.writerows(rows)
 
 
-def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> None:
+def save_time_series(params: Params, time_series: TimeSeries, summary: Summary, stem: Path) -> None:
     """
-    Save `params`' parameters and time series to CSVs,
+    Save `params`' parameters, VCEs, and time series to CSVs,
     and its charts to an SVG, all named starting with `stem`.
     """
     param_values = [*annotated_field_values(params), *annotated_field_values(params.assumptions)]
@@ -1882,6 +1897,47 @@ def save_time_series(params: Params, time_series: TimeSeries, stem: Path) -> Non
         [
             [round(instant.time.total_seconds()), *itertools.chain.from_iterable(train_values)]
             for instant, train_values in zip(time_series.instants, time_series.trains, strict=True)
+        ],
+    )
+    write_csv(
+        stem.with_name(f"{stem.name}_vces.csv"),
+        [
+            "Time (s)",
+            *(
+                f"{vce.name} {column}"
+                for vce in params.vces
+                for column in ("Queue (pax)", "Up Rate (pax/s)")
+            ),
+        ],
+        [
+            [round(instant.time.total_seconds()), *itertools.chain.from_iterable(vce_values)]
+            for instant, vce_values in zip(time_series.instants, time_series.vces, strict=True)
+        ],
+    )
+    write_csv(
+        stem.with_name(f"{stem.name}_vce_list.csv"),
+        [
+            "VCE",
+            "Type",
+            "Role",
+            "Width (ft)",
+            "West End (ft)",
+            "East End (ft)",
+            "Queue Empty Time (s)",
+        ],
+        [
+            [
+                vce.name,
+                vce.type,
+                role,
+                vce.width,
+                vce.west_end,
+                vce.east_end,
+                None if empty_time is None else round(empty_time.total_seconds()),
+            ]
+            for vce, role, empty_time in zip(
+                params.vces, vce_roles(params.vces), summary.vce_empty_times, strict=True
+            )
         ],
     )
 
@@ -1970,6 +2026,7 @@ def run_model(params: Params, charts: bool) -> str:
         save_time_series(
             params,
             time_series,
+            summary,
             OUTPUT_DIR
             / (
                 f"{params.filename_prefix}"
