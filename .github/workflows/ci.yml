@@ -11,12 +11,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Install `uv` with `setup-uv` rather than from `mise.toml`,
+      # since it also caches `uv`'s downloads (`~/.cache/uv`, keyed on `uv.lock`) between runs,
+      # which `mise-action` doesn't.
       - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
 
-      # Installs `mold` from `mise.toml`, which `.cargo/config.toml` links with on Linux.
-      # `setup-uv` installs `uv` instead, since it also caches `uv`'s downloads.
+      # Installs only `mold` from `mise.toml`, which `.cargo/config.toml` links with on Linux.
       - uses: jdx/mise-action@v5
         with:
           install_args: mold
