@@ -184,7 +184,7 @@ class Assumptions:
     """
     Which VCE each arriving passenger walks to:
     the `nearest`, or the `quickest` to get up,
-    i.e. with the least walking time plus waiting time for everyone queued or walking there.
+    i.e. the later of their walk there and when everyone queued at or walking to it has gone up.
     """
 
     car_full_fraction: Annotated[float, Field(name="Car Full Fraction", units="fraction")] = 0.9
@@ -797,8 +797,8 @@ def doors_to_vces(params: Params, vces: list[Vce]) -> list[Door]:
 
 def vce_wait(queue: float, walking_to: float, capacity: float) -> float:
     """
-    How long (s) someone reaching a VCE now would wait to go up,
-    behind everyone queued at or walking to it.
+    How long (s) until everyone queued at or walking to a VCE has gone up,
+    i.e. until someone reaching it could go up without waiting.
 
     :param queue: arriving passengers queued at the VCE (pax)
     :param walking_to: arriving passengers walking to the VCE (pax)
@@ -810,6 +810,9 @@ def vce_wait(queue: float, walking_to: float, capacity: float) -> float:
 def choose_vce(params: Params, door: Door, waits: list[float]) -> int:
     """
     The VCE the passengers from `door` walk to, per `Assumptions.vce_choice`.
+    The quickest is the one they could go up soonest:
+    the later of their walk there and its `vce_wait`,
+    since its queue drains while they walk.
 
     :param waits: each VCE's `vce_wait` (s)
     """
@@ -817,7 +820,7 @@ def choose_vce(params: Params, door: Door, waits: list[float]) -> int:
     walks = door.walking_times
     if params.assumptions.vce_choice == "nearest":
         return walks.index(min(walks))
-    times = [walk + wait for walk, wait in zip(walks, waits, strict=True)]
+    times = [max(walk, wait) for walk, wait in zip(walks, waits, strict=True)]
     return times.index(min(times))
 
 
