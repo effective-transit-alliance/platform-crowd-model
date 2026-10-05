@@ -1,0 +1,5 @@
+# Build `pyo3` against the project's virtual environment's Python,
+# whether `cargo` runs from `maturin`, `clippy`, or `rust-analyzer`,
+# so they don't keep rebuilding it for each other's interpreter.
+[env]
+PYO3_PYTHON = { value = ".venv/bin/python", relative = true }
