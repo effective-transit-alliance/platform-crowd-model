@@ -78,6 +78,9 @@ uv run pre-commit install
 
 Every simulation also checks that it neither created nor lost passengers,
 and stops with an error if it did.
+Each scenario also checks that every VCE but an escalator only going down
+carries someone up at some stopping position the model tries for its trains,
+so none is misplaced, e.g. off its platform.
 
 ## How the Model Works
 

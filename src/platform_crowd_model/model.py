@@ -1305,7 +1305,7 @@ class Summary:
     """Least platform space per passenger (sq ft)."""
 
     vce_gone_up: list[float]
-    """Arriving passengers who've gone up each VCE, for `unused_vces`."""
+    """Arriving passengers who've gone up each VCE, for `unused_vces` and `check_vces_used`."""
 
 
 TRAIN_COLUMNS = [
@@ -1732,6 +1732,31 @@ def check_conservation(
             )
 
 
+def check_vces_used(params: Params, vce_gone_up: list[float]) -> None:
+    """
+    Check that every VCE but an escalator only going down carries some arriving passengers up
+    with the trains stopped somewhere,
+    so none is misplaced where no passenger ever reaches it, e.g. off its platform,
+    or where none would choose it, e.g. past a nearer one, even when the platform is crowded.
+    A VCE can rightly carry nobody with the trains stopped elsewhere, e.g. east of them.
+    Like `check_conservation`, it's cheap enough to check every run,
+    since `best_stopping_position` already simulates every position it tries.
+
+    :param vce_gone_up: arriving passengers who've gone up each VCE (pax),
+        totaled over every stopping position tried
+    """
+    unused = [
+        vce.name
+        for vce, role, gone_up in zip(params.vces, vce_roles(params.vces), vce_gone_up, strict=True)
+        if role != "down" and gone_up == 0
+    ]
+    if unused:
+        raise RuntimeError(
+            f"{params.filename_prefix} with a {params.headway} headway"
+            f" carries nobody up {', '.join(unused)} at any stopping position tried"
+        )
+
+
 RESULTS_COLUMNS = [
     "Platform",
     "Headway",
@@ -1800,6 +1825,8 @@ def best_stopping_position(params: Params) -> Params:
         _time_series, summary = simulate(
             candidate, record_time_series=False, print_time_series=False
         )
+        for i, gone_up in enumerate(summary.vce_gone_up):
+            vce_gone_up[i] += gone_up
         dwells = summary.dwells
         if any(dwell is None for dwell in dwells):
             return timedelta.max, timedelta.max, summary.max_occupants
@@ -1807,6 +1834,8 @@ def best_stopping_position(params: Params) -> Params:
         return max(finished), sum(finished, timedelta(0)), summary.max_occupants
 
     scores: dict[float, tuple[timedelta, timedelta, float]] = {}
+    vce_gone_up = [0.0 for _ in params.vces]
+    """Arriving passengers who've gone up each VCE, totaled over every position tried."""
 
     def cached_score(candidate: Params) -> tuple[timedelta, timedelta, float]:
         assert candidate.train_east_end is not None
@@ -1826,7 +1855,9 @@ def best_stopping_position(params: Params) -> Params:
     i = candidates.index(coarse)
     nearby = candidates[max(0, i - coarse_step) : i + coarse_step + 1]
     # Every position tried counts toward the shortest longest dwell.
-    return best([c for c in candidates if c.train_east_end in scores] + nearby)
+    stopped = best([c for c in candidates if c.train_east_end in scores] + nearby)
+    check_vces_used(params, vce_gone_up)
+    return stopped
 
 
 OUTPUT_DIR = Path("output")
