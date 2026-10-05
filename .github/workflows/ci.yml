@@ -18,10 +18,11 @@ jobs:
         with:
           enable-cache: true
 
-      # Installs only `mold` from `mise.toml`, which `.cargo/config.toml` links with on Linux.
+      # Installs `mise.toml`'s tools except `uv`, which `setup-uv` installed,
+      # e.g. `mold`, which `.cargo/config.toml` links with on Linux.
       - uses: jdx/mise-action@v5
-        with:
-          install_args: mold
+        env:
+          MISE_DISABLE_TOOLS: uv
 
       - name: ruff format
         run: uv run ruff format --check
