@@ -1051,6 +1051,9 @@ class Summary:
     min_space_per_pax: float
     """Least platform space per passenger (sq ft)."""
 
+    vce_gone_up: list[float]
+    """Arriving passengers who've gone up each VCE, for `unused_vces`."""
+
 
 TRAIN_COLUMNS = [
     "Passengers (pax)",
@@ -1141,6 +1144,7 @@ def simulate(
         max_pax_on_platform=total_pax_on_platform,
         max_occupants=total_pax_on_platform,
         min_space_per_pax=calc_space_per_pax(total_pax_on_platform, usable_area),
+        vce_gone_up=[0.0 for _ in vces],
     )
 
     if print_time_series:
@@ -1179,6 +1183,7 @@ def simulate(
                 vce_up_rate = platform_clearance(queue, vce_capacities[i])
                 vce_queues[i] = queue - vce_up_rate
                 vce_up_rates.append(vce_up_rate)
+                summary.vce_gone_up[i] += vce_up_rate
         else:
             # While nobody is queued, skip each VCE.
             vce_up_rates = no_flow
@@ -1393,6 +1398,7 @@ RESULTS_COLUMNS = [
     "Max density (pax/m²)",
     "Max up rate (pax/s)",
     "NFPA 130 travel distance",
+    "Unused VCEs",
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
@@ -1512,6 +1518,18 @@ def checkmark(ok: bool) -> str:
     return "✓" if ok else "✗"
 
 
+def unused_vces(params: Params, summary: Summary) -> list[str]:
+    """
+    The names of `params`' VCEs that no arriving passenger went up,
+    e.g. because a nearer one is always quicker.
+    """
+    return [
+        vce.name
+        for vce, gone_up in zip(params.simulated_vces, summary.vce_gone_up, strict=True)
+        if gone_up == 0
+    ]
+
+
 def run_model(params: Params, charts: bool) -> str:
     """
     Run the model, return its row of the results table,
@@ -1562,7 +1580,8 @@ def run_model(params: Params, charts: bool) -> str:
         f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
         f" ({platform_crowd_los(summary.min_space_per_pax, params.assumptions)})"
         f" | {summary.max_up_rate:.2f}"
-        f" | {fmt_ft_in(travel_distance)} {travel_distance_ok} |"
+        f" | {fmt_ft_in(travel_distance)} {travel_distance_ok}"
+        f" | {', '.join(unused_vces(params, summary))} |"
     )
 
 
