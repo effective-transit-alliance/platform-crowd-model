@@ -11,3 +11,13 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = "0.29.3"
 rayon = "1.12.0"
+
+# Local development builds (`cargo build`, `rust-analyzer`, and `uv run`'s editable install)
+# are optimized like `release`, since the model runs about 13x slower unoptimized,
+# but incremental, so a Rust edit rebuilds faster.
+# Wheels still build with `release`.
+[profile.dev]
+opt-level = 3
+debug = false
+debug-assertions = false
+overflow-checks = false
