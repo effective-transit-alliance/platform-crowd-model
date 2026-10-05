@@ -3,8 +3,6 @@
 //! Python turns a scenario's `Params` into a `CoreInput` of plain numbers,
 //! and this runs the loop and returns a `CoreResult`, which Python turns back into
 //! a `Summary` and a `TimeSeries`.
-//! Every operation is in the same order as Python's,
-//! and `py_sum` adds like Python's `sum()`, so the results match Python's bit for bit.
 
 // Index loops mirror Python's `for train in trains:`, which keeps the two easy to compare.
 #![allow(clippy::needless_range_loop)]
@@ -12,36 +10,6 @@
 use pyo3::prelude::*;
 
 const ROUNDING_TOLERANCE: f64 = 1e-9;
-
-/// Adds like CPython's `sum()` of floats (3.12+), with Neumaier's compensated summation.
-fn py_sum(values: impl IntoIterator<Item = f64>) -> f64 {
-    let mut hi = 0.0_f64;
-    let mut lo = 0.0_f64;
-    for x in values {
-        let t = hi + x;
-        if hi.abs() >= x.abs() {
-            lo += (hi - t) + x;
-        } else {
-            lo += (x - t) + hi;
-        }
-        hi = t;
-    }
-    if lo != 0.0 && lo.is_finite() {
-        hi + lo
-    } else {
-        hi
-    }
-}
-
-/// Python's `min(a, b)`: `a` unless `b` is smaller.
-fn py_min(a: f64, b: f64) -> f64 {
-    if b < a { b } else { a }
-}
-
-/// Python's `max(a, b)`: `a` unless `b` is larger.
-fn py_max(a: f64, b: f64) -> f64 {
-    if b > a { b } else { a }
-}
 
 /// `total - pax`, or 0 if that's only left over from rounding, like Python's `subtract`.
 fn subtract(total: f64, pax: f64) -> f64 {
@@ -193,7 +161,7 @@ fn choose_vce(
         } else if nearest {
             walk
         } else {
-            py_max(walk, wait)
+            walk.max(wait)
         };
         // The first of any tied, i.e. the westernmost.
         if i == 0 || time < best_time {
@@ -324,7 +292,7 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
         for train in 0..trains {
             let off_rate = match arrival_times[train] {
                 Some(arrival_time) if time_after > arrival_time => {
-                    py_min(remaining_arrivals[train], input.door_rate)
+                    remaining_arrivals[train].min(input.door_rate)
                 }
                 _ => 0.0,
             };
@@ -334,8 +302,8 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
             }
             off_rates[train] = off_rate;
         }
-        total_pax_on_platform += py_sum(off_rates.iter().copied());
-        arriving_pax_on_platform += py_sum(off_rates.iter().copied());
+        total_pax_on_platform += off_rates.iter().sum::<f64>();
+        arriving_pax_on_platform += off_rates.iter().sum::<f64>();
         if !reversible.is_empty() {
             let mut still_alighting = arriving_pax_on_platform;
             for train in 0..trains {
@@ -358,7 +326,7 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
         let up_rates: &[f64] = if arriving_pax_on_platform > 0.0 {
             // Each door's alighting passengers walk to a VCE,
             // though nobody does in a second nobody alights.
-            let alighting = py_sum(off_rates.iter().copied());
+            let alighting = off_rates.iter().sum::<f64>();
             if alighting > 0.0 {
                 for i in 0..n_vces {
                     waits[i] = (vce_queues[i] + walking_totals[i]) / input.vce_capacities[i];
@@ -382,7 +350,7 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
             }
             for i in 0..n_vces {
                 let queue = vce_queues[i];
-                let vce_up_rate = py_min(queue, input.vce_capacities[i]);
+                let vce_up_rate = queue.min(input.vce_capacities[i]);
                 vce_queues[i] = queue - vce_up_rate;
                 vce_up_rates[i] = vce_up_rate;
                 summary.vce_gone_up[i] += vce_up_rate;
@@ -392,11 +360,11 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
             }
             &vce_up_rates
         } else {
-            // Python never pops this step's walkers, so they're never counted.
+            // Nobody's on the platform, so nobody can be walking to a VCE.
             walking.pop(step);
             &no_flow
         };
-        let up_rate = py_sum(up_rates.iter().copied());
+        let up_rate = up_rates.iter().sum::<f64>();
         gone_up += up_rate;
         arriving_pax_on_platform -= up_rate;
         if arriving_pax_on_platform < 0.0 {
@@ -411,8 +379,8 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
                     input.vce_capacities[i] - up_rates[i]
                 };
         }
-        let down_capacity = py_sum(vce_down_capacities.iter().copied());
-        let all_upstairs = py_sum(boarders_upstairs.iter().copied());
+        let down_capacity = vce_down_capacities.iter().sum::<f64>();
+        let all_upstairs = boarders_upstairs.iter().sum::<f64>();
         for train in 0..trains {
             // A total of only rounding errors would give a share of nearly 1 / 0.
             let fraction = if all_upstairs > ROUNDING_TOLERANCE {
@@ -420,7 +388,7 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
             } else {
                 1.0
             };
-            down_rates[train] = py_min(boarders_upstairs[train], down_capacity * fraction);
+            down_rates[train] = boarders_upstairs[train].min(down_capacity * fraction);
         }
         // Departing passengers come down each VCE in proportion to the capacity it has left,
         // and walk from it to a car.
@@ -453,7 +421,7 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
             }
         }
         for train in 0..trains {
-            boarders_on_platform[train] = py_sum(car_waiting[train].iter().copied());
+            boarders_on_platform[train] = car_waiting[train].iter().sum::<f64>();
             total_pax_on_platform += down_rates[train];
         }
         // Each car boards through its own doors,
@@ -464,7 +432,7 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
             for car in 0..n_cars {
                 let waiting = car_waiting[train][car];
                 car_on_rates[train][car] = if boarding && waiting > 0.0 {
-                    py_min(input.car_board_rates[car], waiting)
+                    input.car_board_rates[car].min(waiting)
                 } else {
                     0.0
                 };
@@ -474,7 +442,7 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
             for car in 0..n_cars {
                 car_waiting[train][car] -= car_on_rates[train][car];
             }
-            on_rates[train] = py_sum(car_on_rates[train].iter().copied());
+            on_rates[train] = car_on_rates[train].iter().sum::<f64>();
         }
 
         for train in 0..trains {
@@ -496,16 +464,15 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
         if arriving_pax_on_platform < 0.0 {
             arriving_pax_on_platform = 0.0;
         }
-        summary.max_up_rate = py_max(summary.max_up_rate, up_rate);
+        summary.max_up_rate = summary.max_up_rate.max(up_rate);
         // Capacity of the VCEs going up now, not counting escalators going down.
-        let capacity = py_sum(
-            input
-                .vce_capacities
-                .iter()
-                .zip(&directions)
-                .filter(|&(_, &direction)| direction != Direction::Down)
-                .map(|(&capacity, _)| capacity),
-        );
+        let capacity: f64 = input
+            .vce_capacities
+            .iter()
+            .zip(&directions)
+            .filter(|&(_, &direction)| direction != Direction::Down)
+            .map(|(&capacity, _)| capacity)
+            .sum();
         if up_rate >= capacity - 1e-9 {
             summary.time_at_capacity += 1;
         }
@@ -522,9 +489,9 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
         }
         if summary.boarded_time.is_none()
             && time_after >= last_release
-            && py_sum(boarders_upstairs.iter().copied())
-                + py_sum(boarders_on_platform.iter().copied())
-                + py_sum(boarders_walking_totals.iter().copied())
+            && boarders_upstairs.iter().sum::<f64>()
+                + boarders_on_platform.iter().sum::<f64>()
+                + boarders_walking_totals.iter().sum::<f64>()
                 < 1.0
         {
             summary.boarded_time = Some(time_after);
@@ -547,15 +514,19 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
                 }
             }
         }
-        summary.max_pax_on_platform = py_max(summary.max_pax_on_platform, total_pax_on_platform);
-        let aboard = py_sum((0..trains).filter_map(|train| match arrival_times[train] {
-            Some(arrival_time) if time_after >= arrival_time && summary.dwells[train].is_none() => {
-                Some(remaining_arrivals[train] + new_pax[train])
-            }
-            _ => None,
-        }));
-        summary.max_occupants = py_max(summary.max_occupants, total_pax_on_platform + aboard);
-        summary.min_space_per_pax = py_min(summary.min_space_per_pax, space_per_pax);
+        summary.max_pax_on_platform = summary.max_pax_on_platform.max(total_pax_on_platform);
+        let aboard: f64 = (0..trains)
+            .filter_map(|train| match arrival_times[train] {
+                Some(arrival_time)
+                    if time_after >= arrival_time && summary.dwells[train].is_none() =>
+                {
+                    Some(remaining_arrivals[train] + new_pax[train])
+                }
+                _ => None,
+            })
+            .sum();
+        summary.max_occupants = summary.max_occupants.max(total_pax_on_platform + aboard);
+        summary.min_space_per_pax = summary.min_space_per_pax.min(space_per_pax);
 
         if record {
             let mut net_pax_flow_rate = 0.0_f64;
@@ -573,12 +544,12 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
             summary
                 .arriving_pax_waiting_on_platform
                 .push(arriving_pax_on_platform);
-            summary.off_rate.push(py_sum(off_rates.iter().copied()));
-            summary.on_rate.push(py_sum(on_rates.iter().copied()));
-            summary.down_rate.push(py_sum(down_rates.iter().copied()));
+            summary.off_rate.push(off_rates.iter().sum::<f64>());
+            summary.on_rate.push(on_rates.iter().sum::<f64>());
+            summary.down_rate.push(down_rates.iter().sum::<f64>());
             summary.departing_pax_on_platform.push(
-                py_sum(boarders_on_platform.iter().copied())
-                    + py_sum(boarders_walking_totals.iter().copied()),
+                boarders_on_platform.iter().sum::<f64>()
+                    + boarders_walking_totals.iter().sum::<f64>(),
             );
             summary.total_pax_on_platform.push(total_pax_on_platform);
             summary.platform_crowding.push(space_per_pax);
@@ -617,13 +588,12 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
     }
     summary.arrival_times = arrival_times;
     summary.gone_up = gone_up;
-    summary.still_aboard = py_sum(remaining_arrivals.iter().copied());
+    summary.still_aboard = remaining_arrivals.iter().sum::<f64>();
     summary.arriving_pax_on_platform = arriving_pax_on_platform;
-    summary.boarded = py_sum(new_pax.iter().copied());
-    summary.still_upstairs = py_sum(boarders_upstairs.iter().copied());
-    summary.still_walking_to_cars = py_sum(boarders_walking_totals.iter().copied());
-    summary.still_waiting_at_cars =
-        py_sum(car_waiting.iter().map(|cars| py_sum(cars.iter().copied())));
+    summary.boarded = new_pax.iter().sum::<f64>();
+    summary.still_upstairs = boarders_upstairs.iter().sum::<f64>();
+    summary.still_walking_to_cars = boarders_walking_totals.iter().sum::<f64>();
+    summary.still_waiting_at_cars = car_waiting.iter().flatten().sum();
     summary
 }
 
@@ -635,11 +605,5 @@ mod _core {
     #[pyfunction]
     fn simulate_core(py: Python<'_>, input: CoreInput, record_time_series: bool) -> CoreResult {
         py.detach(|| simulate(&input, record_time_series))
-    }
-
-    /// `sum(values)`, for testing that `py_sum` adds like Python.
-    #[pyfunction]
-    fn py_sum_for_test(values: Vec<f64>) -> f64 {
-        py_sum(values)
     }
 }
