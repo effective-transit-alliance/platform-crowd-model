@@ -4,7 +4,8 @@ This repo is for modeling platform crowding and alighting and boarding of trains
 specifically at NY Penn Station.
 [`src/platform_crowd_model/model.py`](./src/platform_crowd_model/model.py)
 models a single platform with its tracks,
-running each second of its simulation in Rust, in [`crates/core`](./crates/core).
+running each second of its simulation, and the search for where its trains stop,
+in Rust, in [`crates/core`](./crates/core).
 
 ## Running
 
@@ -1423,3 +1424,7 @@ and each fix's effect is summarized here.
   so no results change.
   Each run of `simulate` takes about 0.5 ms instead of 17 ms,
   and the whole run, including every stopping position tried, about 0.3 s instead of 3 s.
+- **Searched for where trains stop in Rust, too,** trying each scenario's positions in parallel,
+  and ran the scenarios in parallel in threads instead of processes, except with `--charts`.
+  No results change.
+  The whole run takes about 0.1 s instead of 0.3 s.

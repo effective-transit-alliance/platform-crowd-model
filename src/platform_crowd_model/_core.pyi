@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from platform_crowd_model.model import CoreInput
+from platform_crowd_model.model import CoreScenario
 
 class CoreResult(Protocol):
     finished: bool
@@ -38,4 +38,7 @@ class CoreResult(Protocol):
     vces: list[list[list[float]]]
     train_values: list[list[list[float]]]
 
-def simulate_core(input: CoreInput, record_time_series: bool) -> CoreResult: ...
+def simulate_core(
+    scenario: CoreScenario, train_east_end: float, record_time_series: bool
+) -> CoreResult: ...
+def best_stopping_position(scenario: CoreScenario) -> float: ...

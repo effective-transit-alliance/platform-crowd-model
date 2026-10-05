@@ -9,7 +9,7 @@ import functools
 import itertools
 import typing
 from collections.abc import Generator
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
@@ -667,55 +667,6 @@ def transformation_vces(platform: int) -> tuple[Vce, ...]:
     )
 
 
-def door_positions(params: Params) -> list[float]:
-    """
-    Where each of a train's doors is along the platform (ft),
-    spread evenly along a train stopped at `Params.train_east_end`.
-    """
-    assumptions = params.assumptions
-    train_east_end = (
-        params.platform_east_end if params.train_east_end is None else params.train_east_end
-    )
-    train_west_end = train_east_end - params.train_length
-    door_spacing = assumptions.car_length / assumptions.doors_per_car
-    return [train_west_end + (door + 0.5) * door_spacing for door in range(params.doors_per_train)]
-
-
-def distance_to(vce: Vce, position: float) -> float:
-    """Distance (ft) along the platform from `position` to the nearest end of `vce`."""
-    return max(0, vce.west_end - position, position - vce.east_end)
-
-
-@dataclass(frozen=True)
-class Door:
-    """Where some of the arriving passengers come from."""
-
-    share: float
-    """Fraction of the arriving passengers."""
-
-    walking_times: list[int]
-    """
-    Time they take to walk to each VCE, in `TIME_STEP`s,
-    so the simulation can look up who arrives each step without `timedelta` arithmetic.
-    """
-
-
-def doors_to_vces(params: Params, vces: tuple[Vce, ...]) -> list[Door]:
-    """
-    Where arriving passengers come from, and how far they are from each of `vces`.
-    """
-    doors = door_positions(params)
-    return [
-        Door(
-            share=1 / len(doors),
-            walking_times=[
-                round(distance_to(vce, door) / params.assumptions.walking_speed) for vce in vces
-            ],
-        )
-        for door in doors
-    ]
-
-
 type Role = Literal["stair", "up", "down", "reversible"]
 """What a VCE does: a stair, an escalator always going `up` or `down`, or one that reverses."""
 
@@ -738,47 +689,6 @@ def vce_roles(vces: tuple[Vce, ...]) -> list[Role]:
     if len(escalators) > 1:
         roles[escalators[0]] = "down"
     return roles
-
-
-@dataclass(frozen=True)
-class Car:
-    """One of a train's cars, where departing passengers wait to board."""
-
-    doors: int
-    """Doors (single-door equivalents) on the platform side."""
-
-    walking_times: list[int]
-    """Time to walk from each VCE to its nearest door, in `TIME_STEP`s, like `Door`'s."""
-
-
-def train_cars(params: Params, vces: tuple[Vce, ...]) -> list[Car]:
-    """
-    Each train's cars, and how far each is from each of `vces`.
-    """
-    assumptions = params.assumptions
-    doors = door_positions(params)
-    doors_per_car = assumptions.doors_per_car
-    cars: list[Car] = []
-    for car in range(params.cars):
-        car_doors = doors[car * doors_per_car : (car + 1) * doors_per_car]
-        cars.append(
-            Car(
-                doors=len(car_doors),
-                walking_times=[
-                    round(
-                        min(distance_to(vce, door) for door in car_doors)
-                        / assumptions.walking_speed
-                    )
-                    for vce in vces
-                ],
-            )
-        )
-    return cars
-
-
-def cars_by_distance(cars: list[Car], vce: int) -> list[int]:
-    """`cars`' indices, from the nearest to `vce` to the farthest, by walking time."""
-    return sorted(range(len(cars)), key=lambda c: cars[c].walking_times[vce])
 
 
 @dataclass
@@ -1152,11 +1062,10 @@ class TimeSeries:
 
 
 @dataclass(frozen=True)
-class CoreInput:
+class CoreScenario:
     """
-    One scenario, with its trains stopped at one position, as plain numbers,
-    for `_core.simulate_core`, which reads each attribute by name.
-    Times are in whole seconds, i.e. `TIME_STEP`s.
+    One scenario as plain numbers, for `_core`, which reads each attribute by name.
+    Times are in whole seconds, i.e. `TIME_STEP`s, and distances in feet along the platform.
     """
 
     trains: int
@@ -1166,23 +1075,13 @@ class CoreInput:
     """When each train's departing passengers start coming down."""
     arriving_pax_per_train: float
     departing_pax_per_train: float
-    door_rate: float
-    """Every door's alighting rate together (pax/s)."""
     usable_area: float
     vce_capacities: list[float]
     """Each VCE's capacity in one direction (pax/s)."""
     bidirectional_limits: list[float]
     roles: list[Role]
-    door_shares: list[float]
-    """Each door's share of the arriving passengers."""
-    door_walking_times: list[list[int]]
-    """Each door's walking time to each VCE."""
-    car_board_rates: list[float]
-    """Each car's maximum boarding rate (pax/s)."""
-    car_walking_times: list[list[int]]
-    """Each car's walking time from each VCE."""
-    nearest_cars: list[list[int]]
-    """Each VCE's cars, from the nearest to the farthest."""
+    vce_west_ends: list[float]
+    vce_east_ends: list[float]
     vce_choice_nearest: bool
     car_full: float
     """Passengers (pax) at which a car counts as close to full."""
@@ -1192,6 +1091,21 @@ class CoreInput:
     max_steps: int
     """Steps after which the simulation gives up, per `MAX_SIMULATION_LENGTH`."""
 
+    platform_east_end: float
+    platform_length: float
+    train_length: float
+    cars: int
+    car_length: float
+    doors_per_car: int
+    doors_per_train: int
+    door_flow_rate: float
+    walking_speed: float
+
+    stopping_position_step: float
+    coarse_stopping_position_steps: int
+    stopping_dwell_tolerance: int
+    stopping_occupants_tolerance: float
+
 
 def whole_seconds(duration: timedelta) -> int:
     """`duration` in whole seconds, which `_core` counts in."""
@@ -1200,15 +1114,13 @@ def whole_seconds(duration: timedelta) -> int:
     return int(seconds)
 
 
-def core_input(params: Params) -> CoreInput:
-    """`params` as `CoreInput`."""
+def core_scenario(params: Params) -> CoreScenario:
+    """`params` as `CoreScenario`."""
     assert whole_seconds(TIME_STEP) == 1, "`_core` counts in steps of 1 s"
     assumptions = params.assumptions
     vces = params.vces
     roles = vce_roles(vces)
-    doors = doors_to_vces(params, vces)
-    cars = train_cars(params, vces)
-    return CoreInput(
+    return CoreScenario(
         trains=params.trains,
         tracks=params.tracks,
         headway=whole_seconds(params.headway),
@@ -1218,18 +1130,14 @@ def core_input(params: Params) -> CoreInput:
         ],
         arriving_pax_per_train=float(params.arriving_pax_per_train),
         departing_pax_per_train=float(assumptions.departing_pax_per_train),
-        door_rate=params.doors_per_train * assumptions.door_flow_rate,
         usable_area=params.platform_area * assumptions.usable_platform_area_multiplier,
         vce_capacities=[vce_capacity(vce, assumptions) for vce in vces],
         bidirectional_limits=[
             stair_flow(assumptions.bidirectional_stair_flow_limit, vce.width) for vce in vces
         ],
         roles=roles,
-        door_shares=[door.share for door in doors],
-        door_walking_times=[door.walking_times for door in doors],
-        car_board_rates=[car.doors * assumptions.door_flow_rate for car in cars],
-        car_walking_times=[car.walking_times for car in cars],
-        nearest_cars=[cars_by_distance(cars, i) for i in range(len(vces))],
+        vce_west_ends=[vce.west_end for vce in vces],
+        vce_east_ends=[vce.east_end for vce in vces],
         vce_choice_nearest=assumptions.vce_choice == "nearest",
         car_full=assumptions.car_full_fraction * assumptions.seats_per_car,
         escalator_reversal_pax=assumptions.escalator_reversal_threshold
@@ -1240,6 +1148,19 @@ def core_input(params: Params) -> CoreInput:
             / assumptions.stair_queue_space
         ),
         max_steps=whole_seconds(MAX_SIMULATION_LENGTH),
+        platform_east_end=params.platform_east_end,
+        platform_length=params.platform_length,
+        train_length=params.train_length,
+        cars=params.cars,
+        car_length=assumptions.car_length,
+        doors_per_car=assumptions.doors_per_car,
+        doors_per_train=params.doors_per_train,
+        door_flow_rate=assumptions.door_flow_rate,
+        walking_speed=assumptions.walking_speed,
+        stopping_position_step=STOPPING_POSITION_STEP,
+        coarse_stopping_position_steps=COARSE_STOPPING_POSITION_STEP // STOPPING_POSITION_STEP,
+        stopping_dwell_tolerance=whole_seconds(assumptions.stopping_dwell_tolerance),
+        stopping_occupants_tolerance=STOPPING_OCCUPANTS_TOLERANCE,
     )
 
 
@@ -1257,7 +1178,12 @@ def simulate(
     """
     from platform_crowd_model._core import simulate_core
 
-    result = simulate_core(core_input(params), record_time_series or print_time_series)
+    train_east_end = (
+        params.platform_east_end if params.train_east_end is None else params.train_east_end
+    )
+    result = simulate_core(
+        core_scenario(params), train_east_end, record_time_series or print_time_series
+    )
     if not result.finished:
         raise RuntimeError(
             f"{params.filename_prefix} hasn't finished after {MAX_SIMULATION_LENGTH}"
@@ -1402,17 +1328,17 @@ def update_readme_results(table: str) -> None:
 STOPPING_POSITION_STEP = 5
 """Distance (ft) between the stopping positions `best_stopping_position` tries."""
 
-COARSE_STOPPING_POSITION_STEP = 85
-"""
-Distance (ft) between the stopping positions `best_stopping_position` tries first,
-a car's length, before trying every `STOPPING_POSITION_STEP` around the best of them.
-"""
-
 STOPPING_OCCUPANTS_TOLERANCE = 1
 """
 How far apart (pax) `best_stopping_position` counts most occupants at once as tied,
 so dwells choose between positions differing by less than a passenger,
 which barely changes NFPA 130's times, rather than floating-point rounding.
+"""
+
+COARSE_STOPPING_POSITION_STEP = 85
+"""
+Distance (ft) between the stopping positions `best_stopping_position` tries first,
+a car's length, before trying every `STOPPING_POSITION_STEP` around the best of them.
 """
 
 
@@ -1422,53 +1348,18 @@ def best_stopping_position(params: Params) -> Params:
     under NFPA 130, i.e. with the fewest occupants at once,
     of the positions where the longest of their dwells is within `stopping_dwell_tolerance`
     of the shortest it can be,
+    counting occupants within `STOPPING_OCCUPANTS_TOLERANCE` of the fewest as tied,
     and if tied, where the longest and then the total dwell are shortest,
     of every position `STOPPING_POSITION_STEP` apart with the train on the platform.
+    It tries every position `COARSE_STOPPING_POSITION_STEP` apart first,
+    then every position within that of the best of them,
+    in parallel in `_core`, in Rust.
     """
-    platform_west_end = params.platform_east_end - params.platform_length
-    # A train longer than the platform overhangs its west end.
-    overhang = max(0, params.train_length - params.platform_length)
-    candidates: list[Params] = []
-    train_east_end = params.platform_east_end
-    while train_east_end - params.train_length >= platform_west_end - overhang:
-        candidates.append(dataclasses.replace(params, train_east_end=train_east_end))
-        train_east_end -= STOPPING_POSITION_STEP
+    from platform_crowd_model._core import best_stopping_position as core_best_stopping_position
 
-    def score(candidate: Params) -> tuple[timedelta, timedelta, float]:
-        """Its longest and total dwells, and its most occupants at once."""
-        # Only the summary matters.
-        _time_series, summary = simulate(
-            candidate, record_time_series=False, print_time_series=False
-        )
-        dwells = summary.dwells
-        if any(dwell is None for dwell in dwells):
-            return timedelta.max, timedelta.max, summary.max_occupants
-        finished = [dwell for dwell in dwells if dwell is not None]
-        return max(finished), sum(finished, timedelta(0)), summary.max_occupants
-
-    scores: dict[float, tuple[timedelta, timedelta, float]] = {}
-
-    def cached_score(candidate: Params) -> tuple[timedelta, timedelta, float]:
-        assert candidate.train_east_end is not None
-        if candidate.train_east_end not in scores:
-            scores[candidate.train_east_end] = score(candidate)
-        return scores[candidate.train_east_end]
-
-    def best(of: list[Params]) -> Params:
-        longest = min(cached_score(c)[0] for c in of)
-        tolerance = params.assumptions.stopping_dwell_tolerance
-        within = [c for c in of if cached_score(c)[0] - tolerance <= longest]
-        fewest = min(cached_score(c)[2] for c in within)
-        tied = [c for c in within if cached_score(c)[2] - STOPPING_OCCUPANTS_TOLERANCE <= fewest]
-        return min(tied, key=lambda c: cached_score(c)[:2])
-
-    # Try every car length first, then every `STOPPING_POSITION_STEP` within a car length of it.
-    coarse_step = COARSE_STOPPING_POSITION_STEP // STOPPING_POSITION_STEP
-    coarse = best(candidates[::coarse_step])
-    i = candidates.index(coarse)
-    nearby = candidates[max(0, i - coarse_step) : i + coarse_step + 1]
-    # Every position tried counts toward the shortest longest dwell.
-    return best([c for c in candidates if c.train_east_end in scores] + nearby)
+    return dataclasses.replace(
+        params, train_east_end=core_best_stopping_position(core_scenario(params))
+    )
 
 
 OUTPUT_DIR = Path("output")
@@ -1723,7 +1614,10 @@ def main(update_readme: bool = False, charts: bool = False) -> None:
     """Run every scenario and print a table of their results."""
     if charts:
         OUTPUT_DIR.mkdir(exist_ok=True)
-    with ProcessPoolExecutor() as executor:
+    # `_core` runs each scenario without holding the GIL, so threads run them in parallel,
+    # but `matplotlib` isn't thread-safe, so charts are drawn in separate processes.
+    executor_type = ProcessPoolExecutor if charts else ThreadPoolExecutor
+    with executor_type() as executor:
         rows = list(
             executor.map(
                 functools.partial(run_model, charts=charts),

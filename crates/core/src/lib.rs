@@ -1,17 +1,20 @@
-//! The per-second loop of `platform_crowd_model.model.simulate`, in Rust.
+//! The model's core: each second of `platform_crowd_model.model.simulate`,
+//! and the search for where trains should stop.
 //!
-//! Python turns a scenario's `Params` into a `CoreInput` of plain numbers,
-//! and this runs the loop and returns a `CoreResult`, which Python turns back into
-//! a `Summary` and a `TimeSeries`.
+//! Python turns a scenario's `Params` into a `CoreScenario` of plain numbers.
+//! From it, this lays out each stopping position's doors and cars,
+//! simulates them, and returns a `CoreResult`,
+//! which Python turns back into a `Summary` and a `TimeSeries`.
 
-// Index loops mirror Python's `for train in trains:`, which keeps the two easy to compare.
+// Index loops keep each train's, car's, and VCE's parallel arrays in step.
 #![allow(clippy::needless_range_loop)]
 
 use pyo3::prelude::*;
+use rayon::prelude::*;
 
 const ROUNDING_TOLERANCE: f64 = 1e-9;
 
-/// `total - pax`, or 0 if that's only left over from rounding, like Python's `subtract`.
+/// `total - pax`, or 0 if that's only left over from rounding.
 fn subtract(total: f64, pax: f64) -> f64 {
     let remaining = total - pax;
     if remaining < ROUNDING_TOLERANCE {
@@ -30,7 +33,7 @@ enum Role {
     Reversible,
 }
 
-/// Which way a VCE runs, like Python's `Direction`.
+/// Which way a VCE runs now.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Direction {
     Both,
@@ -54,10 +57,10 @@ impl<'a, 'py> FromPyObject<'a, 'py> for Role {
     }
 }
 
-/// One scenario, with its trains stopped at one position, as plain numbers.
-/// Read from Python's `CoreInput` by attribute; times are in whole seconds.
+/// One scenario, as plain numbers, read from Python's `CoreScenario` by attribute.
+/// Times are in whole seconds, and distances in feet along the platform.
 #[derive(FromPyObject)]
-struct CoreInput {
+struct Scenario {
     trains: usize,
     tracks: usize,
     headway: i64,
@@ -65,23 +68,13 @@ struct CoreInput {
     release_times: Vec<i64>,
     arriving_pax_per_train: f64,
     departing_pax_per_train: f64,
-    /// Every door's alighting rate together (pax/s).
-    door_rate: f64,
     usable_area: f64,
     /// Each VCE's capacity in one direction (pax/s).
     vce_capacities: Vec<f64>,
     bidirectional_limits: Vec<f64>,
     roles: Vec<Role>,
-    /// Each door's share of the arriving passengers.
-    door_shares: Vec<f64>,
-    /// Each door's walking time to each VCE (s).
-    door_walking_times: Vec<Vec<usize>>,
-    /// Each car's maximum boarding rate (pax/s).
-    car_board_rates: Vec<f64>,
-    /// Each car's walking time from each VCE (s).
-    car_walking_times: Vec<Vec<usize>>,
-    /// Each VCE's cars, from the nearest to the farthest.
-    nearest_cars: Vec<Vec<usize>>,
+    vce_west_ends: Vec<f64>,
+    vce_east_ends: Vec<f64>,
     vce_choice_nearest: bool,
     /// Passengers (pax) at which a car counts as close to full.
     car_full: f64,
@@ -90,6 +83,203 @@ struct CoreInput {
     max_pax_in_stair_queues: f64,
     /// Steps after which the simulation gives up.
     max_steps: i64,
+
+    platform_east_end: f64,
+    platform_length: f64,
+    train_length: f64,
+    cars: usize,
+    car_length: f64,
+    doors_per_car: usize,
+    doors_per_train: usize,
+    /// Each door's flow rate (pax/s), alighting or boarding.
+    door_flow_rate: f64,
+    walking_speed: f64,
+
+    /// Distance between the stopping positions `best_stopping_position` tries.
+    stopping_position_step: f64,
+    /// How many `stopping_position_step`s apart it tries them first.
+    coarse_stopping_position_steps: usize,
+    /// How much longer than the shortest a position's longest dwell can be.
+    stopping_dwell_tolerance: i64,
+    /// How far apart (pax) most occupants at once count as tied.
+    stopping_occupants_tolerance: f64,
+}
+
+/// Where a train's doors and cars are, stopped at one position,
+/// and how long each takes to walk to or from each VCE.
+struct Layout {
+    /// Each door's walking time to each VCE (s).
+    door_walking_times: Vec<Vec<usize>>,
+    /// Each car's maximum boarding rate (pax/s).
+    car_board_rates: Vec<f64>,
+    /// Each car's walking time from each VCE (s).
+    car_walking_times: Vec<Vec<usize>>,
+    /// Each VCE's cars, from the nearest to the farthest.
+    nearest_cars: Vec<Vec<usize>>,
+}
+
+impl Scenario {
+    /// Distance from `position` to the nearest end of VCE `vce`.
+    fn distance_to(&self, vce: usize, position: f64) -> f64 {
+        0.0_f64
+            .max(self.vce_west_ends[vce] - position)
+            .max(position - self.vce_east_ends[vce])
+    }
+
+    /// Time (s) to walk `distance`, rounded to the step.
+    fn walking_time(&self, distance: f64) -> usize {
+        (distance / self.walking_speed).round_ties_even() as usize
+    }
+
+    /// The train's doors spread evenly along it, stopped with its east end at `train_east_end`.
+    fn layout(&self, train_east_end: f64) -> Layout {
+        let train_west_end = train_east_end - self.train_length;
+        let door_spacing = self.car_length / self.doors_per_car as f64;
+        let doors: Vec<f64> = (0..self.doors_per_train)
+            .map(|door| train_west_end + (door as f64 + 0.5) * door_spacing)
+            .collect();
+        let n_vces = self.vce_capacities.len();
+        let door_walking_times = doors
+            .iter()
+            .map(|&door| {
+                (0..n_vces)
+                    .map(|vce| self.walking_time(self.distance_to(vce, door)))
+                    .collect()
+            })
+            .collect();
+        let car_doors: Vec<&[f64]> = doors.chunks(self.doors_per_car).take(self.cars).collect();
+        let car_board_rates = car_doors
+            .iter()
+            .map(|doors| doors.len() as f64 * self.door_flow_rate)
+            .collect();
+        let car_walking_times: Vec<Vec<usize>> = car_doors
+            .iter()
+            .map(|doors| {
+                (0..n_vces)
+                    .map(|vce| {
+                        let nearest = doors
+                            .iter()
+                            .map(|&door| self.distance_to(vce, door))
+                            .fold(f64::INFINITY, f64::min);
+                        self.walking_time(nearest)
+                    })
+                    .collect()
+            })
+            .collect();
+        let nearest_cars = (0..n_vces)
+            .map(|vce| {
+                let mut cars: Vec<usize> = (0..car_doors.len()).collect();
+                cars.sort_by_key(|&car| car_walking_times[car][vce]);
+                cars
+            })
+            .collect();
+        Layout {
+            door_walking_times,
+            car_board_rates,
+            car_walking_times,
+            nearest_cars,
+        }
+    }
+
+    /// Every stopping position with the train on the platform, from its east end west,
+    /// letting a train longer than the platform overhang its west end.
+    fn stopping_positions(&self) -> Vec<f64> {
+        let platform_west_end = self.platform_east_end - self.platform_length;
+        let overhang = (self.train_length - self.platform_length).max(0.0);
+        let mut positions = Vec::new();
+        let mut train_east_end = self.platform_east_end;
+        while train_east_end - self.train_length >= platform_west_end - overhang {
+            positions.push(train_east_end);
+            train_east_end -= self.stopping_position_step;
+        }
+        positions
+    }
+
+    /// The stopping position where the platform could be evacuated soonest under NFPA 130,
+    /// i.e. with the fewest occupants at once,
+    /// of the positions where the longest dwell is within `stopping_dwell_tolerance`
+    /// of the shortest it can be, counting occupants within `stopping_occupants_tolerance` as tied,
+    /// and if tied, where the longest and then the total dwell are shortest.
+    /// It tries every `coarse_stopping_position_steps`th position first,
+    /// then every position within that many of the best of those.
+    fn best_stopping_position(&self) -> f64 {
+        let positions = self.stopping_positions();
+        let mut scores: Vec<Option<Score>> = vec![None; positions.len()];
+        let coarse_step = self.coarse_stopping_position_steps;
+        let coarse: Vec<usize> = (0..positions.len()).step_by(coarse_step).collect();
+        self.score_all(&positions, &coarse, &mut scores);
+        let best_coarse = self.best(&coarse, &scores);
+        let nearby: Vec<usize> = (best_coarse.saturating_sub(coarse_step)
+            ..(best_coarse + coarse_step + 1).min(positions.len()))
+            .collect();
+        self.score_all(&positions, &nearby, &mut scores);
+        // Every position tried counts toward the shortest longest dwell,
+        // and of any tied, the first tried wins, i.e. the coarse ones first.
+        let tried: Vec<usize> = coarse.into_iter().chain(nearby).collect();
+        positions[self.best(&tried, &scores)]
+    }
+
+    /// Score each of `indices`' `positions` not scored yet, in parallel.
+    fn score_all(&self, positions: &[f64], indices: &[usize], scores: &mut [Option<Score>]) {
+        let new: Vec<(usize, Score)> = indices
+            .par_iter()
+            .filter(|&&i| scores[i].is_none())
+            .map(|&i| (i, self.score(positions[i])))
+            .collect();
+        for (i, score) in new {
+            scores[i] = Some(score);
+        }
+    }
+
+    fn score(&self, train_east_end: f64) -> Score {
+        let result = simulate(self, train_east_end, false);
+        let occupants = result.max_occupants;
+        let dwells: Option<Vec<i64>> = result.dwells.iter().copied().collect();
+        match dwells {
+            Some(dwells) => Score {
+                longest: dwells.iter().copied().max().unwrap_or(0),
+                total: dwells.iter().sum(),
+                occupants,
+            },
+            None => Score {
+                longest: i64::MAX,
+                total: i64::MAX,
+                occupants,
+            },
+        }
+    }
+
+    /// The best of `of`, per `best_stopping_position`, the first of any tied.
+    fn best(&self, of: &[usize], scores: &[Option<Score>]) -> usize {
+        let score = |i: usize| scores[i].expect("every position is scored first");
+        let shortest = of
+            .iter()
+            .map(|&i| score(i).longest)
+            .min()
+            .expect("a position");
+        let within: Vec<usize> = of
+            .iter()
+            .copied()
+            .filter(|&i| score(i).longest - self.stopping_dwell_tolerance <= shortest)
+            .collect();
+        let fewest = within
+            .iter()
+            .map(|&i| score(i).occupants)
+            .fold(f64::INFINITY, f64::min);
+        within
+            .into_iter()
+            .filter(|&i| score(i).occupants - self.stopping_occupants_tolerance <= fewest)
+            .min_by_key(|&i| (score(i).longest, score(i).total))
+            .expect("a position")
+    }
+}
+
+/// How good one stopping position is, per `Scenario::best`.
+#[derive(Clone, Copy)]
+struct Score {
+    longest: i64,
+    total: i64,
+    occupants: f64,
 }
 
 /// What `simulate_core` returns: the summary, the conservation totals,
@@ -184,7 +374,7 @@ fn choose_car(nearest: &[usize], car_loads: &[f64], full: f64) -> usize {
 }
 
 /// Passengers walking toward somewhere, by the step they reach it,
-/// like Python's `defaultdict` keyed by step, but in a ring of the next `len` steps.
+/// in a ring of the next `len` steps.
 struct Arrivals<T> {
     slots: Vec<Option<T>>,
 }
@@ -207,9 +397,11 @@ impl<T> Arrivals<T> {
     }
 }
 
-fn simulate(input: &CoreInput, record: bool) -> CoreResult {
+fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
+    let layout = input.layout(train_east_end);
+    let door_share = 1.0 / layout.door_walking_times.len() as f64;
     let n_vces = input.vce_capacities.len();
-    let n_cars = input.car_board_rates.len();
+    let n_cars = layout.car_board_rates.len();
     let trains = input.trains;
 
     let mut arriving_pax_on_platform = 0.0_f64;
@@ -223,10 +415,11 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
             Role::Up | Role::Reversible => Direction::Up,
         })
         .collect();
+    let door_rate = input.doors_per_train as f64 * input.door_flow_rate;
     let reversible: Vec<usize> = (0..n_vces)
         .filter(|&i| input.roles[i] == Role::Reversible)
         .collect();
-    let longest_door_walk = input
+    let longest_door_walk = layout
         .door_walking_times
         .iter()
         .flatten()
@@ -235,7 +428,7 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
         .unwrap_or(0);
     let mut walking: Arrivals<Vec<f64>> = Arrivals::new(longest_door_walk);
     let mut walking_totals = vec![0.0_f64; n_vces];
-    let longest_car_walk = input
+    let longest_car_walk = layout
         .car_walking_times
         .iter()
         .flatten()
@@ -292,7 +485,7 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
         for train in 0..trains {
             let off_rate = match arrival_times[train] {
                 Some(arrival_time) if time_after > arrival_time => {
-                    remaining_arrivals[train].min(input.door_rate)
+                    remaining_arrivals[train].min(door_rate)
                 }
                 _ => 0.0,
             };
@@ -331,14 +524,12 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
                 for i in 0..n_vces {
                     waits[i] = (vce_queues[i] + walking_totals[i]) / input.vce_capacities[i];
                 }
-                for (share, walking_times) in
-                    input.door_shares.iter().zip(&input.door_walking_times)
-                {
+                for walking_times in &layout.door_walking_times {
                     let i =
                         choose_vce(input.vce_choice_nearest, walking_times, &waits, &directions);
                     walking.at(step + walking_times[i], || vec![0.0; n_vces])[i] +=
-                        alighting * share;
-                    walking_totals[i] += alighting * share;
+                        alighting * door_share;
+                    walking_totals[i] += alighting * door_share;
                     waits[i] = (vce_queues[i] + walking_totals[i]) / input.vce_capacities[i];
                 }
             }
@@ -401,8 +592,8 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
                     continue;
                 }
                 let rate = down_rates[train] * vce_down_capacity / down_capacity;
-                let car = choose_car(&input.nearest_cars[i], &car_loads[train], input.car_full);
-                boarders_walking.at(step + input.car_walking_times[car][i], || {
+                let car = choose_car(&layout.nearest_cars[i], &car_loads[train], input.car_full);
+                boarders_walking.at(step + layout.car_walking_times[car][i], || {
                     vec![vec![0.0; n_cars]; trains]
                 })[train][car] += rate;
                 boarders_walking_totals[train] += rate;
@@ -432,7 +623,7 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
             for car in 0..n_cars {
                 let waiting = car_waiting[train][car];
                 car_on_rates[train][car] = if boarding && waiting > 0.0 {
-                    input.car_board_rates[car].min(waiting)
+                    layout.car_board_rates[car].min(waiting)
                 } else {
                     0.0
                 };
@@ -601,9 +792,22 @@ fn simulate(input: &CoreInput, record: bool) -> CoreResult {
 mod _core {
     use super::*;
 
-    /// Simulate one scenario's `CoreInput`, without holding the GIL.
+    /// Simulate `scenario` with its trains stopped with their east ends at `train_east_end`,
+    /// without holding the GIL.
     #[pyfunction]
-    fn simulate_core(py: Python<'_>, input: CoreInput, record_time_series: bool) -> CoreResult {
-        py.detach(|| simulate(&input, record_time_series))
+    fn simulate_core(
+        py: Python<'_>,
+        scenario: Scenario,
+        train_east_end: f64,
+        record_time_series: bool,
+    ) -> CoreResult {
+        py.detach(|| simulate(&scenario, train_east_end, record_time_series))
+    }
+
+    /// Where `scenario`'s trains should stop, per `Scenario::best_stopping_position`,
+    /// trying positions in parallel without holding the GIL.
+    #[pyfunction]
+    fn best_stopping_position(py: Python<'_>, scenario: Scenario) -> f64 {
+        py.detach(|| scenario.best_stopping_position())
     }
 }
