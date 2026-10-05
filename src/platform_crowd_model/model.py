@@ -1775,6 +1775,12 @@ Distance (ft) between the stopping positions `best_stopping_position` tries firs
 a car's length, before trying every `STOPPING_POSITION_STEP` around the best of them.
 """
 
+STOPPING_OCCUPANTS_TOLERANCE = 1e-6
+"""
+How far apart (pax) `best_stopping_position` counts most occupants at once as tied,
+so floating-point rounding doesn't choose the position.
+"""
+
 
 def best_stopping_position(params: Params) -> Params:
     """
@@ -1818,7 +1824,10 @@ def best_stopping_position(params: Params) -> Params:
         longest = min(cached_score(c)[0] for c in of)
         tolerance = params.assumptions.stopping_dwell_tolerance
         within = [c for c in of if cached_score(c)[0] - tolerance <= longest]
-        return min(within, key=lambda c: (cached_score(c)[2], *cached_score(c)[:2]))
+        fewest = min(cached_score(c)[2] for c in within)
+        # Occupants differing only by floating-point rounding are tied.
+        tied = [c for c in within if cached_score(c)[2] - STOPPING_OCCUPANTS_TOLERANCE <= fewest]
+        return min(tied, key=lambda c: cached_score(c)[:2])
 
     # Try every car length first, then every `STOPPING_POSITION_STEP` within a car length of it.
     coarse_step = COARSE_STOPPING_POSITION_STEP // STOPPING_POSITION_STEP
