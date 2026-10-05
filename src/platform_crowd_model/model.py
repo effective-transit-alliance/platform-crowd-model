@@ -12,6 +12,7 @@ from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import timedelta
+from enum import StrEnum
 from functools import cache
 from math import ceil
 from pathlib import Path
@@ -460,6 +461,13 @@ def annotated_field_values(
         yield attr, value, field
 
 
+class VceType(StrEnum):
+    """What kind of VCE it is, as written in `data/`."""
+
+    STAIR = "stair"
+    ESCALATOR = "escalator"
+
+
 @dataclass(frozen=True)
 class Vce:
     """A VCE (vertical circulation element), i.e. a stair or escalator going upstairs."""
@@ -476,8 +484,8 @@ class Vce:
     east_end: float
     """Where it ends along the platform (ft east of the Master Plan's plans' west edge)."""
 
-    type: str = "stair"
-    """`stair` or `escalator`."""
+    type: VceType = VceType.STAIR
+    """Whether it's a stair or an escalator."""
 
 
 VCE_DATA = DATA_DIR / "vces.csv"
@@ -553,9 +561,9 @@ def platform_vces(platform: int) -> tuple[Vce, ...]:
         with PLATFORM_A_VCES.open() as f:
             return tuple(
                 Vce(
-                    name=f"PA-{row['label']}" + ("-E" if row["type"] == "escalator" else ""),
+                    name=f"PA-{row['label']}" + ("-E" if row["type"] == VceType.ESCALATOR else ""),
                     width=float(row["width_in"]) / 12,
-                    type=row["type"],
+                    type=VceType(row["type"]),
                     west_end=float(row["west_end_ft"]),
                     east_end=float(row["east_end_ft"]),
                 )
@@ -566,7 +574,7 @@ def platform_vces(platform: int) -> tuple[Vce, ...]:
             Vce(
                 name=row["vce_name"],
                 width=float(row["master_plan_width_in"] or row["estimated_width_in"]) / 12,
-                type=row["type"],
+                type=VceType(row["type"]),
                 west_end=float(row["west_end_ft"]),
                 east_end=float(row["east_end_ft"]),
             )
@@ -670,7 +678,7 @@ def transformation_vces(platform: int) -> tuple[Vce, ...]:
             width=float(row["width_in"]) / 12,
             west_end=float(row["west_end_ft"]),
             east_end=float(row["east_end_ft"]),
-            type=row["type"],
+            type=VceType(row["type"]),
         )
         for n, row in enumerate(rows, start=1)
     )
@@ -823,7 +831,7 @@ class Params:
         but the widest escalator, which is left out,
         like the ETA report's one VCE per platform, e.g. an escalator running the other way.
         """
-        escalators = [vce.width for vce in self.vces if vce.type == "escalator"]
+        escalators = [vce.width for vce in self.vces if vce.type == VceType.ESCALATOR]
         return sum(vce.width for vce in self.vces) - max(escalators, default=0)
 
     @property
@@ -834,7 +842,7 @@ class Params:
         i.e. the widest, since every VCE has the same capacity per width,
         or each of the widest if they tie, or none if there are no escalators.
         """
-        escalators = [vce for vce in self.vces if vce.type == "escalator"]
+        escalators = [vce for vce in self.vces if vce.type == VceType.ESCALATOR]
         widest = max((vce.width for vce in escalators), default=None)
         return [vce for vce in escalators if vce.width == widest]
 
@@ -845,8 +853,8 @@ class Params:
         and escalators providing at most half of the capacity, per NFPA 130 5.3.5.6.
         """
         exits = [vce for vce in self.vces if vce is not out_of_service]
-        stairs = sum(vce.width for vce in exits if vce.type != "escalator")
-        escalators = sum(vce.width for vce in exits if vce.type == "escalator")
+        stairs = sum(vce.width for vce in exits if vce.type != VceType.ESCALATOR)
+        escalators = sum(vce.width for vce in exits if vce.type == VceType.ESCALATOR)
         return stair_flow(NFPA_130_EXIT_FLOW, stairs + min(escalators, stairs))
 
     @property
