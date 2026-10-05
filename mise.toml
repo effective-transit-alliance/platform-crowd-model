@@ -1,0 +1,5 @@
+# Tools for building, installed with `mise install`.
+
+[tools]
+# The linker `.cargo/config.toml` uses on Linux.
+mold = "3.0.0"

@@ -15,8 +15,8 @@ jobs:
         with:
           enable-cache: true
 
-      # `.cargo/config.toml` links with `mold` on Linux.
-      - uses: rui314/setup-mold@v1
+      # Installs `mise.toml`'s tools, e.g. `mold`, which `.cargo/config.toml` links with on Linux.
+      - uses: jdx/mise-action@v5
 
       - name: ruff format
         run: uv run ruff format --check

@@ -19,9 +19,15 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 Building the model's Rust core also needs a Rust toolchain,
 which can be installed with [`rustup`](https://rustup.rs),
 and on Linux, the [`mold`](https://github.com/rui314/mold) linker,
-e.g. from your distribution's packages (`sudo apt install mold`).
+which [`mise`](https://mise.jdx.dev) installs at the version in [`mise.toml`](./mise.toml) with
 
-With both installed, you can then just run the model:
+```sh
+mise install
+```
+
+and puts on your `$PATH` in this directory once [activated](https://mise.jdx.dev/getting-started.html#activate-mise) in your shell.
+
+With them installed, you can then just run the model:
 
 ```sh
 uv run platform-crowd-model run
