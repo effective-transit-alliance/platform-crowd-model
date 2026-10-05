@@ -1,0 +1,12 @@
+[package]
+name = "platform-crowd-model-core"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+name = "_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.29.3"

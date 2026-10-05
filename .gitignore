@@ -16,3 +16,7 @@ output/
 
 # Downloaded Sources
 .cache/
+
+# Rust Build Output
+target/
+src/platform_crowd_model/*.so

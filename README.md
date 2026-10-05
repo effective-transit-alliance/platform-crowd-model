@@ -14,7 +14,10 @@ which can be installed easily with
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-With `uv` installed, you can then just run the model:
+Building the model's Rust core also needs a Rust toolchain,
+which can be installed with [`rustup`](https://rustup.rs).
+
+With both installed, you can then just run the model:
 
 ```sh
 uv run platform-crowd-model run

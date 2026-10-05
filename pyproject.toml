@@ -15,8 +15,23 @@ dependencies = [
 platform-crowd-model = "platform_crowd_model.cli:app"
 
 [build-system]
-requires = ["uv_build>=0.9,<1"]
-build-backend = "uv_build"
+requires = ["maturin>=1.15,<2"]
+build-backend = "maturin"
+
+[tool.maturin]
+manifest-path = "crates/core/Cargo.toml"
+python-source = "src"
+module-name = "platform_crowd_model._core"
+features = ["pyo3/extension-module"]
+
+[tool.uv]
+# Rebuild the Rust extension whenever its sources change.
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "crates/**/Cargo.toml" },
+    { file = "crates/**/*.rs" },
+    { file = "crates/**/Cargo.lock" },
+]
 
 [dependency-groups]
 dev = [

@@ -28,3 +28,15 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: rustfmt
+        name: rustfmt
+        entry: cargo fmt --manifest-path crates/core/Cargo.toml --check
+        language: system
+        types: [rust]
+        pass_filenames: false
+      - id: clippy
+        name: clippy
+        entry: cargo clippy --manifest-path crates/core/Cargo.toml --release -- -D warnings
+        language: system
+        types: [rust]
+        pass_filenames: false
