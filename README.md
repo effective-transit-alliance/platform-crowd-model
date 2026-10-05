@@ -140,27 +140,37 @@ each using the passenger counts left by the one before.
      ([TCQSM, p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)).
    - A VCE's capacity is LOS E capacity, 17 pax/min per foot of its width
      ([Fruin, p. 14](https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14)).
-   - Arriving passengers spread across the VCEs in proportion to their widths,
-     so every queue empties at the same time, as if they were one pooled queue.
-   - So there's no gradual taper: the stairs stay at capacity until the platform is clear.
+   - Each VCE's width and position are from
+     [`data/vces.csv`](./data/vces.csv).
+     - The train's doors are spread evenly along it,
+       and it stops with its east end at the platform's.
+     - Each second, each door's alighting passengers walk to the quickest VCE:
+       the one they could go up soonest,
+       i.e. the later of their walk there and when everyone already queued at or walking to it has gone up,
+       since its queue drains while they walk.
+     - They walk to the VCE's nearest end at 250 ft/min,
+       the TCQSM's design walking speed
+       ([p. 10-20](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=24)).
    - The report's "taper time" is when the remaining arriving passengers fit in the stair queues,
      20' of queue in front of the VCEs at 5 sq ft/pax
      (the TCQSM's stair queuing space).
-     It's now always about 15 s before the clear time,
-     but it's kept in the results table to compare with the report.
-   - The few seconds of walking from the doors to the stairs are ignored.
+     It's kept in the results table to compare with the report.
 3. **Coming downstairs.**
    Departing passengers queue upstairs and come down to the platform.
    - The trains' passengers split each VCE's width
      in proportion to how many of each are still upstairs,
      and each train's share of a VCE carries the same share of its upward flow.
    - Nobody comes down a VCE while its upward flow is worse than LOS C, 10 pax/min/ft.
+   - Each walks at 250 ft/min to the nearest of their train's cars,
+     unless it's close to full, i.e. 90% of its 135 seats are boarded, waiting, or walking to it,
+     in which case they go to the nearest car that isn't.
    - Otherwise, both directions share LOS E capacity, 17 pax/min/ft,
      so passengers come down with whatever their share of the upward flow leaves of that.
 4. **Boarding.**
    Departing passengers on the platform board a train
    once every arriving passenger has alighted from it,
    at 1 pax/s per single-door equivalent.
+   Each car boards only its own waiting passengers, through its own 4 doors.
 
 ### Crowding
 
@@ -292,17 +302,27 @@ or **unclear** (it could go either way).
   (see [VCE Width Data](#vce-width-data)).
 - **Unclear:** Penn Transformation's and Platform A's new VCEs' widths aren't published,
   so they're assumed (see [Penn Transformation](#penn-transformation) and [Platform A](#platform-a)).
-- **Optimistic:** Arriving passengers spread across the VCEs in proportion to their widths,
-  so they act as one pooled queue,
-  with no preference for any exit, e.g. toward 7th Avenue.
+- **Unclear:** If a platform's widest escalators tie, the westernmost is left out,
+  though which one changes clear times by a few seconds,
+  or by up to 23 s on Platform A,
+  and peak occupants by up to about 8%, e.g. on Platform A with trains 2 minutes apart.
+- **Optimistic:** Arriving passengers know which VCE is quickest,
+  with no preference for any exit, e.g. toward 7th Avenue
+  (see [Passengers Only Prefer the Quickest VCE](#passengers-only-prefer-the-quickest-vce)).
+- **Unclear:** Trains stop with their east ends at the platform's,
+  with their doors spread evenly along their length.
 - **Unclear:** Stair capacity is linear in width,
   though the TCQSM notes capacity is really stepped by the number of pedestrian lanes
   ([p. 10-49](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=53)).
 - **Optimistic:** Stair capacity doesn't depend on the stair's rise,
   though long climbs slow people down ([p. 10-51](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55)),
   or on luggage, strollers, or wheelchairs.
-- **Optimistic, by a few seconds:** Walking from the doors to the stairs takes no time;
-  passengers can go upstairs the same second they alight.
+- **Optimistic:** Arriving passengers walk to the VCEs at 250 ft/min,
+  though the TCQSM notes people walk slower in crowds with less than 25 sq ft/pax
+  ([Exhibit 10-10, p. 10-21](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=25)).
+- **Unclear:** Departing passengers coming downstairs
+  walk to the nearest car until it's close to full, at 90% of its seats,
+  which isn't from any source.
 - **Optimistic:** The concourse upstairs never backs up, so the stairs always discharge.
 
 ### Trains
@@ -368,29 +388,62 @@ The FRA attributes long clearance times to things this model leaves out
 queues at the base of VCEs, uneven use of VCEs, and platform clutter
 reducing the usable width.
 
-### Stairs Are One Pooled Queue
+### Passengers Only Prefer the Quickest VCE
 
-Like the TCQSM and NFPA 130 for platform clearance
-([TCQSM, p. 10-79](https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=83)),
-the model effectively treats all of the VCEs as one queue discharging at capacity until it's empty:
-each VCE has its own queue, but arriving passengers spread across them in proportion to their widths.
-This is optimistic for a whole platform:
+Each VCE has its own queue, with walking distances to it,
+so stairs near the ends of the platform or far from the busiest doors can run dry
+while others still have a queue.
+But arriving passengers choose perfectly:
+each second, each door's passengers know every VCE's queue, even hundreds of feet away,
+and walk to the one they can go up soonest,
+so nearly every VCE is used, and their waits even out across the platform (optimistic).
+Before arriving passengers walked to the VCEs, their VCEs acted as one pooled queue,
+which cleared sooner, e.g. on platform 3 with trains 2 minutes apart, at 8:29.
+Always walking to the nearest VCE is the opposite extreme (pessimistic),
+and real passengers are somewhere in between:
 
-- **Stairs empty unevenly.**
-  Stairs near the ends of the platform, or far from the busiest doors,
-  run out of passengers while others still have a queue,
-  so the total flow drops below capacity before the platform clears.
-  This is likely the model's largest optimistic bias.
-- **Passengers prefer some exits**, e.g. toward 7th Avenue, as the ETA report notes,
-  concentrating queues at fewer stairs.
-- **Walking from the doors to the stairs takes no time.**
-  This only shifts the results by a few seconds, but also ignores
-  passengers crossing through crowds of waiting passengers.
+- **They only see nearby queues.**
+  From a door, passengers can see the nearest few VCEs,
+  not one 500' down a crowded platform.
+- **They don't all make the same choice.**
+  Given similar options, people split between them unevenly,
+  rather than all taking the best one each second.
+- **They head for a destination.**
+  Most are heading toward 7th Avenue, as the ETA report notes,
+  and the West End Concourse leads toward 8th Avenue and Moynihan Train Hall,
+  so many take a longer wait on a VCE toward where they're going,
+  concentrating queues at fewer VCEs.
+- **Regulars position themselves.**
+  Commuters ride in the car nearest their usual exit,
+  so arriving passengers aren't spread evenly across the doors.
+- **They switch queues.**
+  Some leave a queue that isn't moving for another,
+  while the model's passengers stay with the VCE they first chose.
+- **They only see who's queued.**
+  The model counts passengers still walking to a VCE as queued ahead of them,
+  which passengers can't see.
 
-Sending arriving passengers to VCEs by walking distance would fix these.
-Each VCE's position and width are now in [`data/vces.csv`](./data/vces.csv)
-(see [VCE Width Data](#vce-width-data)),
-but the model only uses their widths, and their positions for NFPA 130, so far.
+These could be modeled later, from simplest to most involved:
+
+- **A visibility radius:** passengers only consider VCEs within some distance, or the nearest few,
+  and take the quickest of those.
+- **Logit choice:** passengers split across VCEs
+  with probability proportional to e^(−θ × each VCE's time to go up),
+  the standard approach to route choice in pedestrian and transit models.
+  θ = 0 splits them evenly, and a large θ is the current model.
+  Since the model already tracks fractional passengers,
+  each second's alighting passengers can be split by those probabilities.
+- **Destination preference:** adding each VCE's walk upstairs toward each destination,
+  with a share of the passengers heading to each, e.g. 7th Avenue or the West End Concourse,
+  which needs a source for that split.
+- **Uneven doors:** more of each train's passengers at the doors nearest the busiest exits.
+- **Queue switching:** each second, passengers queued at one VCE move to another
+  if it's become much quicker.
+
+Penn could also bring passengers closer to the current model's perfect choices,
+e.g. with screens showing each VCE's queue in real time,
+staff directing passengers,
+or blocking off paths to some VCEs to spread passengers out.
 
 ### Platform Crowding Is Graded Against the Whole Platform
 
@@ -884,75 +937,75 @@ This table is generated by `uv run platform-crowd-model run --update-readme`:
 <!-- results-table:start -->
 | Platform | Headway | VCE width | NFPA 130 evacuation | NFPA 130 to concourse | Arrivals | Dwell | Taper time | Clear time | Boarded time | Time at capacity | Max pax on platform | Max density (pax/m²) | Max up rate (pax/s) | NFPA 130 travel distance | Unused VCEs |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| A | 0:00 | 56'8" | 6:53 ✗ | 7:14 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:29 | 6:44 | 1:26 | 6:43 | 6044 | 3.82 (E) | 16.06 | 80'6" ✓ |  |
-| 1 | 0:00 | 31'6" | 6:36 ✗ | 6:57 ✗ | 0:00, 0:00, 5:31, 5:31 | 5:31, 5:31, 0:46, 0:46 | 9:49 | 10:04 | 6:17 | 9:04 | 3206 | 3.04 (D) | 8.93 | 193' ✓ |  |
-| 1T | 0:00 | 43'6" | 5:42 ✗ | 6:03 ✗ | 0:00, 0:00, 3:48, 3:48 | 3:48, 3:48, 0:44, 0:44 | 7:12 | 7:27 | 4:32 | 7:18 | 3772 | 2.75 (D) | 12.32 | 118' ✓ |  |
-| 2 | 0:00 | 32'7" | 6:27 ✗ | 6:48 ✗ | 0:00, 0:00, 5:16, 5:16 | 5:16, 5:16, 0:46, 0:46 | 9:25 | 9:40 | 6:02 | 8:46 | 3233 | 3.26 (D) | 9.23 | 192' ✓ |  |
-| 2T | 0:00 | 44'7" | 5:37 ✗ | 5:58 ✓ | 0:00, 0:00, 3:40, 3:40 | 3:40, 3:40, 0:44, 0:44 | 6:59 | 7:14 | 4:24 | 7:06 | 3799 | 2.85 (D) | 12.63 | 143' ✓ |  |
-| 3 | 0:00 | 45'9" | 5:31 ✗ | 5:52 ✓ | 0:00, 0:00, 3:31, 3:31 | 3:31, 3:31, 0:44, 0:44 | 6:45 | 7:00 | 4:15 | 6:56 | 3828 | 3.02 (D) | 12.96 | 101'6" ✓ |  |
-| 3T | 0:00 | 61'1" | 5:16 ✗ | 5:37 ✓ | 0:00, 0:00, 0:44, 0:44 | 0:44, 0:44, 0:44, 0:44 | 4:57 | 5:12 | 1:28 | 5:12 | 4850 | 2.76 (D) | 17.31 | 258' ✓ |  |
-| 4 | 0:00 | 42'8" | 6:31 ✗ | 6:52 ✗ | 0:00, 0:00, 4:40, 4:40 | 4:40, 4:40, 0:43, 0:43 | 8:53 | 9:08 | 5:23 | 8:56 | 4292 | 2.74 (D) | 12.09 | 184' ✓ |  |
-| 4T | 0:00 | 54'8" | 7:10 ✗ | 7:31 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:44 | 6:59 | 1:26 | 6:58 | 6087 | 3.77 (E) | 15.49 | 184' ✓ |  |
-| 5 | 0:00 | 53'11" | 7:16 ✗ | 7:37 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:50 | 7:05 | 1:26 | 7:04 | 6104 | 3.17 (D) | 15.28 | 230' ✓ |  |
-| 5T | 0:00 | 69'3" | 5:30 ✗ | 5:51 ✓ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 5:16 | 5:31 | 1:26 | 5:30 | 5769 | 2.88 (D) | 19.62 | 230' ✓ |  |
-| 6 | 0:00 | 40'6" | 6:46 ✗ | 7:07 ✗ | 0:00, 0:00, 5:01, 5:01 | 5:01, 5:01, 0:43, 0:43 | 9:29 | 9:44 | 5:44 | 9:24 | 4238 | 2.38 (D) | 11.48 | 200' ✓ |  |
-| 6T | 0:00 | 52'6" | 7:29 ✗ | 7:50 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 7:01 | 7:16 | 1:26 | 7:15 | 6135 | 3.33 (D) | 14.88 | 200' ✓ |  |
-| 7 | 0:00 | 46'11" | 8:28 ✗ | 8:49 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 7:53 | 8:08 | 1:26 | 8:07 | 6256 | 3.28 (D) | 13.29 | 248' ✓ |  |
-| 7T | 0:00 | 56'3" | 6:56 ✗ | 7:17 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:32 | 6:47 | 1:26 | 6:46 | 6053 | 3.04 (D) | 15.94 | 248' ✓ |  |
-| 8 | 0:00 | 45'10" | 6:13 ✗ | 6:34 ✗ | 0:00, 0:00, 4:12, 4:12 | 4:12, 4:12, 0:43, 0:43 | 8:07 | 8:22 | 4:55 | 8:18 | 4370 | 3.05 (D) | 12.99 | 202' ✓ |  |
-| 8T | 0:00 | 55'2" | 7:05 ✗ | 7:26 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:40 | 6:55 | 1:26 | 6:54 | 6076 | 4.06 (E) | 15.63 | 125' ✓ |  |
-| 9 | 0:00 | 47' | 5:06 ✗ | 5:27 ✓ | 0:00, 0:44, 1:28, 2:12 | 0:44, 0:44, 0:44, 0:44 | 6:31 | 6:46 | 2:56 | 6:45 | 3589 | 2.69 (D) | 13.32 | 107'6" ✓ |  |
-| 9T | 0:00 | 59' | 3:37 ✓ | 3:57 ✓ | 0:00, 0:44, 1:28, 2:12 | 0:44, 0:44, 0:44, 0:44 | 5:08 | 5:23 | 2:56 | 5:23 | 3025 | 2.23 (D) | 16.72 | 106' ✓ |  |
-| 10 | 0:00 | 86'6" | 4:16 ✗ | 4:37 ✓ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 4:10 | 4:25 | 1:26 | 4:24 | 5393 | 2.21 (D) | 24.51 | 122' ✓ |  |
-| 10T | 0:00 | 92'6" | 3:56 ✓ | 4:17 ✓ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 3:53 | 4:08 | 1:26 | 4:07 | 5262 | 1.89 (D) | 26.21 | 122' ✓ |  |
-| 11 | 0:00 | 41'8" | 6:38 ✗ | 6:59 ✗ | 0:00, 0:00, 4:49, 4:49 | 4:49, 4:49, 0:43, 0:43 | 9:09 | 9:24 | 5:32 | 9:08 | 4267 | 3.83 (E) | 11.81 | 127'6" ✓ |  |
-| 11T | 0:00 | 53'8" | 7:18 ✗ | 7:39 ✗ | 0:00, 0:00, 0:43, 0:43 | 0:43, 0:43, 0:43, 0:43 | 6:52 | 7:07 | 1:26 | 7:06 | 6109 | 5.38 (F) | 15.21 | 90' ✓ |  |
-| A | 2:00 | 56'8" | 2:31 ✓ | 2:52 ✓ | 0:00, 2:00, 4:00, 6:16 | 0:43, 4:16, 3:58, 1:42 | 7:42 | 7:57 | 7:58 | 6:40 | 1490 | 0.94 (B) | 16.06 | 80'6" ✓ |  |
-| 1 | 2:00 | 31'6" | 3:03 ✓ | 3:24 ✓ | 0:00, 2:00, 4:00, 9:02 | 0:46, 7:02, 5:02, 0:46 | 11:04 | 11:19 | 9:48 | 9:04 | 1320 | 1.25 (C) | 8.93 | 193' ✓ |  |
-| 1T | 2:00 | 43'6" | 2:24 ✓ | 2:45 ✓ | 0:00, 2:00, 4:00, 7:05 | 0:44, 5:05, 3:05, 0:44 | 8:40 | 8:55 | 7:49 | 7:16 | 1343 | 0.98 (B) | 12.32 | 118' ✓ |  |
-| 2 | 2:00 | 32'7" | 2:57 ✓ | 3:18 ✓ | 0:00, 2:00, 4:00, 8:44 | 0:46, 6:44, 4:44, 0:46 | 10:41 | 10:56 | 9:30 | 8:45 | 1310 | 1.32 (C) | 9.23 | 192' ✓ |  |
-| 2T | 2:00 | 44'7" | 2:21 ✓ | 2:42 ✓ | 0:00, 2:00, 4:00, 6:55 | 0:44, 4:55, 2:55, 0:44 | 8:27 | 8:42 | 7:39 | 7:04 | 1333 | 1.00 (B) | 12.63 | 143' ✓ |  |
-| 3 | 2:00 | 45'9" | 2:18 ✓ | 2:39 ✓ | 0:00, 2:00, 4:00, 6:44 | 0:44, 4:44, 2:44, 0:44 | 8:14 | 8:29 | 7:28 | 6:56 | 1322 | 1.04 (B) | 12.96 | 101'6" ✓ |  |
-| 3T | 2:00 | 61'1" | 1:43 ✓ | 2:26 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:44, 0:44, 0:44, 0:44 | 7:03 | 7:18 | 6:44 | 5:12 | 1179 | 0.67 (A) | 17.31 | 258' ✓ |  |
-| 4 | 2:00 | 42'8" | 2:49 ✓ | 3:10 ✓ | 0:00, 2:00, 4:00, 8:21 | 0:43, 6:21, 4:21, 0:43 | 10:20 | 10:35 | 9:04 | 8:56 | 1621 | 1.04 (B) | 12.09 | 184' ✓ |  |
-| 4T | 2:00 | 54'8" | 2:37 ✓ | 2:58 ✓ | 0:00, 2:00, 4:00, 6:31 | 0:43, 4:31, 4:17, 1:46 | 8:01 | 8:16 | 8:17 | 6:56 | 1509 | 0.93 (B) | 15.49 | 184' ✓ |  |
-| 5 | 2:00 | 53'11" | 2:16 ✓ | 2:37 ✓ | 0:00, 2:00, 4:00, 6:36 | 0:43, 4:36, 2:36, 0:43 | 8:07 | 8:22 | 7:19 | 7:04 | 1516 | 0.79 (A) | 15.28 | 230' ✓ |  |
-| 5T | 2:00 | 69'3" | 1:45 ✓ | 2:13 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 7:08 | 7:23 | 6:43 | 5:28 | 1373 | 0.68 (A) | 19.62 | 230' ✓ |  |
-| 6 | 2:00 | 40'6" | 3:06 ✓ | 3:27 ✓ | 0:00, 2:00, 4:00, 8:47 | 0:43, 6:47, 4:47, 0:43 | 10:54 | 11:09 | 11:09 | 9:24 | 1716 | 0.96 (B) | 11.48 | 200' ✓ |  |
-| 6T | 2:00 | 52'6" | 2:18 ✓ | 2:39 ✓ | 0:00, 2:00, 4:00, 6:47 | 0:43, 4:47, 2:47, 0:43 | 8:21 | 8:36 | 7:30 | 7:12 | 1529 | 0.83 (B) | 14.88 | 200' ✓ |  |
-| 7 | 2:00 | 46'11" | 2:34 ✓ | 2:55 ✓ | 0:00, 2:00, 4:00, 7:36 | 0:43, 5:36, 3:36, 0:43 | 9:23 | 9:38 | 8:19 | 8:06 | 1581 | 0.83 (B) | 13.29 | 248' ✓ |  |
-| 7T | 2:00 | 56'3" | 2:33 ✓ | 2:54 ✓ | 0:00, 2:00, 4:00, 6:20 | 0:43, 4:20, 4:03, 1:43 | 7:47 | 8:02 | 8:03 | 6:44 | 1494 | 0.75 (A) | 15.94 | 248' ✓ |  |
-| 8 | 2:00 | 45'10" | 2:38 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 7:46 | 0:43, 5:46, 3:46, 0:43 | 9:36 | 9:51 | 8:29 | 8:18 | 1591 | 1.11 (C) | 12.99 | 202' ✓ |  |
-| 8T | 2:00 | 55'2" | 2:18 ✓ | 2:39 ✓ | 0:00, 2:00, 4:00, 6:28 | 0:43, 4:28, 2:28, 0:43 | 7:57 | 8:12 | 7:11 | 6:52 | 1504 | 1.01 (B) | 15.63 | 125' ✓ |  |
-| 9 | 2:00 | 47' | 2:46 ✓ | 3:07 ✓ | 0:00, 2:00, 4:52, 6:00 | 0:44, 2:52, 0:44, 0:44 | 8:00 | 8:15 | 6:44 | 6:44 | 1742 | 1.30 (C) | 13.32 | 107'6" ✓ |  |
-| 9T | 2:00 | 59' | 1:47 ✓ | 2:08 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:44, 0:44, 0:44, 0:44 | 7:06 | 7:21 | 6:44 | 5:20 | 1198 | 0.88 (B) | 16.72 | 106' ✓ |  |
-| 10 | 2:00 | 86'6" | 1:24 ✓ | 1:45 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 6:51 | 7:07 | 6:43 | 4:24 | 1211 | 0.50 (A) | 24.51 | 122' ✓ |  |
-| 10T | 2:00 | 92'6" | 1:19 ✓ | 1:40 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:43, 0:43, 0:43, 0:43 | 6:47 | 7:02 | 6:43 | 4:04 | 1155 | 0.41 (A) | 26.21 | 122' ✓ |  |
-| 11 | 2:00 | 41'8" | 2:54 ✓ | 3:15 ✓ | 0:00, 2:00, 4:00, 8:33 | 0:43, 6:33, 4:33, 0:43 | 10:36 | 10:51 | 9:16 | 9:08 | 1630 | 1.47 (C) | 11.81 | 127'6" ✓ |  |
-| 11T | 2:00 | 53'8" | 2:16 ✓ | 2:37 ✓ | 0:00, 2:00, 4:00, 6:38 | 0:43, 4:38, 2:38, 0:43 | 8:10 | 8:25 | 7:21 | 7:04 | 1518 | 1.34 (C) | 15.21 | 90' ✓ |  |
-| A | 5:00 | 56'8" | 2:07 ✓ | 2:28 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:26 | 16:41 | 15:43 | 6:40 | 1474 | 0.93 (B) | 16.06 | 80'6" ✓ |  |
-| 1 | 5:00 | 31'6" | 3:02 ✓ | 3:23 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:46, 0:46, 0:46, 0:46 | 17:02 | 17:17 | 15:46 | 9:04 | 1312 | 1.24 (C) | 8.93 | 193' ✓ |  |
-| 1T | 5:00 | 43'6" | 2:23 ✓ | 2:44 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:35 | 16:50 | 15:44 | 7:16 | 1331 | 0.97 (B) | 12.32 | 118' ✓ |  |
-| 2 | 5:00 | 32'7" | 2:56 ✓ | 3:17 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:46, 0:46, 0:46, 0:46 | 16:57 | 17:12 | 15:46 | 8:44 | 1301 | 1.31 (C) | 9.23 | 192' ✓ |  |
-| 2T | 5:00 | 44'7" | 2:20 ✓ | 2:41 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:32 | 16:47 | 15:44 | 7:04 | 1321 | 0.99 (B) | 12.63 | 143' ✓ |  |
-| 3 | 5:00 | 45'9" | 2:16 ✓ | 2:37 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:30 | 16:45 | 15:44 | 6:56 | 1309 | 1.03 (B) | 12.96 | 101'6" ✓ |  |
-| 3T | 5:00 | 61'1" | 1:42 ✓ | 2:26 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:03 | 16:18 | 15:44 | 5:12 | 1162 | 0.66 (A) | 17.31 | 258' ✓ |  |
-| 4 | 5:00 | 42'8" | 2:48 ✓ | 3:09 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:59 | 17:14 | 15:43 | 8:56 | 1609 | 1.03 (B) | 12.09 | 184' ✓ |  |
-| 4T | 5:00 | 54'8" | 2:12 ✓ | 2:33 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:30 | 16:45 | 15:43 | 6:56 | 1493 | 0.93 (B) | 15.49 | 184' ✓ |  |
-| 5 | 5:00 | 53'11" | 2:13 ✓ | 2:34 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:31 | 16:46 | 15:43 | 7:04 | 1501 | 0.78 (A) | 15.28 | 230' ✓ |  |
-| 5T | 5:00 | 69'3" | 1:44 ✓ | 2:13 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:08 | 16:23 | 15:43 | 5:28 | 1353 | 0.67 (A) | 19.62 | 230' ✓ |  |
-| 6 | 5:00 | 40'6" | 2:57 ✓ | 3:18 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 17:07 | 17:22 | 15:43 | 9:24 | 1630 | 0.91 (B) | 11.48 | 200' ✓ |  |
-| 6T | 5:00 | 52'6" | 2:17 ✓ | 2:38 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:34 | 16:49 | 15:43 | 7:12 | 1514 | 0.82 (A) | 14.88 | 200' ✓ |  |
-| 7 | 5:00 | 46'11" | 2:33 ✓ | 2:54 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:47 | 17:02 | 15:43 | 8:04 | 1568 | 0.82 (A) | 13.29 | 248' ✓ |  |
-| 7T | 5:00 | 56'3" | 2:08 ✓ | 2:29 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:27 | 16:42 | 15:43 | 6:44 | 1478 | 0.74 (A) | 15.94 | 248' ✓ |  |
-| 8 | 5:00 | 45'10" | 2:37 ✓ | 2:58 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:50 | 17:05 | 15:43 | 8:16 | 1578 | 1.10 (C) | 12.99 | 202' ✓ |  |
-| 8T | 5:00 | 55'2" | 2:10 ✓ | 2:31 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:29 | 16:44 | 15:43 | 6:52 | 1489 | 0.99 (B) | 15.63 | 125' ✓ |  |
-| 9 | 5:00 | 47' | 2:13 ✓ | 2:34 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:27 | 16:42 | 15:44 | 6:44 | 1297 | 0.97 (B) | 13.32 | 107'6" ✓ |  |
-| 9T | 5:00 | 59' | 1:46 ✓ | 2:07 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:44, 0:44, 0:44, 0:44 | 16:06 | 16:21 | 15:44 | 5:20 | 1182 | 0.87 (B) | 16.72 | 106' ✓ |  |
-| 10 | 5:00 | 86'6" | 1:23 ✓ | 1:44 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 15:51 | 16:07 | 15:43 | 4:24 | 1187 | 0.49 (A) | 24.51 | 122' ✓ |  |
-| 10T | 5:00 | 92'6" | 1:18 ✓ | 1:39 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 15:47 | 16:02 | 15:43 | 4:04 | 1129 | 0.40 (A) | 26.21 | 122' ✓ |  |
-| 11 | 5:00 | 41'8" | 2:52 ✓ | 3:13 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 17:03 | 17:18 | 15:43 | 9:08 | 1619 | 1.45 (C) | 11.81 | 127'6" ✓ |  |
-| 11T | 5:00 | 53'8" | 2:14 ✓ | 2:35 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:43, 0:43, 0:43, 0:43 | 16:32 | 16:47 | 15:43 | 7:04 | 1503 | 1.32 (C) | 15.21 | 90' ✓ |  |
+| A | 0:00 | 56'8" | 6:47 ✗ | 7:08 ✗ | 0:00, 0:00, 0:49, 0:49 | 0:49, 0:49, 0:49, 0:49 | 6:29 | 6:44 | 1:38 | 6:40 | 5948 | 3.76 (E) | 16.06 | 80'6" ✓ |  |
+| 1 | 0:00 | 31'6" | 6:36 ✗ | 6:57 ✗ | 0:00, 0:00, 5:32, 5:32 | 5:32, 5:32, 1:05, 1:05 | 9:50 | 10:06 | 6:37 | 8:54 | 3219 | 3.05 (D) | 8.93 | 193' ✓ |  |
+| 1T | 0:00 | 43'6" | 5:42 ✗ | 6:03 ✗ | 0:00, 0:00, 3:59, 3:59 | 3:59, 3:59, 0:56, 0:56 | 7:26 | 7:41 | 4:55 | 6:54 | 3829 | 2.79 (D) | 12.32 | 118' ✓ |  |
+| 2 | 0:00 | 32'7" | 6:27 ✗ | 6:48 ✗ | 0:00, 0:00, 5:16, 5:16 | 5:16, 5:16, 0:57, 0:57 | 9:25 | 9:41 | 6:14 | 8:36 | 3243 | 3.27 (D) | 9.23 | 192' ✓ |  |
+| 2T | 0:00 | 44'7" | 5:37 ✗ | 5:58 ✓ | 0:00, 0:00, 3:56, 3:56 | 3:56, 3:56, 0:51, 0:51 | 7:18 | 7:34 | 4:47 | 6:34 | 3867 | 2.90 (D) | 12.63 | 143' ✓ |  |
+| 3 | 0:00 | 45'9" | 5:31 ✗ | 5:52 ✓ | 0:00, 0:00, 3:31, 3:31 | 3:31, 3:31, 0:56, 0:56 | 6:45 | 7:00 | 4:27 | 6:48 | 3838 | 3.02 (D) | 12.96 | 101'6" ✓ |  |
+| 3T | 0:00 | 61'1" | 5:00 ✗ | 5:21 ✓ | 0:00, 0:00, 1:01, 1:01 | 1:01, 1:01, 1:01, 1:01 | 4:58 | 5:13 | 2:02 | 5:07 | 4563 | 2.60 (D) | 17.31 | 258' ✓ |  |
+| 4 | 0:00 | 42'8" | 6:31 ✗ | 6:52 ✗ | 0:00, 0:00, 4:40, 4:40 | 4:40, 4:40, 1:00, 1:00 | 8:54 | 9:09 | 5:40 | 8:44 | 4301 | 2.75 (D) | 12.09 | 184' ✓ |  |
+| 4T | 0:00 | 54'8" | 6:59 ✗ | 7:20 ✗ | 0:00, 0:00, 0:54, 0:54 | 0:54, 0:54, 0:54, 0:54 | 6:44 | 6:59 | 1:48 | 6:53 | 5925 | 3.67 (E) | 15.49 | 184' ✓ |  |
+| 5 | 0:00 | 53'11" | 7:05 ✗ | 7:26 ✗ | 0:00, 0:00, 0:58, 0:58 | 0:58, 0:58, 0:58, 0:58 | 6:53 | 7:09 | 1:56 | 6:13 | 5932 | 3.08 (D) | 15.28 | 230' ✓ |  |
+| 5T | 0:00 | 69'3" | 5:14 ✗ | 5:35 ✓ | 0:00, 0:00, 1:02, 1:02 | 1:02, 1:02, 1:02, 1:02 | 5:19 | 5:34 | 2:04 | 4:35 | 5462 | 2.72 (D) | 19.62 | 230' ✓ |  |
+| 6 | 0:00 | 40'6" | 6:46 ✗ | 7:07 ✗ | 0:00, 0:00, 5:00, 5:00 | 5:00, 5:00, 0:58, 0:58 | 9:33 | 10:13 | 5:59 | 7:34 | 4312 | 2.42 (D) | 11.48 | 200' ✓ |  |
+| 6T | 0:00 | 52'6" | 7:23 ✗ | 7:44 ✗ | 0:00, 0:00, 0:53, 0:53 | 0:53, 0:53, 0:53, 0:53 | 7:05 | 7:21 | 1:47 | 6:14 | 6051 | 3.29 (D) | 14.88 | 200' ✓ |  |
+| 7 | 0:00 | 46'11" | 8:19 ✗ | 8:40 ✗ | 0:00, 0:00, 0:56, 0:56 | 0:56, 0:56, 0:56, 0:56 | 7:57 | 8:13 | 1:52 | 7:15 | 6144 | 3.22 (D) | 13.29 | 248' ✓ |  |
+| 7T | 0:00 | 56'3" | 6:51 ✗ | 7:12 ✗ | 0:00, 0:00, 0:52, 0:52 | 0:52, 0:52, 0:52, 0:52 | 6:36 | 6:51 | 1:44 | 5:50 | 5971 | 3.00 (D) | 15.94 | 248' ✓ |  |
+| 8 | 0:00 | 45'10" | 6:13 ✗ | 6:34 ✗ | 0:00, 0:00, 4:12, 4:12 | 4:12, 4:12, 0:56, 0:56 | 8:08 | 8:23 | 5:08 | 8:02 | 4389 | 3.06 (D) | 12.99 | 202' ✓ |  |
+| 8T | 0:00 | 55'2" | 6:56 ✗ | 7:17 ✗ | 0:00, 0:00, 0:53, 0:53 | 0:53, 0:53, 0:53, 0:53 | 6:40 | 6:56 | 1:46 | 6:50 | 5925 | 3.96 (E) | 15.63 | 125' ✓ |  |
+| 9 | 0:00 | 47' | 4:17 ✗ | 4:38 ✓ | 0:00, 1:01, 2:02, 3:03 | 1:01, 1:01, 1:01, 1:01 | 6:34 | 6:49 | 4:04 | 6:30 | 2950 | 2.21 (D) | 13.32 | 107'6" ✓ |  |
+| 9T | 0:00 | 59' | 3:12 ✓ | 3:33 ✓ | 0:00, 0:55, 1:50, 2:45 | 0:55, 0:55, 0:55, 0:55 | 5:17 | 5:33 | 3:40 | 4:05 | 2621 | 1.93 (D) | 16.72 | 106' ✓ |  |
+| 10 | 0:00 | 86'6" | 4:06 ✗ | 4:27 ✓ | 0:00, 0:00, 0:55, 0:55 | 0:55, 0:55, 0:55, 0:55 | 4:12 | 4:27 | 1:50 | 4:03 | 5144 | 2.11 (D) | 24.51 | 122' ✓ |  |
+| 10T | 0:00 | 92'6" | 3:49 ✓ | 4:10 ✓ | 0:00, 0:00, 0:53, 0:53 | 0:53, 0:53, 0:53, 0:53 | 3:55 | 4:10 | 1:47 | 3:37 | 5062 | 1.81 (D) | 26.21 | 122' ✓ |  |
+| 11 | 0:00 | 41'8" | 6:38 ✗ | 6:59 ✗ | 0:00, 0:00, 4:49, 4:49 | 4:49, 4:49, 0:48, 0:48 | 9:10 | 9:25 | 5:37 | 8:50 | 4286 | 3.85 (E) | 11.81 | 127'6" ✓ |  |
+| 11T | 0:00 | 53'8" | 7:07 ✗ | 7:28 ✗ | 0:00, 0:00, 0:55, 0:55 | 0:55, 0:55, 0:55, 0:55 | 6:52 | 7:07 | 1:50 | 7:00 | 5930 | 5.22 (E) | 15.21 | 90' ✓ |  |
+| A | 2:00 | 56'8" | 2:31 ✓ | 2:52 ✓ | 0:00, 2:00, 4:00, 6:17 | 0:49, 4:17, 2:19, 0:49 | 7:44 | 8:00 | 7:06 | 6:24 | 1521 | 0.96 (B) | 16.06 | 80'6" ✓ |  |
+| 1 | 2:00 | 31'6" | 3:47 ✓ | 4:08 ✓ | 0:00, 2:00, 4:00, 9:03 | 1:05, 7:03, 5:05, 1:05 | 11:06 | 11:21 | 10:08 | 8:39 | 1337 | 1.27 (C) | 8.93 | 193' ✓ |  |
+| 1T | 2:00 | 43'6" | 2:56 ✓ | 3:17 ✓ | 0:00, 2:00, 4:00, 7:17 | 0:57, 5:17, 3:18, 0:56 | 8:55 | 9:12 | 8:13 | 6:08 | 1414 | 1.03 (B) | 12.32 | 118' ✓ |  |
+| 2 | 2:00 | 32'7" | 2:57 ✓ | 3:18 ✓ | 0:00, 2:00, 4:00, 8:45 | 0:58, 6:45, 4:45, 0:58 | 10:43 | 10:58 | 9:43 | 8:38 | 1322 | 1.33 (C) | 9.23 | 192' ✓ |  |
+| 2T | 2:00 | 44'7" | 2:52 ✓ | 3:13 ✓ | 0:00, 2:00, 4:00, 7:11 | 0:51, 5:11, 3:12, 0:52 | 8:47 | 9:04 | 8:03 | 5:00 | 1433 | 1.08 (B) | 12.63 | 143' ✓ |  |
+| 3 | 2:00 | 45'9" | 2:17 ✓ | 2:38 ✓ | 0:00, 2:00, 4:00, 6:46 | 0:56, 4:46, 2:46, 0:58 | 8:17 | 8:36 | 7:44 | 6:08 | 1343 | 1.06 (B) | 12.96 | 101'6" ✓ |  |
+| 3T | 2:00 | 61'1" | 1:43 ✓ | 2:26 ✓ | 0:00, 2:00, 4:00, 6:00 | 1:01, 1:04, 1:04, 1:04 | 7:05 | 7:26 | 7:04 | 3:40 | 1213 | 0.69 (A) | 17.31 | 258' ✓ |  |
+| 4 | 2:00 | 42'8" | 2:49 ✓ | 3:10 ✓ | 0:00, 2:00, 4:00, 8:21 | 1:00, 6:21, 4:21, 1:00 | 10:21 | 10:37 | 9:21 | 8:39 | 1641 | 1.05 (B) | 12.09 | 184' ✓ |  |
+| 4T | 2:00 | 54'8" | 2:16 ✓ | 2:37 ✓ | 0:00, 2:00, 4:00, 6:33 | 0:54, 4:33, 2:33, 0:55 | 8:05 | 8:20 | 7:28 | 5:20 | 1549 | 0.96 (B) | 15.49 | 184' ✓ |  |
+| 5 | 2:00 | 53'11" | 2:40 ✓ | 3:01 ✓ | 0:00, 2:00, 4:00, 7:17 | 0:58, 5:17, 3:21, 0:57 | 8:53 | 9:17 | 8:14 | 3:04 | 1606 | 0.83 (B) | 15.28 | 230' ✓ |  |
+| 5T | 2:00 | 69'3" | 1:45 ✓ | 2:13 ✓ | 0:00, 2:00, 4:00, 6:00 | 1:02, 1:05, 1:05, 1:05 | 7:14 | 7:30 | 7:05 | 0:20 | 1505 | 0.75 (A) | 19.62 | 230' ✓ |  |
+| 6 | 2:00 | 40'6" | 3:21 ✓ | 3:42 ✓ | 0:00, 2:00, 4:00, 9:59 | 0:59, 7:59, 5:39, 0:59 | 12:12 | 12:54 | 10:58 | 6:59 | 1808 | 1.01 (B) | 11.48 | 200' ✓ |  |
+| 6T | 2:00 | 52'6" | 2:44 ✓ | 3:05 ✓ | 0:00, 2:00, 4:00, 7:57 | 0:53, 5:57, 3:59, 0:56 | 9:37 | 9:54 | 8:53 | 1:52 | 1606 | 0.87 (B) | 14.88 | 200' ✓ |  |
+| 7 | 2:00 | 46'11" | 2:34 ✓ | 2:55 ✓ | 0:00, 2:00, 4:00, 8:39 | 0:56, 6:39, 4:20, 0:56 | 10:32 | 10:51 | 9:35 | 4:36 | 1670 | 0.88 (B) | 13.29 | 248' ✓ |  |
+| 7T | 2:00 | 56'3" | 2:33 ✓ | 2:54 ✓ | 0:00, 2:00, 4:00, 7:16 | 0:52, 5:16, 3:25, 1:05 | 8:49 | 9:11 | 8:21 | 0:44 | 1582 | 0.80 (A) | 15.94 | 248' ✓ |  |
+| 8 | 2:00 | 45'10" | 2:38 ✓ | 2:59 ✓ | 0:00, 2:00, 4:00, 7:47 | 0:56, 5:47, 3:47, 0:57 | 9:38 | 9:54 | 8:44 | 7:59 | 1611 | 1.12 (C) | 12.99 | 202' ✓ |  |
+| 8T | 2:00 | 55'2" | 2:36 ✓ | 2:57 ✓ | 0:00, 2:00, 4:00, 6:28 | 0:53, 4:28, 2:30, 0:53 | 7:58 | 8:14 | 7:21 | 6:16 | 1522 | 1.02 (B) | 15.63 | 125' ✓ |  |
+| 9 | 2:00 | 47' | 2:53 ✓ | 3:14 ✓ | 0:00, 2:00, 4:56, 6:00 | 1:01, 2:56, 1:02, 1:01 | 8:07 | 8:22 | 7:01 | 5:54 | 1834 | 1.37 (C) | 13.32 | 107'6" ✓ |  |
+| 9T | 2:00 | 59' | 1:47 ✓ | 2:08 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:55, 1:05, 1:05, 1:05 | 7:14 | 7:39 | 7:05 | 0:20 | 1372 | 1.01 (B) | 16.72 | 106' ✓ |  |
+| 10 | 2:00 | 86'6" | 1:25 ✓ | 1:46 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:55, 1:06, 1:06, 1:06 | 6:58 | 7:35 | 7:06 | 0:04 | 1371 | 0.56 (A) | 24.51 | 122' ✓ |  |
+| 10T | 2:00 | 92'6" | 1:19 ✓ | 1:40 ✓ | 0:00, 2:00, 4:00, 6:00 | 0:53, 1:06, 1:06, 1:06 | 6:56 | 7:35 | 7:06 | 0:00 | 1382 | 0.50 (A) | 25.78 | 122' ✓ |  |
+| 11 | 2:00 | 41'8" | 2:56 ✓ | 3:17 ✓ | 0:00, 2:00, 4:00, 8:34 | 0:48, 6:34, 4:34, 0:48 | 10:38 | 10:54 | 9:22 | 8:27 | 1657 | 1.49 (C) | 11.81 | 127'6" ✓ |  |
+| 11T | 2:00 | 53'8" | 2:15 ✓ | 2:36 ✓ | 0:00, 2:00, 4:00, 6:41 | 0:55, 4:41, 2:41, 0:55 | 8:14 | 8:31 | 7:36 | 6:20 | 1541 | 1.36 (C) | 15.21 | 90' ✓ |  |
+| A | 5:00 | 56'8" | 2:07 ✓ | 2:28 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:49, 0:49, 0:49, 0:49 | 16:27 | 16:43 | 15:49 | 6:24 | 1492 | 0.94 (B) | 16.06 | 80'6" ✓ |  |
+| 1 | 5:00 | 31'6" | 3:02 ✓ | 3:23 ✓ | 0:00, 5:00, 10:00, 15:00 | 1:05, 1:05, 1:05, 1:05 | 17:03 | 17:18 | 16:05 | 8:12 | 1324 | 1.26 (C) | 8.93 | 193' ✓ |  |
+| 1T | 5:00 | 43'6" | 2:23 ✓ | 2:44 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:57, 0:57, 0:57, 0:57 | 16:38 | 16:55 | 15:57 | 6:08 | 1369 | 1.00 (B) | 12.32 | 118' ✓ |  |
+| 2 | 5:00 | 32'7" | 2:56 ✓ | 3:17 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:58, 0:58, 0:58, 0:58 | 16:58 | 17:13 | 15:58 | 8:28 | 1308 | 1.32 (C) | 9.23 | 192' ✓ |  |
+| 2T | 5:00 | 44'7" | 2:20 ✓ | 2:41 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:51, 0:51, 0:51, 0:51 | 16:36 | 16:53 | 15:51 | 5:00 | 1372 | 1.03 (B) | 12.63 | 143' ✓ |  |
+| 3 | 5:00 | 45'9" | 2:16 ✓ | 2:37 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:56, 0:56, 0:56, 0:56 | 16:31 | 16:50 | 15:56 | 6:08 | 1323 | 1.04 (B) | 12.96 | 101'6" ✓ |  |
+| 3T | 5:00 | 61'1" | 1:42 ✓ | 2:26 ✓ | 0:00, 5:00, 10:00, 15:00 | 1:01, 1:01, 1:01, 1:01 | 16:05 | 16:26 | 16:01 | 3:40 | 1184 | 0.67 (A) | 17.31 | 258' ✓ |  |
+| 4 | 5:00 | 42'8" | 2:48 ✓ | 3:09 ✓ | 0:00, 5:00, 10:00, 15:00 | 1:00, 1:00, 1:00, 1:00 | 17:00 | 17:16 | 16:00 | 8:20 | 1621 | 1.04 (B) | 12.09 | 184' ✓ |  |
+| 4T | 5:00 | 54'8" | 2:12 ✓ | 2:33 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:54, 0:54, 0:54, 0:54 | 16:32 | 16:47 | 15:54 | 5:20 | 1518 | 0.94 (B) | 15.49 | 184' ✓ |  |
+| 5 | 5:00 | 53'11" | 2:13 ✓ | 2:34 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:58, 0:58, 0:58, 0:58 | 16:36 | 17:00 | 15:58 | 3:04 | 1549 | 0.80 (A) | 15.28 | 230' ✓ |  |
+| 5T | 5:00 | 69'3" | 1:44 ✓ | 2:13 ✓ | 0:00, 5:00, 10:00, 15:00 | 1:02, 1:02, 1:02, 1:02 | 16:14 | 16:30 | 16:02 | 0:20 | 1424 | 0.71 (A) | 19.62 | 230' ✓ |  |
+| 6 | 5:00 | 40'6" | 2:57 ✓ | 3:18 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:59, 0:59, 0:59, 0:59 | 17:13 | 17:55 | 15:59 | 4:48 | 1671 | 0.94 (B) | 11.48 | 200' ✓ |  |
+| 6T | 5:00 | 52'6" | 2:17 ✓ | 2:38 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:53, 0:53, 0:53, 0:53 | 16:40 | 16:57 | 15:53 | 1:52 | 1554 | 0.84 (B) | 14.88 | 200' ✓ |  |
+| 7 | 5:00 | 46'11" | 2:33 ✓ | 2:54 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:56, 0:56, 0:56, 0:56 | 16:53 | 17:12 | 15:56 | 3:44 | 1615 | 0.85 (B) | 13.29 | 248' ✓ |  |
+| 7T | 5:00 | 56'3" | 2:08 ✓ | 2:29 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:52, 0:52, 0:52, 0:52 | 16:33 | 16:55 | 15:52 | 0:44 | 1525 | 0.77 (A) | 15.94 | 248' ✓ |  |
+| 8 | 5:00 | 45'10" | 2:37 ✓ | 2:58 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:56, 0:56, 0:56, 0:56 | 16:51 | 17:07 | 15:56 | 7:40 | 1592 | 1.11 (C) | 12.99 | 202' ✓ |  |
+| 8T | 5:00 | 55'2" | 2:10 ✓ | 2:31 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:53, 0:53, 0:53, 0:53 | 16:30 | 16:46 | 15:53 | 6:16 | 1501 | 1.00 (B) | 15.63 | 125' ✓ |  |
+| 9 | 5:00 | 47' | 2:13 ✓ | 2:34 ✓ | 0:00, 5:00, 10:00, 15:00 | 1:01, 1:01, 1:01, 1:01 | 16:30 | 16:46 | 16:01 | 5:36 | 1337 | 1.00 (B) | 13.32 | 107'6" ✓ |  |
+| 9T | 5:00 | 59' | 1:46 ✓ | 2:07 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:55, 0:55, 0:55, 0:55 | 16:14 | 16:39 | 15:55 | 0:20 | 1273 | 0.94 (B) | 16.72 | 106' ✓ |  |
+| 10 | 5:00 | 86'6" | 1:23 ✓ | 1:44 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:55, 0:55, 0:55, 0:55 | 15:58 | 16:35 | 15:55 | 0:04 | 1287 | 0.53 (A) | 24.51 | 122' ✓ |  |
+| 10T | 5:00 | 92'6" | 1:18 ✓ | 1:39 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:53, 0:53, 0:53, 0:53 | 15:56 | 16:35 | 15:53 | 0:00 | 1262 | 0.45 (A) | 25.78 | 122' ✓ |  |
+| 11 | 5:00 | 41'8" | 2:52 ✓ | 3:13 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:48, 0:48, 0:48, 0:48 | 17:04 | 17:20 | 15:48 | 7:44 | 1641 | 1.47 (C) | 11.81 | 127'6" ✓ |  |
+| 11T | 5:00 | 53'8" | 2:14 ✓ | 2:35 ✓ | 0:00, 5:00, 10:00, 15:00 | 0:55, 0:55, 0:55, 0:55 | 16:33 | 16:50 | 15:55 | 6:20 | 1522 | 1.34 (C) | 15.21 | 90' ✓ |  |
 <!-- results-table:end -->
 
 ### History
@@ -1094,3 +1147,39 @@ and each fix's effect is summarized here.
   except that platform 6's max up rate, exactly 11.475 pax/s, now rounds to 11.48 instead of 11.47.
 - **Added the VCEs no arriving passenger goes up to the results table.**
   Arriving passengers spread across every VCE, so there are none yet.
+- **Sent each door's arriving passengers to the quickest VCE,**
+  i.e. the one with the least walking time plus waiting time for everyone queued or walking there,
+  walking at the TCQSM's design walking speed, 250 ft/min,
+  instead of spreading them across the VCEs in proportion to their widths.
+  Trains stop with their east ends at the platform's, with their doors spread evenly along them.
+  VCEs near the ends of the platform or far from the busiest doors now run dry
+  while others still have a queue,
+  so every platform clears later, e.g. with trains 2 minutes apart,
+  platform 3 at 9:03 instead of 8:29, and platform 6 at 12:24 instead of 11:09,
+  and more passengers crowd the platform at once,
+  e.g. 1999 instead of 1716 on platform 6 and 1879 instead of 1494 on 7T,
+  so NFPA 130's times are up to 33 s longer, though no platform passes or fails differently.
+  With trains 5 minutes apart, 7T's `P7-S1`, about 215' west of its trains, is never the quickest, so nobody goes up it.
+- **Sent departing passengers to the nearest car that isn't close to full,**
+  walking there from their VCE at 250 ft/min,
+  with each car boarding its own waiting passengers through its own doors,
+  instead of spreading evenly across the doors as soon as they come down.
+  Most trains' dwells are longer, e.g. 0:56 instead of 0:44 on platform 3 with trains 5 minutes apart,
+  and with trains 2 minutes apart, the busiest cars' doors hold up their trains,
+  so platform 3 finishes boarding at 8:14 instead of 7:29,
+  and platform 6 at 11:20 instead of 9:28, clearing at 13:46 instead of 12:24.
+  With trains arriving at once, platform 9's trains, all on its one track, arrive later,
+  so it peaks at 2945 passengers instead of 3624, evacuating in 4:17 instead of 5:08.
+  Elsewhere, longer dwells keep more passengers aboard,
+  so NFPA 130's times are up to 44 s longer, e.g. platform 1's with trains 2 minutes apart, 3:47 instead of 3:03,
+  though no platform passes or fails NFPA 130's checks differently.
+- **Counted a VCE's queue as draining while arriving passengers walk to it,**
+  so the quickest VCE is the one they could go up soonest,
+  the later of their walk there and when everyone queued at or walking to it has gone up,
+  instead of their walk plus that whole wait.
+  Farther VCEs no longer look slower than they are, so passengers spread out more,
+  and every platform clears sooner, by 9 s to 2:00,
+  e.g. with trains 2 minutes apart, platform 3 at 8:36 instead of 9:28,
+  and platform 6 at 12:54 instead of 13:46, peaking at 1808 passengers instead of 2015.
+  NFPA 130's times change by up to 33 s, though no platform passes or fails differently,
+  and 7T's `P7-S1` is now used with trains 5 minutes apart.
