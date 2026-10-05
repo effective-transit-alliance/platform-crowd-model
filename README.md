@@ -9,23 +9,17 @@ in Rust, in [`crates/core`](./crates/core).
 
 ## Running
 
-To run, we use the Python package manager [`uv`](https://github.com/astral-sh/uv),
-which can be installed easily with
-
-```sh
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-Building the model's Rust core also needs a Rust toolchain,
+To run, we use the Python package manager [`uv`](https://github.com/astral-sh/uv).
+Building the model's Rust core also needs a Rust toolchain (Rust 1.98 or newer),
 which can be installed with [`rustup`](https://rustup.rs),
-and on Linux, the [`mold`](https://github.com/rui314/mold) linker,
-which [`mise`](https://mise.jdx.dev) installs at the version in [`mise.toml`](./mise.toml) with
+and on Linux, the [`mold`](https://github.com/rui314/mold) linker.
+[`mise`](https://mise.jdx.dev) installs `uv` and `mold`, as [`mise.toml`](./mise.toml) lists them, with
 
 ```sh
 mise install
 ```
 
-and puts on your `$PATH` in this directory once [activated](https://mise.jdx.dev/getting-started.html#activate-mise) in your shell.
+and puts them on your `$PATH` in this directory once [activated](https://mise.jdx.dev/getting-started.html#activate-mise) in your shell.
 
 With them installed, you can then just run the model:
 
