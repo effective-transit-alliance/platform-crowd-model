@@ -25,6 +25,10 @@ module-name = "platform_crowd_model._core"
 features = ["pyo3/extension-module"]
 
 [tool.uv]
+# Build the Rust extension in the project's environment, with its locked `maturin`,
+# rather than in a fresh isolated one each time,
+# whose new interpreter path makes `pyo3` recompile on every rebuild.
+no-build-isolation-package = ["platform-crowd-model"]
 # Rebuild the Rust extension whenever its sources change.
 cache-keys = [
     { file = "pyproject.toml" },
@@ -35,6 +39,7 @@ cache-keys = [
 
 [dependency-groups]
 dev = [
+    "maturin>=1.15,<2",
     "pre-commit>=4.6.2",
     "pyrefly>=1.3.1",
     "pytest>=9.1.1",
