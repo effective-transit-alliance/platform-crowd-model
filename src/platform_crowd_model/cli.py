@@ -193,6 +193,18 @@ def shapes_combined() -> None:
     shapes_combined.main()
 
 
+@data_app.command()
+def vces_field_survey() -> None:
+    """
+    Make the field survey sheet for measuring every VCE in person,
+    writing `data/vces_field_survey.csv`.
+    Run `vces` first.
+    """
+    from platform_crowd_model import vces_field_survey
+
+    vces_field_survey.main()
+
+
 @data_app.command("all")
 def all_data() -> None:
     """Regenerate everything in `data/` that's generated, in order."""
@@ -209,3 +221,4 @@ def all_data() -> None:
     shapes_platform_a_pcip_phase_1()
     shapes_moynihan_ea()
     shapes_combined()
+    vces_field_survey()
