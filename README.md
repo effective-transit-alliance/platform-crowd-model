@@ -920,6 +920,37 @@ Notes:
   Platforms 10 and 11's match the EA's capacities divided by 17 pax/min/ft,
   but platform 3's matches the EA's platform 1, not platform 3.
 
+### Field Survey
+
+Since no public source has every VCE's width,
+[`data/vces_field_survey.csv`](./data/vces_field_survey.csv) is a sheet for measuring them in person,
+made by `uv run platform-crowd-model data vces-field-survey`
+([`vces_field_survey.py`](./src/platform_crowd_model/vces_field_survey.py)).
+It lists each platform's VCEs expected from the PCIP Phase 2 plan (platforms 1 to 8),
+the 2022 directory, and the Master Plan,
+each sorted west to east, since they can't all be aligned reliably,
+starting with platform 3, the ETA report's focus,
+then platform 11, which has no width data.
+Surveyors fill in the columns after `midpoint_ft`, feet east of the Master Plan's plans' west edge:
+
+- `found`: yes, no, or the `vce_name` of another row it duplicates.
+  Add rows for VCEs neither source lists.
+- `clear_width_in`: the width between the handrails at the platform end,
+  which the capacity standards use.
+- `escalator_step_width_in` and `escalator_direction_am_peak` and `_pm_peak`.
+- `nearest_column_number` and `distance_from_east_end_ft`:
+  platform columns' painted numbers give precise positions.
+- `leads_to`: the concourse, which also shows whether the directory shows a VCE twice.
+- `obstructions`: columns, benches, bins, or narrow landings near the bottom,
+  which the FRA found also slow clearing.
+- `photos` and `notes`.
+
+Regenerating the sheet keeps what surveyors have entered.
+Each row that's still generated keeps its entries,
+matched by its platform, source, type, and position rather than its `vce_name`,
+which can change as VCEs are added.
+Every other row with entries, like one a surveyor added, is kept at the end.
+
 ### Platform Shapes
 
 The model doesn't use them yet, but the shapes of the platforms and of what's on them
@@ -1376,4 +1407,9 @@ and each fix's effect is summarized here.
   taking each part of the station from its best source, like `data/vces.csv`,
   with `uv run platform-crowd-model data shapes-combined`,
   and tested that their VCEs match `data/vces.csv`'s.
+  No results change.
+- **Made a field survey sheet for measuring every VCE in person,**
+  [`data/vces_field_survey.csv`](./data/vces_field_survey.csv),
+  with `uv run platform-crowd-model data vces-field-survey`
+  (see [Field Survey](#field-survey)).
   No results change.
