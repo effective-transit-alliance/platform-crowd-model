@@ -63,10 +63,17 @@ def fetch() -> dict[str, Any]:
     return json.loads(CACHE.read_text())
 
 
+def scales(lat0: float) -> tuple[float, float]:
+    """Feet per degree of longitude and of latitude around latitude `lat0`."""
+    return (
+        METERS_PER_DEGREE_LATITUDE * cos(radians(lat0)) * FEET_PER_METER,
+        METERS_PER_DEGREE_LATITUDE * FEET_PER_METER,
+    )
+
+
 def project(points: list[dict[str, float]], lat0: float) -> list[tuple[float, float]]:
     """`points`' longitudes and latitudes as x and y in feet on a local plane."""
-    x_scale = METERS_PER_DEGREE_LATITUDE * cos(radians(lat0)) * FEET_PER_METER
-    y_scale = METERS_PER_DEGREE_LATITUDE * FEET_PER_METER
+    x_scale, y_scale = scales(lat0)
     return [(p["lon"] * x_scale, p["lat"] * y_scale) for p in points]
 
 

@@ -648,7 +648,8 @@ No such drawing of platforms 9 to 11 was found.
 finds every run of treads on the platforms, merges a stair's flights,
 and measures each VCE's width and position into
 [`data/vces.csv`](./data/vces.csv),
-finding them with [`shapes.py`](./src/platform_crowd_model/shapes.py), including curved stairs:
+finding them the same way as [the shapes](#platform-shapes), including curved stairs,
+so the two match:
 
 - A VCE's position is its footprint's, including its landings and balustrades.
 
@@ -708,7 +709,7 @@ Platforms 9 to 11 aren't on that plan,
 so their VCEs are from NJT's PCIP Phase 1 existing plan
 ([Appendix A, sheet A-001](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=24),
 July 2019), with `source` `pcip_phase_1`, where it draws their treads,
-measured the same way,
+measured as for the [platform shapes](#platform-shapes),
 and otherwise from NJT's January 2022 station directory,
 whose map is schematic and not to scale.
 The directory's VCEs are matched to the plan's, nearest first, within 60',
@@ -918,6 +919,101 @@ Notes:
   Its source is unknown.
   Platforms 10 and 11's match the EA's capacities divided by 17 pax/min/ft,
   but platform 3's matches the EA's platform 1, not platform 3.
+
+### Platform Shapes
+
+The model doesn't use them yet, but the shapes of the platforms and of what's on them
+are extracted from four vector plans of the station,
+by [`shapes.py`](./src/platform_crowd_model/shapes.py) and a module for each plan:
+
+- NJT's PCIP Phase 1 existing plan
+  ([Appendix A, sheet A-001](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=24),
+  July 2019),
+  by `uv run platform-crowd-model data shapes-pcip-phase-1`
+  ([`shapes_pcip_phase_1.py`](./src/platform_crowd_model/shapes_pcip_phase_1.py)).
+  It has every platform, 1 to 11 and the diagonal platform, though it cuts 5 to 8 off to the west.
+  It's marked not to scale, but it's drawn to one:
+  fitting its platforms' east ends and centerlines to the frame
+  gives scales along and across the platforms within 0.1% of each other.
+- NJT's PCIP Phase 2 existing plan
+  ([sheet A-001](https://liamblank.com/wp-content/uploads/2026/09/pcip-2-conceptual-design-preliminary-drawings.pdf#page=45),
+  November 2020),
+  by `uv run platform-crowd-model data shapes-pcip-phase-2`
+  ([`shapes_pcip_phase_2.py`](./src/platform_crowd_model/shapes_pcip_phase_2.py)).
+  It only has platforms 1 to 8.
+- NJT's PCIP Phase 1 plan of Alternative 12
+  ([Appendix A, sheet A-021](https://liamblank.com/wp-content/uploads/2026/07/penn-records-s-nj-transit-pcip-1-pcip1-final-report-c5015-01-262652-00-task-06-mem-final-report-draft-appendixa-drawings-copy.pdf#page=31),
+  July 2019), with [Platform A](#platform-a),
+  by `uv run platform-crowd-model data shapes-platform-a-pcip-phase-1`
+  ([`shapes_platform_a_pcip_phase_1.py`](./src/platform_crowd_model/shapes_platform_a_pcip_phase_1.py)).
+  It's the existing plan with Alternative 12 added, so it's read the same way.
+  Platform A's VCEs are named by their labels, e.g. `AP7`,
+  and each of AP7 to AP12's stair and escalator side by side is one footprint,
+  since they're drawn as one run of treads.
+- The Moynihan Station EA's lower concourse plan
+  ([Figure 3-4](https://web.archive.org/web/2017id_/https://cdn.esd.ny.gov/subsidiaries_projects/msdc/Data/NEPA/03a%20Figure%203-3%20and%203-4.pdf#page=2),
+  February 2010),
+  by `uv run platform-crowd-model data shapes-moynihan-ea`
+  ([`shapes_moynihan_ea.py`](./src/platform_crowd_model/shapes_moynihan_ea.py)),
+  with the platforms' west ends, Moynihan Train Hall's escalators,
+  and the stairs down from the West End Concourse and the baggage and egress corridor.
+  It's a design, from before the Train Hall was built,
+  so its VCEs are as [`vces_moynihan_ea.py`](./src/platform_crowd_model/vces_moynihan_ea.py)
+  measures them, leaving out the escalator taken as not built.
+  Its platforms' west ends agree with the PCIP Phase 1 track plan's to within about 2'
+  on platforms 3 to 9,
+  though platforms 4 and 8's last 40', past the baggage and egress corridor,
+  are drawn as slivers too thin to extract.
+  It doesn't show platforms 1 and 2, or 10 and 11 west of the West End Concourse.
+  Pieces of platform west of the West End Concourse are named by the PCIP Phase 1 plan's platform
+  they're mostly on, if any.
+
+The PCIP plans are from before Moynihan Train Hall opened, so they don't have its escalators.
+From each plan, they're:
+
+- each platform's outline, with platforms 1 and 2 sharing one, as the plans draw them
+- each VCE's footprint: each flight's treads and the balustrades beside them,
+  joined by their landings, so a T-shaped stair's is a T,
+  named as the nearest VCE of the same type in [`data/vces.csv`](./data/vces.csv), if one's within 15'
+- curved stairs, e.g. the Central Concourse's down to platforms 5 and 7,
+  as the band their treads sweep, found as runs of evenly spaced treads
+  that aren't horizontal or vertical
+- the columns, the small squares on the platforms
+- the elevators, the boxes with an X across them
+- the walls, e.g. of rooms and of the enclosures around VCEs, as lines,
+  since most have gaps, e.g. for doors, or as areas where they close
+- the concourses above the platforms, at the concourse level
+
+What's under the platforms' labels is left out of the shapes, since the labels clip it.
+The two plans' VCEs on platforms 1 to 8 agree to within a median of 2'10" along the platforms
+and 10" across them.
+The PCIP Phase 1 plan also shows the escalator about 220' along each of platforms 3 to 8
+that the PCIP Phase 2 plan's labels cover.
+
+The shapes are 2D, at the platform level unless they say otherwise,
+since what matters on the platform is the space each VCE takes up there;
+going up, a VCE's capacity is already its width.
+
+They're indented GeoJSON, with each geometry's coordinates on one line, in two files for each plan:
+
+- `data/shapes_<plan>.geojson`, e.g.
+  [`data/shapes_pcip_phase_1.geojson`](./data/shapes_pcip_phase_1.geojson),
+  in feet in the Master Plan's frame, extended to 2D:
+  x east of its plans' west edge, as in `data/vces.csv`,
+  and y north of platform 5's centerline on the PCIP Phase 2 plan,
+  where east and north are along Manhattan's street grid.
+  GeoJSON requires longitude and latitude, so this is strictly not valid GeoJSON,
+  but it's what the code reads.
+- `data/shapes_<plan>.latlon.geojson`, e.g.
+  [`data/shapes_pcip_phase_1.latlon.geojson`](./data/shapes_pcip_phase_1.latlon.geojson),
+  the same shapes in longitude and latitude, so GitHub can show them on a map.
+  Each point is still longitude first, as GeoJSON requires.
+  Every plan's are converted the same way, since they're in the same frame,
+  registered by the PCIP Phase 2 plan's platforms to their outlines in OpenStreetMap:
+  rotated 29.2° to their average direction, the street grid's,
+  and offset to match their east ends on average,
+  which agree to within about 4' across the platforms, but only about 37' along them,
+  like OpenStreetMap's lengths.
 
 ## Results
 
@@ -1256,3 +1352,8 @@ and each fix's effect is summarized here.
   in `*_vces.csv`, and a list of the VCEs in `*_vce_list.csv`,
   with each one's type, role, width, position, and when its queue last empties.
   No results change.
+- **Extracted the shapes of the platforms and of what's on them** from four plans
+  into `data/shapes_<plan>.geojson`, in feet, and `data/shapes_<plan>.latlon.geojson`,
+  with `uv run platform-crowd-model data shapes-*` for each plan
+  (see [Platform Shapes](#platform-shapes)).
+  The model doesn't read them yet. No results change.
