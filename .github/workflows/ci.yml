@@ -27,6 +27,17 @@ jobs:
       - name: pyrefly
         run: uv run pyrefly check
 
+      - name: rustfmt
+        run: cargo fmt --manifest-path crates/core/Cargo.toml --check
+
+      - name: clippy
+        run: cargo clippy --manifest-path crates/core/Cargo.toml --release -- -D warnings
+
+      # `[tool.uv]` builds the package without isolation, for faster rebuilds,
+      # so build it once in isolation, ignoring that, to check `[build-system] requires`.
+      - name: build in isolation
+        run: uv build --no-config --wheel
+
       - name: pytest
         run: uv run pytest
 
