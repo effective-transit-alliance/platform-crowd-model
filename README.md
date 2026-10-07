@@ -23,7 +23,9 @@ uv run platform-crowd-model run
 In doing so, `uv` will also install dependencies and set up a virtual environment.
 
 Each run prints a table of headline results.
-To also save each scenario's full time series as CSVs and its charts as an SVG in `output/`, run
+To also save each scenario's full time series as CSVs and its charts as an SVG in `output/`,
+including each VCE's queue and upward flow each second,
+and a list of its VCEs with when each one's queue last empties, run
 
 ```sh
 uv run platform-crowd-model run --charts
@@ -1250,3 +1252,7 @@ and each fix's effect is summarized here.
   It moves 6 scenarios' stopping positions, but no NFPA 130 time changes.
   Platform 7's longest dwell with trains 2 minutes apart is 4:27 instead of 4:42,
   and it clears at 8:20 instead of 8:38.
+- **Saved each VCE's queue and upward flow each second with `--charts`,**
+  in `*_vces.csv`, and a list of the VCEs in `*_vce_list.csv`,
+  with each one's type, role, width, position, and when its queue last empties.
+  No results change.
