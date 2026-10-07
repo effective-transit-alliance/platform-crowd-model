@@ -795,8 +795,8 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
     summary
 }
 
-#[pymodule]
-mod _core {
+#[pymodule(name = "_core")]
+mod python {
     use pyo3::Python;
     use pyo3::pyfunction;
 

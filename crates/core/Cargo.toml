@@ -7,7 +7,6 @@ rust-version = "1.98"
 publish = false
 
 [lib]
-name = "_core"
 crate-type = ["cdylib"]
 
 [dependencies]
