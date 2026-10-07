@@ -127,6 +127,72 @@ def vces_transformation_fra_sos() -> None:
     vces_transformation_fra_sos.main()
 
 
+@data_app.command()
+def shapes_pcip_phase_2() -> None:
+    """
+    Extract the shapes of platforms 1 to 8 and of their VCEs, columns, and elevators
+    from the PCIP Phase 2 plan, writing `data/shapes_pcip_phase_2.geojson`,
+    and in longitude and latitude, `data/shapes_pcip_phase_2.latlon.geojson`.
+    Run `vces` and `platforms-osm` first.
+    """
+    from platform_crowd_model import shapes_pcip_phase_2
+
+    shapes_pcip_phase_2.main()
+
+
+@data_app.command()
+def shapes_pcip_phase_1() -> None:
+    """
+    Extract the shapes of platforms 1 to 11 and the diagonal platform and of what's on them
+    from the PCIP Phase 1 existing plan, writing `data/shapes_pcip_phase_1.geojson`,
+    and in longitude and latitude, `data/shapes_pcip_phase_1.latlon.geojson`.
+    Run `shapes-pcip-phase-2` first.
+    """
+    from platform_crowd_model import shapes_pcip_phase_1
+
+    shapes_pcip_phase_1.main()
+
+
+@data_app.command()
+def shapes_platform_a_pcip_phase_1() -> None:
+    """
+    Extract the shapes of Platform A, the other platforms, and what's on them
+    from PCIP Phase 1's plan of Alternative 12,
+    writing `data/shapes_platform_a_pcip_phase_1.geojson`,
+    and in longitude and latitude, `data/shapes_platform_a_pcip_phase_1.latlon.geojson`.
+    Run `platform-a-pcip-phase-1` and `shapes-pcip-phase-2` first.
+    """
+    from platform_crowd_model import shapes_platform_a_pcip_phase_1
+
+    shapes_platform_a_pcip_phase_1.main()
+
+
+@data_app.command()
+def shapes_moynihan_ea() -> None:
+    """
+    Extract the shapes of the platforms' west ends and of what's on them
+    from the Moynihan Station EA's lower concourse plan,
+    writing `data/shapes_moynihan_ea.geojson`,
+    and in longitude and latitude, `data/shapes_moynihan_ea.latlon.geojson`.
+    Run `vces-moynihan-ea`, `shapes-pcip-phase-2`, and `shapes-pcip-phase-1` first.
+    """
+    from platform_crowd_model import shapes_moynihan_ea
+
+    shapes_moynihan_ea.main()
+
+
+@data_app.command()
+def shapes_combined() -> None:
+    """
+    Combine each plan's shapes, taking each part of the station from its best source,
+    writing `data/shapes.geojson`, and in longitude and latitude, `data/shapes.latlon.geojson`.
+    Run each plan's `shapes-*` command first.
+    """
+    from platform_crowd_model import shapes_combined
+
+    shapes_combined.main()
+
+
 @data_app.command("all")
 def all_data() -> None:
     """Regenerate everything in `data/` that's generated, in order."""
@@ -138,3 +204,8 @@ def all_data() -> None:
     vces_transformation_fra_sos()
     platform_a_pcip_phase_1()
     platforms_osm()
+    shapes_pcip_phase_2()
+    shapes_pcip_phase_1()
+    shapes_platform_a_pcip_phase_1()
+    shapes_moynihan_ea()
+    shapes_combined()

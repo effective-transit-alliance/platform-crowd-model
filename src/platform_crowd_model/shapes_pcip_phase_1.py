@@ -15,6 +15,8 @@ x by fitting the platforms' east ends to `data/platform_east_ends.csv`,
 and y, separately, by fitting platforms 3 to 8's centerlines to the PCIP Phase 2 plan's,
 as `shapes_pcip_phase_2.read_plan` reads them; the two scales agree to within 1%.
 `data/vces.csv` reads the plan the same way, so its VCEs match the shapes.
+
+Writes `data/shapes_pcip_phase_1.geojson` and `data/shapes_pcip_phase_1.latlon.geojson`.
 """
 
 from collections.abc import Callable
@@ -24,16 +26,20 @@ import pymupdf
 from shapely import Point, Polygon, box, unary_union
 
 from platform_crowd_model import shapes_pcip_phase_2
+from platform_crowd_model.paths import DATA_DIR
 from platform_crowd_model.platform_a_pcip_phase_1 import (
     EXISTING_PLATFORM_FILL,
     calibration,
 )
 from platform_crowd_model.platform_west_ends_pcip_phase_1 import pdf
-from platform_crowd_model.shapes import XY, Plan, item_points, read_drawing
+from platform_crowd_model.shapes import XY, Plan, item_points, read_drawing, write
 
 PAGE = 24
 """1-indexed PDF page of sheet A-001, "Existing Plan Overall"."""
 SOURCE = f"PCIP Phase 1 Appendix A, sheet A-001, July 2019, PDF page {PAGE}"
+
+OUT_GEOJSON = DATA_DIR / "shapes_pcip_phase_1.geojson"
+LATLON_GEOJSON = DATA_DIR / "shapes_pcip_phase_1.latlon.geojson"
 
 PLATFORM_ROWS = {
     "11": (184, 214),
@@ -191,3 +197,7 @@ def read_plan(
         concourse_fill=CONCOURSE_FILL,
         names=names,
     )
+
+
+def main() -> None:
+    write(read_plan(PAGE, SOURCE, {}), OUT_GEOJSON, LATLON_GEOJSON)
