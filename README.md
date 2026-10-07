@@ -3,24 +3,32 @@
 This repo is for modeling platform crowding and alighting and boarding of trains,
 specifically at NY Penn Station.
 [`src/platform_crowd_model/model.py`](./src/platform_crowd_model/model.py)
-models a single platform with its tracks.
+models a single platform with its tracks,
+running each second of its simulation, and the search for where its trains stop,
+in Rust, in [`crates/core`](./crates/core).
 
 ## Running
 
-To run, we use the Python package manager [`uv`](https://github.com/astral-sh/uv),
-which can be installed easily with
+To run, we use the Python package manager [`uv`](https://github.com/astral-sh/uv).
+Building the model's Rust core also needs a Rust toolchain (Rust 1.98 or newer),
+which can be installed with [`rustup`](https://rustup.rs),
+and on Linux, the [`mold`](https://github.com/rui314/mold) linker.
+[`mise`](https://mise.jdx.dev) installs `uv` and `mold`, as [`mise.toml`](./mise.toml) lists them, with
 
 ```sh
-curl -LsSf https://astral.sh/uv/install.sh | sh
+mise install
 ```
 
-With `uv` installed, you can then just run the model:
+and puts them on your `$PATH` in this directory once [activated](https://mise.jdx.dev/getting-started.html#activate-mise) in your shell.
+
+With them installed, you can then just run the model:
 
 ```sh
 uv run platform-crowd-model run
 ```
 
-In doing so, `uv` will also install dependencies and set up a virtual environment.
+In doing so, `uv` will also install dependencies, set up a virtual environment,
+and build the Rust core, rebuilding it whenever its sources change.
 
 Each run prints a table of headline results.
 To also save each scenario's full time series as CSVs and its charts as an SVG in `output/`,
@@ -1413,3 +1421,12 @@ and each fix's effect is summarized here.
   with `uv run platform-crowd-model data vces-field-survey`
   (see [Field Survey](#field-survey)).
   No results change.
+- **Ran each second of the simulation in Rust,** in [`crates/core`](./crates/core),
+  with the same operations in the same order as the Python it replaces,
+  so no results change.
+  Each run of `simulate` takes about 0.5 ms instead of 17 ms,
+  and the whole run, including every stopping position tried, about 0.3 s instead of 3 s.
+- **Searched for where trains stop in Rust, too,** trying each scenario's positions in parallel,
+  and ran the scenarios in parallel in threads instead of processes, except with `--charts`.
+  No results change.
+  The whole run takes about 0.1 s instead of 0.3 s.

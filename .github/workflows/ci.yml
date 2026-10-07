@@ -11,9 +11,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Install `uv` with `setup-uv` rather than from `mise.toml`,
+      # since it also caches `uv`'s downloads (`~/.cache/uv`, keyed on `uv.lock`) between runs,
+      # which `mise-action` doesn't.
       - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
+
+      # Installs `mise.toml`'s tools except `uv`, which `setup-uv` installed,
+      # e.g. `mold`, which `.cargo/config.toml` links with on Linux.
+      - uses: jdx/mise-action@v5
+        env:
+          MISE_DISABLE_TOOLS: uv
 
       - name: ruff format
         run: uv run ruff format --check
@@ -26,6 +35,17 @@ jobs:
 
       - name: pyrefly
         run: uv run pyrefly check
+
+      - name: rustfmt
+        run: cargo fmt --manifest-path crates/core/Cargo.toml --check
+
+      - name: clippy
+        run: cargo clippy --manifest-path crates/core/Cargo.toml --release -- -D warnings
+
+      # `[tool.uv]` builds the package without isolation, for faster rebuilds,
+      # so build it once in isolation, ignoring that, to check `[build-system] requires`.
+      - name: build in isolation
+        run: uv build --no-config --wheel
 
       - name: pytest
         run: uv run pytest

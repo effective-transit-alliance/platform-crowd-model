@@ -1,0 +1,52 @@
+[package]
+name = "platform-crowd-model-core"
+version = "0.1.0"
+edition = "2024"
+# The Rust we develop with; we upgrade with stable rather than supporting older versions.
+rust-version = "1.98"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.29.3"
+rayon = "1.12.0"
+
+# Build profiles, as measured on `kkysen/rust-core` (2026-10-05):
+#
+# - `release` (Cargo's defaults) builds wheels, e.g. `uv build`.
+# - `dev` builds everything local: `cargo build`, `rust-analyzer`, `clippy`,
+#   and `uv run`'s editable install, through `[tool.maturin] editable-profile` in `pyproject.toml`.
+#   Sharing one profile means they share one build, so after a Rust edit,
+#   only whichever runs first compiles our crate, and the rest reuse it.
+[profile.dev]
+# Optimize fully, like `release`: unoptimized, the model runs about 13x slower
+# (1.1 s instead of 0.08 s a run), far more than the 0.35 s it saves building.
+# `opt-level = 2` rebuilds about 0.05 s faster (0.64 s instead of 0.69 s) but runs about 2% slower,
+# and `opt-level = 1` about 0.1 s faster still but 23% slower;
+# we keep 3, since the searches will grow, and the model's speed with them.
+opt-level = 3
+# Unlike `release`, `dev` builds incrementally, with 256 codegen units,
+# which rebuilds after an edit in about 0.69 s instead of `release`'s 0.8 s.
+# (A faster linker barely helps yet, since our crate is small,
+# but `.cargo/config.toml` links with `mold` on Linux for when it grows.)
+#
+# No debug info: it doesn't change the model's speed, but costs every rebuild
+# about 0.1 s with `line-tables-only` and 0.35 s with `full`.
+# For line numbers in panics' backtraces (with `RUST_BACKTRACE=1`) or in profilers,
+# build with `CARGO_PROFILE_DEV_DEBUG=line-tables-only`.
+# `uv` doesn't rebuild for a changed environment variable, so force a rebuild,
+# and force another without the variable to go back:
+#     CARGO_PROFILE_DEV_DEBUG=line-tables-only uv run --reinstall-package platform-crowd-model ...
+debug = false
+# Like `release`, so local results and speed match the wheels'.
+debug-assertions = false
+overflow-checks = false
+
+# Always fully optimize dependencies, e.g. `pyo3` and `rayon`,
+# even if our own crate's `opt-level` is ever lowered for faster rebuilds.
+# They only rebuild when they change, so it costs nothing per edit.
+# Optimizing build scripts and proc macros, too (`build-override`), didn't speed up rebuilds.
+[profile.dev.package."*"]
+opt-level = 3

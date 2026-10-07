@@ -1,0 +1,17 @@
+# Build `pyo3` with the same environment `maturin` gives it,
+# whether `cargo` runs from `maturin`, `cargo build`, `clippy`, or `rust-analyzer`,
+# so they share one build instead of rebuilding `pyo3` for each other.
+# `maturin` sets these three itself (`maturin` 1.15, `pyo3` 0.29);
+# update the signature if the project's Python version changes.
+[env]
+PYO3_PYTHON = { value = ".venv/bin/python", relative = true }
+PYO3_BUILD_EXTENSION_MODULE = "1"
+PYO3_ENVIRONMENT_SIGNATURE = "cpython-3.14-64bit"
+
+# Link with `mold` on Linux, where it's the fastest linker.
+# Our crate links quickly either way for now (about 0.8 s to rebuild with or without it),
+# but linking grows with every dependency, while `mold` keeps it fast.
+# `wild` was no faster and doesn't support the Cortex-A53 erratum fix on ARM.
+# `mold` doesn't link for macOS or Windows, so they keep their default linkers.
+[target.'cfg(target_os = "linux")']
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
