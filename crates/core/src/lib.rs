@@ -9,8 +9,15 @@
 // Index loops keep each train's, car's, and VCE's parallel arrays in step.
 #![allow(clippy::needless_range_loop)]
 
-use pyo3::prelude::*;
-use rayon::prelude::*;
+use pyo3::Borrowed;
+use pyo3::FromPyObject;
+use pyo3::PyAny;
+use pyo3::PyErr;
+use pyo3::PyResult;
+use pyo3::pyclass;
+use pyo3::pymodule;
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
 
 const ROUNDING_TOLERANCE: f64 = 1e-9;
 
@@ -790,6 +797,9 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
 
 #[pymodule]
 mod _core {
+    use pyo3::Python;
+    use pyo3::pyfunction;
+
     use super::*;
 
     /// Simulate `scenario` with its trains stopped with their east ends at `train_east_end`,
