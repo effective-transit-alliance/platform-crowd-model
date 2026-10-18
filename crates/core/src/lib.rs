@@ -39,6 +39,11 @@ fn above(value: f64, threshold: f64) -> bool {
     value > threshold + ROUNDING_TOLERANCE
 }
 
+/// `value < threshold`, but not if it's only below it by rounding errors.
+fn below(value: f64, threshold: f64) -> bool {
+    value < threshold - ROUNDING_TOLERANCE
+}
+
 /// What a VCE does, like Python's `Role`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Role {
@@ -524,7 +529,7 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
                     still_alighting += remaining_arrivals[train];
                 }
             }
-            let nearly_alighted = still_alighting < input.escalator_reversal_pax;
+            let nearly_alighted = below(still_alighting, input.escalator_reversal_pax);
             for &i in &reversible {
                 // Once reversed, nobody walks to it, so it stays down until more alight.
                 directions[i] = if !nearly_alighted || above(vce_queues[i] + walking_totals[i], 0.0)
@@ -684,26 +689,28 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
             .filter(|&(_, &direction)| direction != Direction::Down)
             .map(|(&capacity, _)| capacity)
             .sum();
-        if up_rate >= capacity - 1e-9 {
+        if !below(up_rate, capacity) {
             summary.time_at_capacity += 1;
         }
-        if arriving_pax_on_platform > input.max_pax_in_stair_queues {
+        if above(arriving_pax_on_platform, input.max_pax_in_stair_queues) {
             summary.taper_time = Some(time_after);
         }
         if summary.clear_time.is_none()
             && arrival_times
                 .iter()
                 .all(|&arrival_time| matches!(arrival_time, Some(arrival_time) if time_after > arrival_time))
-            && arriving_pax_on_platform < 1.0
+            && below(arriving_pax_on_platform, 1.0)
         {
             summary.clear_time = Some(time_after);
         }
         if summary.boarded_time.is_none()
             && time_after >= last_release
-            && boarders_upstairs.iter().sum::<f64>()
-                + boarders_on_platform.iter().sum::<f64>()
-                + boarders_walking_totals.iter().sum::<f64>()
-                < 1.0
+            && below(
+                boarders_upstairs.iter().sum::<f64>()
+                    + boarders_on_platform.iter().sum::<f64>()
+                    + boarders_walking_totals.iter().sum::<f64>(),
+                1.0,
+            )
         {
             summary.boarded_time = Some(time_after);
         }
@@ -711,11 +718,13 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
             if summary.dwells[train].is_none()
                 && let Some(arrival_time) = arrival_times[train]
                 && time_after > arrival_time
-                && remaining_arrivals[train] < 1.0
-                && boarders_upstairs[train]
-                    + boarders_walking_totals[train]
-                    + boarders_on_platform[train]
-                    < 1.0
+                && below(remaining_arrivals[train], 1.0)
+                && below(
+                    boarders_upstairs[train]
+                        + boarders_walking_totals[train]
+                        + boarders_on_platform[train],
+                    1.0,
+                )
             {
                 summary.dwells[train] = Some(time_after - arrival_time);
                 // The next train on its track arrives once it's scheduled and this one departs.
