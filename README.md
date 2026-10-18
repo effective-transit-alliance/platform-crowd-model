@@ -1435,3 +1435,6 @@ and each fix's effect is summarized here.
   so passengers' choice of VCE no longer depends on rounding errors in their waits.
   Results change by a few seconds and passengers, e.g. on platform 8 with trains 2 minutes apart,
   the VCEs are at capacity for 6:04 instead of 5:48, and at most 1620 passengers are on the platform instead of 1624.
+- **Stopped counting a stair's upward flow as over its two-way limit when it's only over by rounding errors,**
+  which shut off its downward flow.
+  The results table above doesn't change, but other stopping positions do.
