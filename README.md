@@ -14,13 +14,17 @@ which can be installed easily with
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-With `uv` installed, you can then just run the model:
+Building the model's Rust core also needs a Rust toolchain (Rust 1.99 or newer),
+which can be installed with [`rustup`](https://rustup.rs).
+
+With both installed, you can then just run the model:
 
 ```sh
 uv run platform-crowd-model run
 ```
 
-In doing so, `uv` will also install dependencies and set up a virtual environment.
+In doing so, `uv` will also install dependencies, set up a virtual environment,
+and build the Rust core, rebuilding it whenever its sources change.
 
 Each run prints a table of headline results.
 To also save each scenario's full time series as CSVs and its charts as an SVG in `output/`,
