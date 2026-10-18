@@ -1440,3 +1440,6 @@ and each fix's effect is summarized here.
   The results table above doesn't change, but other stopping positions do.
 - **Stopped keeping a reversible escalator going up for a queue of only rounding errors.**
   The results table above doesn't change, but other stopping positions do.
+- **Stopped counting a VCE as still emptying while only rounding errors go up it,**
+  which made it seem to empty a second or more later.
+  The results table above doesn't change, but other stopping positions do.

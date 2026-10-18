@@ -564,7 +564,7 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
                 vce_queues[i] = queue - vce_up_rate;
                 vce_up_rates[i] = vce_up_rate;
                 summary.vce_gone_up[i] += vce_up_rate;
-                if vce_up_rate > 0.0 && vce_queues[i] <= ROUNDING_TOLERANCE {
+                if above(vce_up_rate, 0.0) && vce_queues[i] <= ROUNDING_TOLERANCE {
                     summary.vce_empty_times[i] = Some(time_after);
                 }
             }
