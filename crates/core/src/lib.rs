@@ -130,8 +130,9 @@ struct Scenario {
 struct Layout {
     /// Each door's walking time to each VCE (s).
     door_walking_times: Vec<Vec<usize>>,
-    /// Each door's VCEs, from the nearest to the farthest, the westernmost of any tied.
-    door_nearest_vces: Vec<Vec<usize>>,
+    /// Each door's VCEs, from the nearest to the farthest, the westernmost of any tied,
+    /// in pairs so `choose_vce` can check 2 at once.
+    door_nearest_vces: Vec<Vec<VcePair>>,
     /// Each car's maximum boarding rate (pax/s).
     car_board_rates: Vec<f64>,
     /// Each car's walking time from each VCE (s).
@@ -174,7 +175,19 @@ impl Scenario {
             .map(|walking_times| {
                 let mut vces: Vec<usize> = (0..n_vces).collect();
                 vces.sort_by_key(|&vce| walking_times[vce]);
-                vces
+                vces.chunks(2)
+                    .map(|pair| {
+                        // An odd one out is paired with a VCE too far to walk to.
+                        let second = pair.get(1).copied();
+                        VcePair {
+                            walks: [
+                                walking_times[pair[0]] as f64,
+                                second.map_or(f64::INFINITY, |vce| walking_times[vce] as f64),
+                            ],
+                            vces: [pair[0], second.unwrap_or(pair[0])],
+                        }
+                    })
+                    .collect()
             })
             .collect();
         let car_doors: Vec<&[f64]> = doors.chunks(self.doors_per_car).take(self.cars).collect();
@@ -365,35 +378,48 @@ fn calc_space_per_pax(pax_on_platform: f64, area: f64) -> f64 {
     }
 }
 
-/// The VCE a door's passengers reach soonest, or with `nearest`, the nearest,
-/// the westernmost of any within `VCE_TIE_TOLERANCE` of the best so far,
-/// not counting escalators going down.
+/// Two of a door's VCEs and its walking times (s) to them.
+struct VcePair {
+    walks: [f64; 2],
+    vces: [usize; 2],
+}
+
+/// How long (s) passengers reaching VCE `vce` wait to go up:
+/// none with `nearest`, and forever for an escalator going down.
+fn vce_wait(nearest: bool, direction: Direction, queue: f64, capacity: f64) -> f64 {
+    if direction == Direction::Down {
+        f64::INFINITY
+    } else if nearest {
+        0.0
+    } else {
+        queue / capacity
+    }
+}
+
+/// The VCE a door's passengers reach soonest,
+/// the westernmost of any within `VCE_TIE_TOLERANCE` of the best so far.
 /// `nearest_vces` is the door's VCEs from the nearest to the farthest,
 /// so it stops once the rest are farther to walk to than the best is to reach.
-fn choose_vce(
-    nearest: bool,
-    walking_times: &[usize],
-    nearest_vces: &[usize],
-    waits: &[f64],
-    directions: &[Direction],
-) -> usize {
+fn choose_vce(nearest_vces: &[VcePair], waits: &[f64]) -> usize {
     // With every VCE going down, the westernmost.
     let mut best = 0;
     let mut best_time = f64::INFINITY;
-    for &i in nearest_vces {
-        let walk = walking_times[i] as f64;
-        if walk > best_time + VCE_TIE_TOLERANCE {
+    for pair in nearest_vces {
+        if pair.walks[0] > best_time + VCE_TIE_TOLERANCE {
             break;
         }
-        if directions[i] == Direction::Down {
-            continue;
-        }
-        let time = if nearest { walk } else { walk.max(waits[i]) };
-        if time < best_time - VCE_TIE_TOLERANCE
-            || (time <= best_time + VCE_TIE_TOLERANCE && i < best)
-        {
-            best = i;
-            best_time = time;
+        let pair_waits = pair.vces.map(|i| waits[i]);
+        let times = [
+            pair.walks[0].max(pair_waits[0]),
+            pair.walks[1].max(pair_waits[1]),
+        ];
+        for (time, i) in times.into_iter().zip(pair.vces) {
+            if time < best_time - VCE_TIE_TOLERANCE
+                || (time <= best_time + VCE_TIE_TOLERANCE && i < best)
+            {
+                best = i;
+                best_time = time;
+            }
         }
     }
     best
@@ -586,24 +612,26 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
             // though nobody does in a second nobody alights.
             let alighting = off_rates.iter().sum::<f64>();
             if alighting > 0.0 {
+                let wait = |i: usize, walking_totals: &[f64]| {
+                    vce_wait(
+                        input.vce_choice_nearest,
+                        directions[i],
+                        vce_queues[i] + walking_totals[i],
+                        input.vce_capacities[i],
+                    )
+                };
                 for i in 0..n_vces {
-                    waits[i] = (vce_queues[i] + walking_totals[i]) / input.vce_capacities[i];
+                    waits[i] = wait(i, &walking_totals);
                 }
                 for (walking_times, nearest_vces) in layout
                     .door_walking_times
                     .iter()
                     .zip(&layout.door_nearest_vces)
                 {
-                    let i = choose_vce(
-                        input.vce_choice_nearest,
-                        walking_times,
-                        nearest_vces,
-                        &waits,
-                        &directions,
-                    );
+                    let i = choose_vce(nearest_vces, &waits);
                     walking.at(walking_times[i])[i] += alighting * door_share;
                     walking_totals[i] += alighting * door_share;
-                    waits[i] = (vce_queues[i] + walking_totals[i]) / input.vce_capacities[i];
+                    waits[i] = wait(i, &walking_totals);
                 }
             }
             walking.pop(|i, reaching| {
