@@ -20,6 +20,9 @@ use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 
 const ROUNDING_TOLERANCE: f64 = 1e-9;
+/// How close (s) 2 VCEs' times to go up count as tied,
+/// so rounding errors don't decide between them.
+const VCE_TIE_TOLERANCE: f64 = 1e-3;
 
 /// `total - pax`, or 0 if that's only left over from rounding.
 fn subtract(total: f64, pax: f64) -> f64 {
@@ -341,6 +344,9 @@ fn calc_space_per_pax(pax_on_platform: f64, area: f64) -> f64 {
     }
 }
 
+/// The VCE a door's passengers reach soonest, or with `nearest`, the nearest,
+/// the westernmost of any within `VCE_TIE_TOLERANCE` of the best so far,
+/// not counting escalators going down.
 fn choose_vce(
     nearest: bool,
     walking_times: &[usize],
@@ -361,7 +367,7 @@ fn choose_vce(
             walk.max(wait)
         };
         // The first of any tied, i.e. the westernmost.
-        if i == 0 || time < best_time {
+        if i == 0 || time < best_time - VCE_TIE_TOLERANCE {
             best = i;
             best_time = time;
         }
