@@ -491,7 +491,6 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
     let mut waits = vec![0.0_f64; n_vces];
     let mut vce_down_capacities = vec![0.0_f64; n_vces];
     let mut down_rates = vec![0.0_f64; trains];
-    let mut car_on_rates = vec![vec![0.0_f64; n_cars]; trains];
     let mut on_rates = vec![0.0_f64; trains];
 
     let mut step: usize = 0;
@@ -643,22 +642,20 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
         // Each car boards through its own doors,
         // once its train has arrived and everyone has alighted from it.
         for train in 0..trains {
+            on_rates[train] = 0.0;
             let boarding = matches!(arrival_times[train], Some(arrival_time) if arrival_time < time_after)
                 && off_rates[train] == 0.0;
+            if !boarding {
+                continue;
+            }
             for car in 0..n_cars {
                 let waiting = car_waiting[train][car];
-                car_on_rates[train][car] = if boarding && waiting > 0.0 {
-                    layout.car_board_rates[car].min(waiting)
-                } else {
-                    0.0
-                };
+                if waiting > 0.0 {
+                    let on_rate = layout.car_board_rates[car].min(waiting);
+                    car_waiting[train][car] = waiting - on_rate;
+                    on_rates[train] += on_rate;
+                }
             }
-        }
-        for train in 0..trains {
-            for car in 0..n_cars {
-                car_waiting[train][car] -= car_on_rates[train][car];
-            }
-            on_rates[train] = car_on_rates[train].iter().sum::<f64>();
         }
 
         for train in 0..trains {
