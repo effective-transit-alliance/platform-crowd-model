@@ -34,6 +34,11 @@ fn subtract(total: f64, pax: f64) -> f64 {
     }
 }
 
+/// `value > threshold`, but not if it's only above it by rounding errors.
+fn above(value: f64, threshold: f64) -> bool {
+    value > threshold + ROUNDING_TOLERANCE
+}
+
 /// What a VCE does, like Python's `Role`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Role {
@@ -576,12 +581,13 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
         }
         total_pax_on_platform -= up_rate;
         for i in 0..n_vces {
-            vce_down_capacities[i] =
-                if directions[i] == Direction::Up || up_rates[i] > input.bidirectional_limits[i] {
-                    0.0
-                } else {
-                    input.vce_capacities[i] - up_rates[i]
-                };
+            vce_down_capacities[i] = if directions[i] == Direction::Up
+                || above(up_rates[i], input.bidirectional_limits[i])
+            {
+                0.0
+            } else {
+                input.vce_capacities[i] - up_rates[i]
+            };
         }
         let down_capacity = vce_down_capacities.iter().sum::<f64>();
         let all_upstairs = boarders_upstairs.iter().sum::<f64>();
