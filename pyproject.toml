@@ -30,12 +30,13 @@ module-name = "platform_crowd_model._core"
 # CI still builds a wheel in isolation, with `uv build --no-config`,
 # to check that `[build-system] requires` is complete.
 no-build-isolation-package = ["platform-crowd-model"]
-# Rebuild the Rust extension whenever its sources change.
+# Rebuild the Rust extension whenever its sources or build settings change.
 cache-keys = [
     { file = "pyproject.toml" },
     { file = "crates/**/Cargo.toml" },
     { file = "crates/**/*.rs" },
     { file = "crates/**/Cargo.lock" },
+    { file = ".cargo/config.toml" },
 ]
 
 [dependency-groups]
