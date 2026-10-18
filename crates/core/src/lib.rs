@@ -704,26 +704,24 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
             }
             let (train, car) = (train_car / n_cars, train_car % n_cars);
             car_waiting[train][car] += pax;
+            boarders_on_platform[train] += pax;
             boarders_walking_totals[train] = subtract(boarders_walking_totals[train], pax);
         });
-        for train in 0..trains {
-            boarders_on_platform[train] = car_waiting[train].iter().sum::<f64>();
-            total_pax_on_platform += down_rates[train];
-        }
         // Each car boards through its own doors,
         // once its train has arrived and everyone has alighted from it.
         for train in 0..trains {
+            total_pax_on_platform += down_rates[train];
             on_rates[train] = 0.0;
             let boarding = matches!(arrival_times[train], Some(arrival_time) if arrival_time < time_after)
                 && off_rates[train] == 0.0;
             if !boarding {
                 continue;
             }
-            for car in 0..n_cars {
-                let waiting = car_waiting[train][car];
-                if waiting > 0.0 {
-                    let on_rate = layout.car_board_rates[car].min(waiting);
-                    car_waiting[train][car] = waiting - on_rate;
+            for (waiting, &board_rate) in car_waiting[train].iter_mut().zip(&layout.car_board_rates)
+            {
+                if *waiting > 0.0 {
+                    let on_rate = board_rate.min(*waiting);
+                    *waiting -= on_rate;
                     on_rates[train] += on_rate;
                 }
             }
