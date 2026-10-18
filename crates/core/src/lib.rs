@@ -527,7 +527,8 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
             let nearly_alighted = still_alighting < input.escalator_reversal_pax;
             for &i in &reversible {
                 // Once reversed, nobody walks to it, so it stays down until more alight.
-                directions[i] = if !nearly_alighted || vce_queues[i] + walking_totals[i] > 0.0 {
+                directions[i] = if !nearly_alighted || above(vce_queues[i] + walking_totals[i], 0.0)
+                {
                     Direction::Up
                 } else {
                     Direction::Down

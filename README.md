@@ -1438,3 +1438,5 @@ and each fix's effect is summarized here.
 - **Stopped counting a stair's upward flow as over its two-way limit when it's only over by rounding errors,**
   which shut off its downward flow.
   The results table above doesn't change, but other stopping positions do.
+- **Stopped keeping a reversible escalator going up for a queue of only rounding errors.**
+  The results table above doesn't change, but other stopping positions do.
