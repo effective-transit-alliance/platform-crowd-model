@@ -7,17 +7,19 @@ models a single platform with its tracks.
 
 ## Running
 
-To run, we use the Python package manager [`uv`](https://github.com/astral-sh/uv),
-which can be installed easily with
+To run, we use the Python package manager [`uv`](https://github.com/astral-sh/uv).
+Building the model's Rust core also needs a Rust toolchain (Rust 1.99 or newer),
+which can be installed with [`rustup`](https://rustup.rs),
+and on Linux, the [`mold`](https://github.com/rui314/mold) linker.
+[`mise`](https://mise.jdx.dev) installs `uv` and `mold`, as [`mise.toml`](./mise.toml) lists them, with
 
 ```sh
-curl -LsSf https://astral.sh/uv/install.sh | sh
+mise install
 ```
 
-Building the model's Rust core also needs a Rust toolchain (Rust 1.99 or newer),
-which can be installed with [`rustup`](https://rustup.rs).
+and puts them on your `$PATH` in this directory once [activated](https://mise.jdx.dev/getting-started.html#activate-mise) in your shell.
 
-With both installed, you can then just run the model:
+With them installed, you can then just run the model:
 
 ```sh
 uv run platform-crowd-model run
