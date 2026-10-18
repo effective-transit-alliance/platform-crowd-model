@@ -415,6 +415,8 @@ fn choose_car(nearest: &[usize], car_loads: &[f64], full: f64) -> usize {
 /// reusing each step's slot instead of allocating a new one.
 struct Arrivals {
     width: usize,
+    /// This step's slot, so it wraps by comparing instead of dividing.
+    now: usize,
     /// Each slot's passengers (pax) walking toward each place, one slot after another.
     pax: Vec<f64>,
     /// Whether anyone's been added to each slot since it was last popped.
@@ -425,22 +427,30 @@ impl Arrivals {
     fn new(longest_walk: usize, width: usize) -> Self {
         Self {
             width,
+            now: 0,
             pax: vec![0.0; (longest_walk + 1) * width],
             filled: vec![false; longest_walk + 1],
         }
     }
 
-    /// The passengers reaching each place at `step`, to add to.
-    fn at(&mut self, step: usize) -> &mut [f64] {
-        let slot = step % self.filled.len();
+    /// The passengers reaching each place in `walk` steps, to add to.
+    fn at(&mut self, walk: usize) -> &mut [f64] {
+        let mut slot = self.now + walk;
+        if slot >= self.filled.len() {
+            slot -= self.filled.len();
+        }
         self.filled[slot] = true;
         &mut self.pax[slot * self.width..(slot + 1) * self.width]
     }
 
-    /// Call `reach` with each place and the passengers reaching it at `step`,
-    /// if anyone was added to it, emptying it for a later step.
-    fn pop(&mut self, step: usize, mut reach: impl FnMut(usize, f64)) {
-        let slot = step % self.filled.len();
+    /// Call `reach` with each place and the passengers reaching it this step,
+    /// if anyone was added to it, emptying it for a later step, and go to the next step.
+    fn pop(&mut self, mut reach: impl FnMut(usize, f64)) {
+        let slot = self.now;
+        self.now += 1;
+        if self.now == self.filled.len() {
+            self.now = 0;
+        }
         if !std::mem::replace(&mut self.filled[slot], false) {
             return;
         }
@@ -591,12 +601,12 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
                         &waits,
                         &directions,
                     );
-                    walking.at(step + walking_times[i])[i] += alighting * door_share;
+                    walking.at(walking_times[i])[i] += alighting * door_share;
                     walking_totals[i] += alighting * door_share;
                     waits[i] = (vce_queues[i] + walking_totals[i]) / input.vce_capacities[i];
                 }
             }
-            walking.pop(step, |i, reaching| {
+            walking.pop(|i, reaching| {
                 vce_queues[i] += reaching;
                 walking_totals[i] = subtract(walking_totals[i], reaching);
             });
@@ -613,7 +623,7 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
             &vce_up_rates
         } else {
             // Nobody's on the platform, so nobody can be walking to a VCE.
-            walking.pop(step, |_, _| {});
+            walking.pop(|_, _| {});
             &no_flow
         };
         let up_rate = up_rates.iter().sum::<f64>();
@@ -655,13 +665,12 @@ fn simulate(input: &Scenario, train_east_end: f64, record: bool) -> CoreResult {
                 }
                 let rate = down_rates[train] * vce_down_capacity / down_capacity;
                 let car = choose_car(&layout.nearest_cars[i], &car_loads[train], input.car_full);
-                boarders_walking.at(step + layout.car_walking_times[car][i])
-                    [train * n_cars + car] += rate;
+                boarders_walking.at(layout.car_walking_times[car][i])[train * n_cars + car] += rate;
                 boarders_walking_totals[train] += rate;
                 car_loads[train][car] += rate;
             }
         }
-        boarders_walking.pop(step, |train_car, pax| {
+        boarders_walking.pop(|train_car, pax| {
             if pax == 0.0 {
                 return;
             }
