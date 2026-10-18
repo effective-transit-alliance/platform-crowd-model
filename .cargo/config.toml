@@ -13,5 +13,15 @@ PYO3_ENVIRONMENT_SIGNATURE = "cpython-3.14-64bit"
 # but linking grows with every dependency, while `mold` keeps it fast.
 # `wild` was no faster and doesn't support the Cortex-A53 erratum fix on ARM.
 # `mold` doesn't link for macOS or Windows, so they keep their default linkers.
+#
+# Build for this machine's CPU, so the simulation loop can use all of its SIMD,
+# like `fp16` on ARM or AVX2 on x86.
+# The build then only runs on CPUs with the same features, which is fine,
+# as everyone builds the core themselves.
+# `[target]` rustflags replace `[build]` rustflags instead of adding to them,
+# so each target sets `target-cpu` itself.
 [target.'cfg(target_os = "linux")']
-rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+rustflags = ["-C", "link-arg=-fuse-ld=mold", "-C", "target-cpu=native"]
+
+[target.'cfg(not(target_os = "linux"))']
+rustflags = ["-C", "target-cpu=native"]
