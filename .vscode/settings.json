@@ -1,0 +1,10 @@
+{
+  // The Rust core is in `crates/core`, deeper than `rust-analyzer` looks for a `Cargo.toml`.
+  // It still runs `cargo` under the repo, so `.cargo/config.toml`'s `pyo3` environment applies.
+  "rust-analyzer.linkedProjects": ["crates/core/Cargo.toml"],
+  // Lint as `pre-commit` does.
+  "rust-analyzer.check.command": "clippy",
+  // Check in `target/rust-analyzer`, so checking on save doesn't hold the build lock
+  // while `uv run` or `cargo build` wait on it.
+  "rust-analyzer.cargo.targetDir": true
+}
