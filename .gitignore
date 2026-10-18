@@ -12,7 +12,10 @@ output/
 
 # IDEs
 .idea/
-.vscode/
+# Share VS Code's settings, even if a global ignore ignores `.vscode/`.
+!.vscode/
+.vscode/*
+!.vscode/settings.json
 
 # Downloaded Sources
 .cache/
