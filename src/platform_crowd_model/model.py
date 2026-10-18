@@ -1334,14 +1334,201 @@ class TimeSeries:
     """Each second, each VCE's queue (pax) and upward flow (pax/s)."""
 
 
+type Backend = Literal["rust", "python"]
+"""Which implementation of `simulate`'s loop to run: `_core`'s, or `simulate_python`."""
+
+
+@dataclass(frozen=True)
+class CoreInput:
+    """
+    One scenario, with its trains stopped at one position, as plain numbers,
+    for `_core.simulate_core`, which reads each attribute by name.
+    Times are in whole seconds, i.e. `TIME_STEP`s.
+    """
+
+    trains: int
+    tracks: int
+    headway: int
+    release_times: list[int]
+    """When each train's departing passengers start coming down."""
+    arriving_pax_per_train: float
+    departing_pax_per_train: float
+    door_rate: float
+    """Every door's alighting rate together (pax/s)."""
+    usable_area: float
+    vce_capacities: list[float]
+    """Each VCE's capacity in one direction (pax/s)."""
+    bidirectional_limits: list[float]
+    roles: list[Role]
+    door_shares: list[float]
+    """Each door's share of the arriving passengers."""
+    door_walking_times: list[list[int]]
+    """Each door's walking time to each VCE."""
+    car_board_rates: list[float]
+    """Each car's maximum boarding rate (pax/s)."""
+    car_walking_times: list[list[int]]
+    """Each car's walking time from each VCE."""
+    nearest_cars: list[list[int]]
+    """Each VCE's cars, from the nearest to the farthest."""
+    vce_choice_nearest: bool
+    car_full: float
+    """Passengers (pax) at which a car counts as close to full, per `choose_car`."""
+    escalator_reversal_pax: float
+    """Passengers (pax) still alighting below which reversible escalators go down."""
+    max_pax_in_stair_queues: float
+    max_steps: int
+    """Steps after which the simulation gives up, per `MAX_SIMULATION_LENGTH`."""
+
+
+def whole_seconds(duration: timedelta) -> int:
+    """`duration` in whole seconds, which `_core` counts in."""
+    seconds = duration.total_seconds()
+    assert seconds.is_integer(), f"{duration} isn't a whole number of seconds"
+    return int(seconds)
+
+
+def core_input(params: Params) -> CoreInput:
+    """`params` as `CoreInput`, computed as `simulate_python` computes them."""
+    assert whole_seconds(TIME_STEP) == 1, "`_core` counts in steps of 1 s"
+    assumptions = params.assumptions
+    vces = params.vces
+    roles = vce_roles(vces)
+    doors = doors_to_vces(params, vces)
+    cars = train_cars(params, vces)
+    return CoreInput(
+        trains=params.trains,
+        tracks=params.tracks,
+        headway=whole_seconds(params.headway),
+        release_times=[
+            whole_seconds(train * params.headway - assumptions.departing_pax_lead_time)
+            for train in range(params.trains)
+        ],
+        arriving_pax_per_train=float(params.arriving_pax_per_train),
+        departing_pax_per_train=float(assumptions.departing_pax_per_train),
+        door_rate=params.doors_per_train * assumptions.door_flow_rate,
+        usable_area=params.platform_area * assumptions.usable_platform_area_multiplier,
+        vce_capacities=[vce_capacity(vce, assumptions) for vce in vces],
+        bidirectional_limits=[
+            stair_flow(assumptions.bidirectional_stair_flow_limit, vce.width) for vce in vces
+        ],
+        roles=roles,
+        door_shares=[door.share for door in doors],
+        door_walking_times=[door.walking_times for door in doors],
+        car_board_rates=[car.doors * assumptions.door_flow_rate for car in cars],
+        car_walking_times=[car.walking_times for car in cars],
+        nearest_cars=[cars_by_distance(cars, i) for i in range(len(vces))],
+        vce_choice_nearest=assumptions.vce_choice == "nearest",
+        car_full=assumptions.car_full_fraction * assumptions.seats_per_car,
+        escalator_reversal_pax=assumptions.escalator_reversal_threshold
+        * params.arriving_pax_per_train,
+        max_pax_in_stair_queues=(
+            sum(vce.width for vce, role in zip(vces, roles, strict=True) if role != "down")
+            * assumptions.stair_queue_length
+            / assumptions.stair_queue_space
+        ),
+        max_steps=whole_seconds(MAX_SIMULATION_LENGTH),
+    )
+
+
 def simulate(
-    params: Params, record_time_series: bool = True, print_time_series: bool = True
+    params: Params,
+    record_time_series: bool = True,
+    print_time_series: bool = True,
+    backend: Backend = "python",
 ) -> tuple[TimeSeries, Summary]:
     """
     Simulate `params`, returning its time series and its results table's summary.
     Without `record_time_series`, the time series is left empty,
     and without `print_time_series`, nothing is printed,
     e.g. when only the summary is needed.
+    `backend` picks which implementation runs the loop; both give identical results.
+    """
+    if backend == "python":
+        return simulate_python(params, record_time_series, print_time_series)
+    from platform_crowd_model._core import simulate_core
+
+    result = simulate_core(core_input(params), record_time_series or print_time_series)
+    if not result.finished:
+        raise RuntimeError(
+            f"{params.filename_prefix} hasn't finished after {MAX_SIMULATION_LENGTH}"
+        )
+    check_conservation(
+        params,
+        arriving=[
+            ("went up", result.gone_up),
+            ("are still aboard", result.still_aboard),
+            ("are still on the platform", result.arriving_pax_on_platform),
+        ],
+        departing=[
+            ("boarded", result.boarded),
+            ("are still upstairs", result.still_upstairs),
+            ("are still walking to their cars", result.still_walking_to_cars),
+            ("are still waiting at their cars", result.still_waiting_at_cars),
+        ],
+    )
+
+    def seconds(time: int | None) -> timedelta | None:
+        return None if time is None else time * TIME_STEP
+
+    summary = Summary(
+        max_up_rate=result.max_up_rate,
+        time_at_capacity=result.time_at_capacity * TIME_STEP,
+        taper_time=seconds(result.taper_time),
+        clear_time=seconds(result.clear_time),
+        arrival_times=[seconds(time) for time in result.arrival_times],
+        dwells=[seconds(dwell) for dwell in result.dwells],
+        boarded_time=seconds(result.boarded_time),
+        max_pax_on_platform=result.max_pax_on_platform,
+        max_occupants=result.max_occupants,
+        min_space_per_pax=result.min_space_per_pax,
+        vce_gone_up=result.vce_gone_up,
+        vce_empty_times=[seconds(time) for time in result.vce_empty_times],
+    )
+    time_series = TimeSeries()
+    if print_time_series:
+        print("Elapsed_Time", *(f"Train_{train + 1}_Pax" for train in range(params.trains)))
+        for time, arriving, up_rate, train_values in zip(
+            result.times,
+            result.arriving_pax_waiting_on_platform,
+            result.up_rate,
+            result.train_values,
+            strict=True,
+        ):
+            print(time, *(values[0] for values in train_values), arriving, up_rate)
+    if not record_time_series:
+        return time_series, summary
+    assumptions = params.assumptions
+    for step, time in enumerate(result.times):
+        vce_up_rates = [up_rate for _queue, up_rate in result.vces[step]]
+        time_series.instants.append(
+            Instant(
+                time=time * TIME_STEP,
+                arriving_pax_waiting_on_platform=result.arriving_pax_waiting_on_platform[step],
+                off_rate=result.off_rate[step],
+                on_rate=result.on_rate[step],
+                down_rate=result.down_rate[step],
+                departing_pax_on_platform=result.departing_pax_on_platform[step],
+                total_pax_on_platform=result.total_pax_on_platform[step],
+                platform_crowding=result.platform_crowding[step],
+                up_rate=result.up_rate[step],
+                net_pax_flow_rate=result.net_pax_flow_rate[step],
+                platform_crowd_los=platform_crowd_los(result.platform_crowding[step], assumptions),
+                egress_los=worst_egress_los(params.vces, vce_up_rates, assumptions),
+            )
+        )
+    time_series.trains = [
+        [list(values) for values in train_values] for train_values in result.train_values
+    ]
+    time_series.vces = [[list(values) for values in vce_values] for vce_values in result.vces]
+    return time_series, summary
+
+
+def simulate_python(
+    params: Params, record_time_series: bool = True, print_time_series: bool = True
+) -> tuple[TimeSeries, Summary]:
+    """
+    `simulate`'s loop in Python, which `_core`'s matches bit for bit,
+    kept to check it against.
     """
     assumptions = params.assumptions
     usable_area = params.platform_area * assumptions.usable_platform_area_multiplier
