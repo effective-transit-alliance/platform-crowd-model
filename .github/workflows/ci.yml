@@ -27,6 +27,12 @@ jobs:
       - name: pyrefly
         run: uv run pyrefly check
 
+      - name: rustfmt
+        run: cargo fmt --manifest-path crates/core/Cargo.toml --check
+
+      - name: clippy
+        run: cargo clippy --manifest-path crates/core/Cargo.toml --release -- -D warnings
+
       - name: pytest
         run: uv run pytest
 

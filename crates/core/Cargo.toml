@@ -1,0 +1,13 @@
+[package]
+name = "platform-crowd-model-core"
+version = "0.1.0"
+edition = "2024"
+# The Rust we develop with; we upgrade with stable rather than supporting older versions.
+rust-version = "1.99"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.29.3"
