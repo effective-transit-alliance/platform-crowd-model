@@ -1434,7 +1434,7 @@ def simulate(
     params: Params,
     record_time_series: bool = True,
     print_time_series: bool = True,
-    backend: Backend = "python",
+    backend: Backend = "rust",
 ) -> tuple[TimeSeries, Summary]:
     """
     Simulate `params`, returning its time series and its results table's summary.

@@ -3,7 +3,8 @@
 This repo is for modeling platform crowding and alighting and boarding of trains,
 specifically at NY Penn Station.
 [`src/platform_crowd_model/model.py`](./src/platform_crowd_model/model.py)
-models a single platform with its tracks.
+models a single platform with its tracks,
+running each second of its simulation in Rust, in [`crates/core`](./crates/core).
 
 ## Running
 
@@ -1419,3 +1420,8 @@ and each fix's effect is summarized here.
   with `uv run platform-crowd-model data vces-field-survey`
   (see [Field Survey](#field-survey)).
   No results change.
+- **Ran each second of the simulation in Rust,** in [`crates/core`](./crates/core),
+  with the same operations in the same order as the Python it replaces,
+  so no results change.
+  Each run of `simulate` takes about 0.5 ms instead of 17 ms,
+  and the whole run, including every stopping position tried, about 0.3 s instead of 3 s.
