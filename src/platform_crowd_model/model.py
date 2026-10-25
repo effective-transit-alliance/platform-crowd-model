@@ -273,40 +273,58 @@ def alight_rate(
         return 0
 
 
-def platform_clearance(
-    arriving_pax_on_platform: float, vce_width: float, assumptions: Assumptions
-) -> float:
+def vce_capacity(vce: Vce, assumptions: Assumptions) -> float:
     """
-    Arriving passengers queue at the stairs,
-    which discharge them at `Assumptions.stair_capacity` as long as anyone is queued.
+    `vce`'s capacity (pax/s) in one direction:
+    `Assumptions.stair_capacity`, even for an escalator.
+    """
+    return stair_flow(assumptions.stair_capacity, vce.width)
+
+
+def platform_clearance(arriving_pax_on_platform: float, capacity: float) -> float:
+    """
+    Arriving passengers queue at each VCE,
+    which discharges them at its capacity as long as anyone is queued.
 
     Fruin's stair equation relates flow to the space per passenger *on the stair*,
     which a queued stair holds near its critical density,
     so it doesn't apply to the space per passenger on the platform.
     The few seconds of walking from the doors to the stairs are ignored.
 
-    :param arriving_pax_on_platform: number of arriving passengers on the platform (pax)
-    :param vce_width: total width of vertical circulation elements (ft)
-    :return: platform egress rate on stairs (pax/s)
+    :param arriving_pax_on_platform: number of arriving passengers queued at this VCE (pax)
+    :param capacity: this VCE's capacity, per `vce_capacity` (pax/s)
+    :return: this VCE's upward flow (pax/s)
     """
-    return min(arriving_pax_on_platform, stair_flow(assumptions.stair_capacity, vce_width))
+    return min(arriving_pax_on_platform, capacity)
 
 
-def platform_ingress(
-    departing_pax_upstairs: float, vce_width: float, up_rate: float, assumptions: Assumptions
-) -> float:
+def down_capacities(
+    capacities: list[float], up_rates: list[float], bidirectional_limits: list[float]
+) -> list[float]:
     """
-    Departing passengers queue upstairs and come down with whatever stair capacity
-    the upward flow leaves, unless it exceeds `Assumptions.bidirectional_stair_flow_limit`.
+    Each VCE's capacity (pax/s) left for departing passengers to come down:
+    whatever its upward flow leaves,
+    unless that exceeds its `Assumptions.bidirectional_stair_flow_limit`.
+
+    :param capacities: each VCE's capacity, per `vce_capacity` (pax/s)
+    :param up_rates: each VCE's upward flow (pax/s)
+    :param bidirectional_limits: each VCE's `Assumptions.bidirectional_stair_flow_limit` (pax/s)
+    """
+    return [
+        0 if up_rate > limit else capacity - up_rate
+        for capacity, up_rate, limit in zip(capacities, up_rates, bidirectional_limits, strict=True)
+    ]
+
+
+def platform_ingress(departing_pax_upstairs: float, down_capacity: float) -> float:
+    """
+    Departing passengers queue upstairs and come down with whatever capacity is left for them.
 
     :param departing_pax_upstairs: number of departing passengers upstairs (pax)
-    :param vce_width: this train's share of the total width of vertical circulation elements (ft)
-    :param up_rate: upward stair flow on this train's share of the stairs (pax/s)
-    :return: platform ingress rate on stairs (pax/s)
+    :param down_capacity: this train's share of the VCEs' `down_capacities` (pax/s)
+    :return: platform ingress rate (pax/s)
     """
-    if up_rate > stair_flow(assumptions.bidirectional_stair_flow_limit, vce_width):
-        return 0
-    return min(departing_pax_upstairs, stair_flow(assumptions.stair_capacity, vce_width) - up_rate)
+    return min(departing_pax_upstairs, down_capacity)
 
 
 ROUNDING_TOLERANCE = 1e-9
@@ -377,16 +395,26 @@ def platform_crowd_los(space_per_pax: float, assumptions: Assumptions) -> str:
     return "F"
 
 
-def egress_crowd_los(vce_width: float, up_rate: float, assumptions: Assumptions) -> str:
+def egress_crowd_los(capacity: float, up_rate: float, assumptions: Assumptions) -> str:
     """
-    :param vce_width: total width of vertical circulation elements (ft)
-    :param up_rate: upward stair flow (pax/s)
-    :return: its LOS, per `Assumptions.stair_los_max_flow` and `stair_capacity`
+    A VCE's LOS, per `Assumptions.stair_los_max_flow` and `stair_capacity`,
+    as fractions of its capacity.
+
+    :param capacity: the VCE's capacity, per `vce_capacity` (pax/s)
+    :param up_rate: upward flow on it (pax/s)
     """
     for grade, max_flow in (*assumptions.stair_los_max_flow, ("E", assumptions.stair_capacity)):
-        if up_rate <= stair_flow(max_flow, vce_width):
+        if up_rate <= capacity * max_flow / assumptions.stair_capacity:
             return grade
     return "F"
+
+
+def worst_egress_los(vces: list[Vce], up_rates: list[float], assumptions: Assumptions) -> str:
+    """The worst of each VCE's `egress_crowd_los`."""
+    return max(
+        egress_crowd_los(vce_capacity(vce, assumptions), up_rate, assumptions)
+        for vce, up_rate in zip(vces, up_rates, strict=True)
+    )
 
 
 @dataclass
@@ -825,14 +853,20 @@ class Params:
         return area * (1 + decluttered) + self.platform_extension * platform_widths()[self.platform]
 
     @property
-    def total_vce_width(self) -> Annotated[float, Field(name="Total VCE Width", units="ft")]:
+    def simulated_vces(self) -> list[Vce]:
         """
-        Total width (in feet) of the VCEs, all treated as stairs,
+        The VCEs the simulation uses, all treated as stairs,
         but the widest escalator, which is left out,
-        like the ETA report's one VCE per platform, e.g. an escalator running the other way.
+        like the ETA report's one VCE per platform, e.g. an escalator running the other way,
+        or if the widest tie, the westernmost of `nfpa_130_out_of_service_choices`.
         """
-        escalators = [vce.width for vce in self.vces if vce.type == VceType.ESCALATOR]
-        return sum(vce.width for vce in self.vces) - max(escalators, default=0)
+        left_out = next(iter(self.nfpa_130_out_of_service_choices), None)
+        return [vce for vce in self.vces if vce is not left_out]
+
+    @property
+    def total_vce_width(self) -> Annotated[float, Field(name="Total VCE Width", units="ft")]:
+        """Total width (in feet) of `simulated_vces`."""
+        return sum(vce.width for vce in self.simulated_vces)
 
     @property
     def nfpa_130_out_of_service_choices(self) -> list[Vce]:
@@ -1017,6 +1051,9 @@ class Summary:
     min_space_per_pax: float
     """Least platform space per passenger (sq ft)."""
 
+    vce_gone_up: list[float]
+    """Arriving passengers who've gone up each VCE, for `unused_vces`."""
+
 
 TRAIN_COLUMNS = [
     "Passengers (pax)",
@@ -1053,6 +1090,14 @@ def simulate(
 
     # Initialize counters
     arriving_pax_on_platform: float = 0
+    vces = params.simulated_vces
+    vce_queues = [0.0 for _ in vces]
+    """Arriving passengers queued at each VCE."""
+    vce_capacities = [vce_capacity(vce, assumptions) for vce in vces]
+    """Each VCE's capacity in one direction (pax/s)."""
+    bidirectional_limits = [
+        stair_flow(assumptions.bidirectional_stair_flow_limit, vce.width) for vce in vces
+    ]
     trains = range(params.trains)
     arrival_times: list[timedelta | None] = [
         train * params.headway if train < params.tracks else None for train in trains
@@ -1080,10 +1125,14 @@ def simulate(
     """Arriving passengers who've gone up, for `check_conservation`."""
 
     total_vce_width = params.total_vce_width
+    vce_shares = [vce.width / total_vce_width for vce in vces]
+    """Each VCE's share of the arriving passengers, in proportion to its width."""
     max_pax_in_stair_queues = (
         total_vce_width * assumptions.stair_queue_length / assumptions.stair_queue_space
     )
-    capacity = stair_flow(assumptions.stair_capacity, total_vce_width)
+    capacity = sum(vce_capacities)
+    no_flow = [0.0 for _ in vces]
+    """Each VCE's upward flow while nobody is queued."""
     summary = Summary(
         max_up_rate=0,
         time_at_capacity=timedelta(0),
@@ -1095,6 +1144,7 @@ def simulate(
         max_pax_on_platform=total_pax_on_platform,
         max_occupants=total_pax_on_platform,
         min_space_per_pax=calc_space_per_pax(total_pax_on_platform, usable_area),
+        vce_gone_up=[0.0 for _ in vces],
     )
 
     if print_time_series:
@@ -1124,23 +1174,38 @@ def simulate(
             off_rates.append(off_rate)
         total_pax_on_platform += sum(off_rates)
         arriving_pax_on_platform += sum(off_rates)
-        up_rate = platform_clearance(arriving_pax_on_platform, total_vce_width, assumptions)
+        if arriving_pax_on_platform > 0:
+            # Arriving passengers spread across the VCEs in proportion to their widths.
+            alighting = sum(off_rates)
+            vce_up_rates = []
+            for i, share in enumerate(vce_shares):
+                queue = vce_queues[i] + alighting * share
+                vce_up_rate = platform_clearance(queue, vce_capacities[i])
+                vce_queues[i] = queue - vce_up_rate
+                vce_up_rates.append(vce_up_rate)
+                summary.vce_gone_up[i] += vce_up_rate
+        else:
+            # While nobody is queued, skip each VCE.
+            vce_up_rates = no_flow
+        up_rate = sum(vce_up_rates)
         gone_up += up_rate
         arriving_pax_on_platform -= up_rate
         if arriving_pax_on_platform < 0:
             arriving_pax_on_platform = 0
         total_pax_on_platform -= up_rate
-        # Each train's boarders get a share of the stairs,
-        # and so a share of the upward flow on them.
-        boarder_fractions = [
-            boarder_fraction(boarders_upstairs[train], boarders_upstairs) for train in trains
-        ]
+        # Each train's boarders get a share of each VCE,
+        # and so a share of the upward flow on it and of the capacity it leaves.
+        # Their shares of a VCE's capacity, upward flow, and bidirectional limit scale together,
+        # so whether it has any capacity left doesn't depend on the train.
+        down_capacity = (
+            capacity
+            if vce_up_rates is no_flow
+            else sum(down_capacities(vce_capacities, vce_up_rates, bidirectional_limits))
+        )
         down_rates = [
             platform_ingress(
                 boarders_upstairs[train],
-                total_vce_width * boarder_fractions[train],
-                up_rate * boarder_fractions[train],
-                assumptions,
+                down_capacity * boarder_fraction(boarders_upstairs[train], boarders_upstairs),
             )
             for train in trains
         ]
@@ -1246,7 +1311,7 @@ def simulate(
                 up_rate=up_rate,
                 net_pax_flow_rate=net_pax_flow_rate,
                 platform_crowd_los=platform_crowd_los(space_per_pax, assumptions),
-                egress_los=egress_crowd_los(total_vce_width, up_rate, assumptions),
+                egress_los=worst_egress_los(vces, vce_up_rates, assumptions),
             )
 
             time_series.instants.append(instant)
@@ -1333,6 +1398,7 @@ RESULTS_COLUMNS = [
     "Max density (pax/m²)",
     "Max up rate (pax/s)",
     "NFPA 130 travel distance",
+    "Unused VCEs",
 ]
 RESULTS_HEADER = "| " + " | ".join(RESULTS_COLUMNS) + " |\n" + "|---" * len(RESULTS_COLUMNS) + "|"
 
@@ -1452,6 +1518,18 @@ def checkmark(ok: bool) -> str:
     return "✓" if ok else "✗"
 
 
+def unused_vces(params: Params, summary: Summary) -> list[str]:
+    """
+    The names of `params`' VCEs that no arriving passenger went up,
+    e.g. because a nearer one is always quicker.
+    """
+    return [
+        vce.name
+        for vce, gone_up in zip(params.simulated_vces, summary.vce_gone_up, strict=True)
+        if gone_up == 0
+    ]
+
+
 def run_model(params: Params, charts: bool) -> str:
     """
     Run the model, return its row of the results table,
@@ -1502,7 +1580,8 @@ def run_model(params: Params, charts: bool) -> str:
         f" | {1 / (summary.min_space_per_pax * SQUARE_METERS_PER_SQUARE_FOOT):.2f}"
         f" ({platform_crowd_los(summary.min_space_per_pax, params.assumptions)})"
         f" | {summary.max_up_rate:.2f}"
-        f" | {fmt_ft_in(travel_distance)} {travel_distance_ok} |"
+        f" | {fmt_ft_in(travel_distance)} {travel_distance_ok}"
+        f" | {', '.join(unused_vces(params, summary))} |"
     )
 
 
