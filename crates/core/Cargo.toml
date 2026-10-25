@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = "0.29.3"
+rayon = "1.12.0"
 
 # Build profiles, as measured on `kkysen/rust-core` (2026-10-05):
 #
@@ -43,7 +44,7 @@ debug = false
 debug-assertions = false
 overflow-checks = false
 
-# Always fully optimize dependencies, e.g. `pyo3`,
+# Always fully optimize dependencies, e.g. `pyo3` and `rayon`,
 # even if our own crate's `opt-level` is ever lowered for faster rebuilds.
 # They only rebuild when they change, so it costs nothing per edit.
 # Optimizing build scripts and proc macros, too (`build-override`), didn't speed up rebuilds.
