@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
 from functools import cache
-from math import ceil
+from math import ceil, inf
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
@@ -187,6 +187,18 @@ class Assumptions:
     i.e. the later of their walk there and when everyone queued at or walking to it has gone up.
     """
 
+    escalator_reversal_threshold: Annotated[
+        float, Field(name="Escalator Reversal Threshold", units="fraction")
+    ] = 0.1
+    """
+    Extra escalators, i.e. beyond one going up and one going down,
+    go up while the platform is alighting,
+    and reverse to go down once fewer than this fraction of `Params.arriving_pax_per_train`
+    are still on the platform or aboard trains that have arrived,
+    i.e. the platform is nearly fully alighted.
+    Not from any source.
+    """
+
     car_full_fraction: Annotated[float, Field(name="Car Full Fraction", units="fraction")] = 0.9
     """
     Departing passengers go to the nearest car
@@ -205,8 +217,18 @@ class Assumptions:
     stair_capacity: Annotated[float, Field(name="Stair Capacity", units="pax/min/ft")] = 17
     """
     Stair capacity, the LOS E/F boundary.
-    Applied to all VCEs, even escalators.
     Fruin, p. 14: https://onlinepubs.trb.org/Onlinepubs/hrr/1971/355/355-001.pdf#page=14
+    """
+
+    escalator_capacities: tuple[tuple[float, float], ...] = ((32, 72), (0, 34))
+    """
+    Each escalator's capacity (pax/min) by the narrowest tread width (in.) it applies to,
+    widest first.
+    The TCQSM's nominal capacities at 90 ft/min, the typical incline speed:
+    34 pax/min for 24 in. treads, and 72 pax/min for 40 in. treads,
+    which 32 in. treads come close to, since people stagger themselves on alternate steps.
+    TCQSM p. 10-51 and Exhibit 10-31, p. 10-52:
+    https://onlinepubs.trb.org/onlinepubs/tcrp/tcrp_rpt_165ch-10.pdf#page=55
     """
 
     stair_queue_space: Annotated[float, Field(name="Stair Queue Space", units="ft^2/pax")] = 5
@@ -307,9 +329,20 @@ def alight_rate(
 def vce_capacity(vce: Vce, assumptions: Assumptions) -> float:
     """
     `vce`'s capacity (pax/s) in one direction:
-    `Assumptions.stair_capacity`, even for an escalator.
+    `Assumptions.stair_capacity` for a stair,
+    or `Assumptions.escalator_capacities` for an escalator.
     """
-    return stair_flow(assumptions.stair_capacity, vce.width)
+    if vce.type != VceType.ESCALATOR:
+        return stair_flow(assumptions.stair_capacity, vce.width)
+    tread_width = vce.width * 12
+    return (
+        next(
+            capacity
+            for min_tread_width, capacity in assumptions.escalator_capacities
+            if tread_width >= min_tread_width
+        )
+        / SECONDS_PER_MINUTE
+    )
 
 
 def platform_clearance(arriving_pax_on_platform: float, capacity: float) -> float:
@@ -330,20 +363,27 @@ def platform_clearance(arriving_pax_on_platform: float, capacity: float) -> floa
 
 
 def down_capacities(
-    capacities: list[float], up_rates: list[float], bidirectional_limits: list[float]
+    capacities: list[float],
+    up_rates: list[float],
+    bidirectional_limits: list[float],
+    directions: list[Direction],
 ) -> list[float]:
     """
     Each VCE's capacity (pax/s) left for departing passengers to come down:
-    whatever its upward flow leaves,
+    none if it's an escalator going up,
+    or else whatever its upward flow leaves,
     unless that exceeds its `Assumptions.bidirectional_stair_flow_limit`.
 
     :param capacities: each VCE's capacity, per `vce_capacity` (pax/s)
     :param up_rates: each VCE's upward flow (pax/s)
     :param bidirectional_limits: each VCE's `Assumptions.bidirectional_stair_flow_limit` (pax/s)
+    :param directions: which way each VCE runs now
     """
     return [
-        0 if up_rate > limit else capacity - up_rate
-        for capacity, up_rate, limit in zip(capacities, up_rates, bidirectional_limits, strict=True)
+        0 if direction == "up" or up_rate > limit else capacity - up_rate
+        for capacity, up_rate, limit, direction in zip(
+            capacities, up_rates, bidirectional_limits, directions, strict=True
+        )
     ]
 
 
@@ -435,7 +475,7 @@ def platform_crowd_los(space_per_pax: float, assumptions: Assumptions) -> str:
 def egress_crowd_los(capacity: float, up_rate: float, assumptions: Assumptions) -> str:
     """
     A VCE's LOS, per `Assumptions.stair_los_max_flow` and `stair_capacity`,
-    as fractions of its capacity.
+    as fractions of its capacity, so an escalator's are the same fractions of its capacity.
 
     :param capacity: the VCE's capacity, per `vce_capacity` (pax/s)
     :param up_rate: upward flow on it (pax/s)
@@ -446,7 +486,7 @@ def egress_crowd_los(capacity: float, up_rate: float, assumptions: Assumptions) 
     return "F"
 
 
-def worst_egress_los(vces: list[Vce], up_rates: list[float], assumptions: Assumptions) -> str:
+def worst_egress_los(vces: tuple[Vce, ...], up_rates: list[float], assumptions: Assumptions) -> str:
     """The worst of each VCE's `egress_crowd_los`."""
     return max(
         egress_crowd_los(vce_capacity(vce, assumptions), up_rate, assumptions)
@@ -779,7 +819,7 @@ class Door:
     """
 
 
-def doors_to_vces(params: Params, vces: list[Vce]) -> list[Door]:
+def doors_to_vces(params: Params, vces: tuple[Vce, ...]) -> list[Door]:
     """
     Where arriving passengers come from, and how far they are from each of `vces`.
     """
@@ -807,21 +847,51 @@ def vce_wait(queue: float, walking_to: float, capacity: float) -> float:
     return (queue + walking_to) / capacity
 
 
-def choose_vce(params: Params, door: Door, waits: list[float]) -> int:
+def choose_vce(params: Params, door: Door, waits: list[float], directions: list[Direction]) -> int:
     """
-    The VCE the passengers from `door` walk to, per `Assumptions.vce_choice`.
+    The VCE the passengers from `door` walk to, per `Assumptions.vce_choice`,
+    of those going up.
     The quickest is the one they could go up soonest:
     the later of their walk there and its `vce_wait`,
     since its queue drains while they walk.
 
     :param waits: each VCE's `vce_wait` (s)
+    :param directions: which way each VCE runs now
     """
+    nearest = params.assumptions.vce_choice == "nearest"
+    times = [
+        inf if direction == "down" else walk if nearest else max(walk, wait)
+        for walk, wait, direction in zip(door.walking_times, waits, directions, strict=True)
+    ]
     # The first of any tied, i.e. the westernmost.
-    walks = door.walking_times
-    if params.assumptions.vce_choice == "nearest":
-        return walks.index(min(walks))
-    times = [max(walk, wait) for walk, wait in zip(walks, waits, strict=True)]
     return times.index(min(times))
+
+
+type Direction = Literal["both", "up", "down"]
+"""Which way a VCE runs: stairs go `both` ways, and escalators go `up` or `down`."""
+
+type Role = Literal["stair", "up", "down", "reversible"]
+"""What a VCE does: a stair, an escalator always going `up` or `down`, or one that reverses."""
+
+
+def vce_roles(vces: tuple[Vce, ...]) -> list[Role]:
+    """
+    What each VCE does.
+    A platform's only escalator goes up.
+    With more, the easternmost, toward 7th Avenue, goes up,
+    the westernmost, toward 8th Avenue, goes down,
+    and the rest are `reversible`, going up while the platform is alighting.
+    This matches the AM peak, when most passengers are heading toward 7th Avenue.
+    """
+    escalators = [i for i, vce in enumerate(vces) if vce.type == VceType.ESCALATOR]
+    roles: list[Role] = ["stair" for _ in vces]
+    for i in escalators:
+        roles[i] = "reversible"
+    if escalators:
+        roles[escalators[-1]] = "up"
+    if len(escalators) > 1:
+        roles[escalators[0]] = "down"
+    return roles
 
 
 @dataclass(frozen=True)
@@ -835,7 +905,7 @@ class Car:
     """Time to walk from each VCE to its nearest door, in `TIME_STEP`s, like `Door`'s."""
 
 
-def train_cars(params: Params, vces: list[Vce]) -> list[Car]:
+def train_cars(params: Params, vces: tuple[Vce, ...]) -> list[Car]:
     """
     Each train's cars, and how far each is from each of `vces`.
     """
@@ -1026,20 +1096,9 @@ class Params:
         return area * (1 + decluttered) + self.platform_extension * platform_widths()[self.platform]
 
     @property
-    def simulated_vces(self) -> list[Vce]:
-        """
-        The VCEs the simulation uses, all treated as stairs,
-        but the widest escalator, which is left out,
-        like the ETA report's one VCE per platform, e.g. an escalator running the other way,
-        or if the widest tie, the westernmost of `nfpa_130_out_of_service_choices`.
-        """
-        left_out = next(iter(self.nfpa_130_out_of_service_choices), None)
-        return [vce for vce in self.vces if vce is not left_out]
-
-    @property
     def total_vce_width(self) -> Annotated[float, Field(name="Total VCE Width", units="ft")]:
-        """Total width (in feet) of `simulated_vces`."""
-        return sum(vce.width for vce in self.simulated_vces)
+        """Total width (in feet) of all of the VCEs."""
+        return sum(vce.width for vce in self.vces)
 
     @property
     def nfpa_130_out_of_service_choices(self) -> list[Vce]:
@@ -1263,12 +1322,18 @@ def simulate(
 
     # Initialize counters
     arriving_pax_on_platform: float = 0
-    vces = params.simulated_vces
+    vces = params.vces
     vce_queues = [0.0 for _ in vces]
     """Arriving passengers queued at each VCE."""
     vce_capacities = [vce_capacity(vce, assumptions) for vce in vces]
     """Each VCE's capacity in one direction (pax/s)."""
     doors = doors_to_vces(params, vces)
+    roles = vce_roles(vces)
+    directions: list[Direction] = [
+        "both" if role == "stair" else "down" if role == "down" else "up" for role in roles
+    ]
+    """Which way each VCE runs now."""
+    reversible = [i for i, role in enumerate(roles) if role == "reversible"]
     walking: defaultdict[int, list[float]] = defaultdict(lambda: [0.0 for _ in vces])
     """Arriving passengers walking to each VCE, by the step they reach its queue."""
     walking_totals = [0.0 for _ in vces]
@@ -1319,11 +1384,12 @@ def simulate(
     gone_up: float = 0
     """Arriving passengers who've gone up, for `check_conservation`."""
 
-    total_vce_width = params.total_vce_width
     max_pax_in_stair_queues = (
-        total_vce_width * assumptions.stair_queue_length / assumptions.stair_queue_space
+        # Nobody queues to go up the escalator that only goes down.
+        sum(vce.width for vce, role in zip(vces, roles, strict=True) if role != "down")
+        * assumptions.stair_queue_length
+        / assumptions.stair_queue_space
     )
-    capacity = sum(vce_capacities)
     no_flow = [0.0 for _ in vces]
     """Each VCE's upward flow while nobody is queued."""
     summary = Summary(
@@ -1367,6 +1433,22 @@ def simulate(
             off_rates.append(off_rate)
         total_pax_on_platform += sum(off_rates)
         arriving_pax_on_platform += sum(off_rates)
+        if reversible:
+            still_alighting = arriving_pax_on_platform
+            for train in trains:
+                arrival_time = arrival_times[train]
+                if arrival_time is not None and time_after >= arrival_time:
+                    still_alighting += remaining_arrivals[train]
+            nearly_alighted = (
+                still_alighting
+                < assumptions.escalator_reversal_threshold * params.arriving_pax_per_train
+            )
+            for i in reversible:
+                # Once reversed, nobody walks to it, so it stays down until more alight.
+                if not nearly_alighted or vce_queues[i] + walking_totals[i] > 0:
+                    directions[i] = "up"
+                else:
+                    directions[i] = "down"
         if arriving_pax_on_platform > 0:
             # Each door's alighting passengers walk to a VCE,
             # though nobody does in a second nobody alights.
@@ -1379,7 +1461,7 @@ def simulate(
                     )
                 ]
                 for door in doors:
-                    i = choose_vce(params, door, waits)
+                    i = choose_vce(params, door, waits, directions)
                     walking[step + door.walking_times[i]][i] += alighting * door.share
                     walking_totals[i] += alighting * door.share
                     waits[i] = vce_wait(vce_queues[i], walking_totals[i], vce_capacities[i])
@@ -1405,14 +1487,10 @@ def simulate(
         # and so a share of the upward flow on it and of the capacity it leaves.
         # Their shares of a VCE's capacity, upward flow, and bidirectional limit scale together,
         # so whether it has any capacity left doesn't depend on the train.
-        if vce_up_rates is no_flow:
-            vce_down_capacities = vce_capacities
-            down_capacity = capacity
-        else:
-            vce_down_capacities = down_capacities(
-                vce_capacities, vce_up_rates, bidirectional_limits
-            )
-            down_capacity = sum(vce_down_capacities)
+        vce_down_capacities = down_capacities(
+            vce_capacities, vce_up_rates, bidirectional_limits, directions
+        )
+        down_capacity = sum(vce_down_capacities)
         down_rates = [
             platform_ingress(
                 boarders_upstairs[train],
@@ -1485,6 +1563,12 @@ def simulate(
                 up_rate,
             )
         summary.max_up_rate = max(summary.max_up_rate, up_rate)
+        # Capacity of the VCEs going up now, not counting escalators going down.
+        capacity = sum(
+            capacity
+            for capacity, direction in zip(vce_capacities, directions, strict=True)
+            if direction != "down"
+        )
         if up_rate >= capacity - 1e-9:
             summary.time_at_capacity += TIME_STEP
         if arriving_pax_on_platform > max_pax_in_stair_queues:
@@ -1766,12 +1850,15 @@ def checkmark(ok: bool) -> str:
 def unused_vces(params: Params, summary: Summary) -> list[str]:
     """
     The names of `params`' VCEs that no arriving passenger went up,
-    e.g. because a nearer one is always quicker.
+    e.g. because a nearer one is always quicker,
+    but escalators only going down, which nobody goes up by design.
     """
     return [
         vce.name
-        for vce, gone_up in zip(params.simulated_vces, summary.vce_gone_up, strict=True)
-        if gone_up == 0
+        for vce, role, gone_up in zip(
+            params.vces, vce_roles(params.vces), summary.vce_gone_up, strict=True
+        )
+        if role != "down" and gone_up == 0
     ]
 
 
