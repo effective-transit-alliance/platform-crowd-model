@@ -123,8 +123,9 @@ class Assumptions:
 
     max_train_overhang: Annotated[float, Field(name="Max Train Overhang", units="ft")] = 15
     """
-    How far a train can extend past its platform's end,
+    How far a train can extend past its platform's west end,
     e.g. 12-car LIRR trains on platform 11, 1,007' long, per the Moynihan Station EA.
+    Trains only overhang their platform if they're longer than it.
     Not from any source.
     """
 
@@ -158,6 +159,16 @@ class Assumptions:
     start coming down to the platform, all at once, like when its track is announced.
     Until then, they all wait in the concourse, off the platform and the stairs,
     with none arriving later.
+    Not from any source.
+    """
+
+    stopping_dwell_tolerance: Annotated[
+        timedelta, Field(name="Stopping Dwell Tolerance", units="s")
+    ] = timedelta(minutes=1)
+    """
+    How much longer than the shortest it can be
+    the longest dwell can be where `best_stopping_position` stops the trains,
+    so it can stop them where the platform can be evacuated soonest instead.
     Not from any source.
     """
 
@@ -792,10 +803,13 @@ def transformation_vces(platform: int) -> tuple[Vce, ...]:
 def door_positions(params: Params) -> list[float]:
     """
     Where each of a train's doors is along the platform (ft),
-    spread evenly along a train stopped with its east end at the platform's.
+    spread evenly along a train stopped at `Params.train_east_end`.
     """
     assumptions = params.assumptions
-    train_west_end = params.platform_east_end - params.train_length
+    train_east_end = (
+        params.platform_east_end if params.train_east_end is None else params.train_east_end
+    )
+    train_west_end = train_east_end - params.train_length
     door_spacing = assumptions.car_length / assumptions.doors_per_car
     return [train_west_end + (door + 0.5) * door_spacing for door in range(params.doors_per_train)]
 
@@ -968,6 +982,13 @@ class Params:
 
     trains: Annotated[int, Field(name="Trains", units="train")] = 4
     """Trains arriving, alternating between the platform's tracks."""
+
+    train_east_end: Annotated[float | None, Field(name="Train East End", units="ft")] = None
+    """
+    Where the trains' east ends stop (ft east of the Master Plan's plans' west edge),
+    or if `None`, `platform_east_end`.
+    `best_stopping_position` finds the best one.
+    """
 
     assumptions: Assumptions = dataclasses.field(default_factory=Assumptions)
     """What the model assumes, the same for every scenario unless overridden."""
@@ -1692,7 +1713,7 @@ def check_conservation(
     adds up to everyone who arrived,
     and likewise for the departing passengers.
     It only adds up where passengers are once per run, so it's cheap enough to check every run,
-    including the `README.md` snapshot test's.
+    including every `best_stopping_position` candidate and the `README.md` snapshot test's.
 
     :param arriving: how many of the arriving passengers are in each place, by its description
     :param departing: how many of the departing passengers are in each place, by its description
@@ -1743,6 +1764,78 @@ def update_readme_results(table: str) -> None:
     start = readme.index(RESULTS_START) + len(RESULTS_START)
     end = readme.index(RESULTS_END)
     README.write_text(f"{readme[:start]}\n{table}\n{readme[end:]}")
+
+
+STOPPING_POSITION_STEP = 5
+"""Distance (ft) between the stopping positions `best_stopping_position` tries."""
+
+COARSE_STOPPING_POSITION_STEP = 85
+"""
+Distance (ft) between the stopping positions `best_stopping_position` tries first,
+a car's length, before trying every `STOPPING_POSITION_STEP` around the best of them.
+"""
+
+STOPPING_OCCUPANTS_TOLERANCE = 1
+"""
+How far apart (pax) `best_stopping_position` counts most occupants at once as tied,
+so dwells choose between positions differing by less than a passenger,
+which barely changes NFPA 130's times, rather than floating-point rounding.
+"""
+
+
+def best_stopping_position(params: Params) -> Params:
+    """
+    `params` with the trains stopped where the platform could be evacuated soonest
+    under NFPA 130, i.e. with the fewest occupants at once,
+    of the positions where the longest of their dwells is within `stopping_dwell_tolerance`
+    of the shortest it can be,
+    and if tied, where the longest and then the total dwell are shortest,
+    of every position `STOPPING_POSITION_STEP` apart with the train on the platform.
+    """
+    platform_west_end = params.platform_east_end - params.platform_length
+    # A train longer than the platform overhangs its west end.
+    overhang = max(0, params.train_length - params.platform_length)
+    candidates: list[Params] = []
+    train_east_end = params.platform_east_end
+    while train_east_end - params.train_length >= platform_west_end - overhang:
+        candidates.append(dataclasses.replace(params, train_east_end=train_east_end))
+        train_east_end -= STOPPING_POSITION_STEP
+
+    def score(candidate: Params) -> tuple[timedelta, timedelta, float]:
+        """Its longest and total dwells, and its most occupants at once."""
+        # Only the summary matters.
+        _time_series, summary = simulate(
+            candidate, record_time_series=False, print_time_series=False
+        )
+        dwells = summary.dwells
+        if any(dwell is None for dwell in dwells):
+            return timedelta.max, timedelta.max, summary.max_occupants
+        finished = [dwell for dwell in dwells if dwell is not None]
+        return max(finished), sum(finished, timedelta(0)), summary.max_occupants
+
+    scores: dict[float, tuple[timedelta, timedelta, float]] = {}
+
+    def cached_score(candidate: Params) -> tuple[timedelta, timedelta, float]:
+        assert candidate.train_east_end is not None
+        if candidate.train_east_end not in scores:
+            scores[candidate.train_east_end] = score(candidate)
+        return scores[candidate.train_east_end]
+
+    def best(of: list[Params]) -> Params:
+        longest = min(cached_score(c)[0] for c in of)
+        tolerance = params.assumptions.stopping_dwell_tolerance
+        within = [c for c in of if cached_score(c)[0] - tolerance <= longest]
+        fewest = min(cached_score(c)[2] for c in within)
+        tied = [c for c in within if cached_score(c)[2] - STOPPING_OCCUPANTS_TOLERANCE <= fewest]
+        return min(tied, key=lambda c: cached_score(c)[:2])
+
+    # Try every car length first, then every `STOPPING_POSITION_STEP` within a car length of it.
+    coarse_step = COARSE_STOPPING_POSITION_STEP // STOPPING_POSITION_STEP
+    coarse = best(candidates[::coarse_step])
+    i = candidates.index(coarse)
+    nearby = candidates[max(0, i - coarse_step) : i + coarse_step + 1]
+    # Every position tried counts toward the shortest longest dwell.
+    return best([c for c in candidates if c.train_east_end in scores] + nearby)
 
 
 OUTPUT_DIR = Path("output")
@@ -1867,6 +1960,7 @@ def run_model(params: Params, charts: bool) -> str:
     Run the model, return its row of the results table,
     and with `charts`, print its time series and save its CSVs and charts in `OUTPUT_DIR`.
     """
+    params = best_stopping_position(params)
     time_series, summary = simulate(
         params=params, record_time_series=charts, print_time_series=charts
     )
