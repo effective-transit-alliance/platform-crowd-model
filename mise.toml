@@ -1,0 +1,8 @@
+# Tools for building, installed with `mise install`.
+# Newer versions are fine, so these take the latest.
+
+[tools]
+# Runs everything; see `README.md`.
+uv = "latest"
+# The linker `.cargo/config.toml` uses on Linux.
+mold = "latest"
